@@ -6,7 +6,11 @@
 <meta name="theme-color" content="#1a5276">
 <title>Meus documentos de saúde</title>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.png">
 <link rel="apple-touch-icon" href="icone-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Guarde seus exames, laudos e receitas no celular e mostre ao médico na consulta.">
 <style>
   :root{
     --azul:#1a5276; --azul-claro:#e8f1f7;
@@ -129,6 +133,52 @@
 
   .doc{cursor:pointer}
 
+  /* ── Boas-vindas: só na primeira vez ── */
+  #bemvindo{position:fixed;inset:0;z-index:60;overflow-y:auto;
+            background:linear-gradient(170deg,#1a5276 0%,#2e7fae 58%,#f4f6f8 58.1%)}
+  .bv-caixa{max-width:460px;margin:0 auto;padding:0 20px 34px;
+            padding-top:calc(30px + env(safe-area-inset-top));
+            min-height:100%;display:flex;flex-direction:column}
+  .bv-icone{width:84px;height:84px;border-radius:20px;display:block;margin:0 auto 16px;
+            box-shadow:0 10px 26px rgba(0,0,0,.28)}
+  .bv-titulo{color:#fff;text-align:center;font-size:24px;font-weight:700;
+             line-height:1.22;margin:0 0 6px;letter-spacing:-.02em}
+  .bv-sub{color:#cfe2ef;text-align:center;font-size:15px;margin:0 0 24px;line-height:1.45}
+  .bv-cartao{background:#fff;border-radius:16px;padding:18px 18px 6px;
+             box-shadow:0 8px 28px rgba(16,40,56,.14)}
+  .bv-passo{display:flex;gap:13px;align-items:flex-start;margin-bottom:16px}
+  .bv-passo .ico{width:40px;height:40px;border-radius:11px;background:var(--azul-claro);
+                 display:flex;align-items:center;justify-content:center;font-size:20px;
+                 flex:0 0 auto}
+  .bv-passo b{display:block;font-size:15.5px;margin-bottom:1px}
+  .bv-passo span{font-size:14px;color:var(--tinta-2);line-height:1.4}
+  .bv-acao{margin-top:20px;display:flex;flex-direction:column;gap:10px}
+  .bv-instalar{background:var(--azul);color:#fff;padding:17px;font-size:17px;
+               font-weight:600;border-radius:12px;display:flex;align-items:center;
+               justify-content:center;gap:9px}
+  .bv-comecar{background:none;color:var(--azul);padding:13px;font-size:15.5px;
+              font-weight:600}
+  .bv-ios{background:var(--azul-claro);border-radius:12px;padding:14px 16px;
+          font-size:14.5px;line-height:1.5;color:#123c57}
+  .bv-ios b{display:block;margin-bottom:5px;font-size:14px}
+  .bv-ios .gesto{display:inline-flex;align-items:center;gap:5px;background:#fff;
+                 border-radius:7px;padding:2px 8px;margin:0 2px;font-weight:600;
+                 white-space:nowrap}
+  .bv-rodape{margin-top:auto;padding-top:20px;text-align:center;font-size:12.5px;
+             color:var(--tinta-3);line-height:1.55}
+
+  /* Convite discreto para quem pulou a instalação */
+  #faixa-instalar{display:flex;align-items:center;gap:10px;background:#fff;
+                  border:1px solid var(--linha);border-radius:12px;padding:11px 13px;
+                  margin-bottom:14px}
+  #faixa-instalar img{width:34px;height:34px;border-radius:9px;flex:0 0 auto}
+  #faixa-instalar .txt{flex:1;font-size:13.5px;line-height:1.35;color:var(--tinta-2)}
+  #faixa-instalar .txt b{display:block;color:var(--tinta);font-size:14px}
+  #faixa-instalar button{background:var(--azul);color:#fff;padding:9px 14px;
+                         font-size:14px;font-weight:600;border-radius:9px}
+  #faixa-instalar .fechar{background:none;color:var(--tinta-3);font-size:20px;
+                          padding:4px 6px}
+
   .rodape{margin:26px 0 8px;text-align:center;font-size:12px;color:var(--tinta-3);
           line-height:1.6}
   .escondido{display:none!important}
@@ -141,7 +191,66 @@
   <p id="cabecalho-sub">exames, laudos e receitas num lugar só</p>
 </header>
 
+<!-- BOAS-VINDAS ---------------------------------------------------------- -->
+<!-- Fica escondido por padrão e só aparece na primeira visita. Assim quem já
+     usa o app não espera decisão nenhuma para chegar nos documentos. -->
+<div id="bemvindo" class="escondido">
+  <div class="bv-caixa">
+    <img class="bv-icone" src="icone-192.png" alt="">
+    <h2 class="bv-titulo">Seus exames sempre com você</h2>
+    <p class="bv-sub">Sem pasta, sem sacola, sem esquecer nada em casa.</p>
+
+    <div class="bv-cartao">
+      <div class="bv-passo">
+        <div class="ico">📷</div>
+        <div><b>Fotografe uma vez</b>
+          <span>Exame, laudo, receita. Você recorta a margem e pronto.</span></div>
+      </div>
+      <div class="bv-passo">
+        <div class="ico">🗂️</div>
+        <div><b>Fica tudo em ordem</b>
+          <span>Guardado por data e por tipo, fácil de achar depois.</span></div>
+      </div>
+      <div class="bv-passo">
+        <div class="ico">🩺</div>
+        <div><b>Mostre na consulta</b>
+          <span>O médico só vê o que você liberar, na hora que você quiser.</span></div>
+      </div>
+    </div>
+
+    <div class="bv-acao">
+      <!-- Android: botão de instalar de verdade, ligado ao aviso do navegador -->
+      <button class="bv-instalar escondido" id="bv-instalar">
+        <span style="font-size:19px">📲</span> Instalar no celular
+      </button>
+
+      <!-- iPhone: o navegador não oferece, então ensinamos o gesto exato -->
+      <div class="bv-ios escondido" id="bv-ios">
+        <b>Para deixar na tela inicial do iPhone</b>
+        toque em <span class="gesto">⬆️ Compartilhar</span> aqui embaixo e depois em
+        <span class="gesto">Adicionar à Tela de Início</span>.
+      </div>
+
+      <button class="bv-comecar" id="bv-comecar">Começar agora</button>
+    </div>
+
+    <div class="bv-rodape">
+      Seus documentos ficam na sua conta, e só você abre.<br>
+      Nenhum médico enxerga nada sem a sua liberação.
+    </div>
+  </div>
+</div>
+
 <main>
+  <!-- Convite de instalar para quem começou sem instalar -->
+  <div id="faixa-instalar" class="escondido">
+    <img src="icone-192.png" alt="">
+    <div class="txt"><b>Deixe na tela inicial</b>
+      Abre com um toque, como qualquer aplicativo.</div>
+    <button id="faixa-btn">Instalar</button>
+    <button class="fechar" id="faixa-fechar" aria-label="Agora não">×</button>
+  </div>
+
   <div id="avisos"></div>
 
   <!-- CAPTURA ------------------------------------------------------------ -->

@@ -417,6 +417,82 @@ el.camera.onchange = async () => {
   }
 };
 
+/* ═══ Boas-vindas e instalação ════════════════════════════════════════════
+   O QR do consultório leva a uma página, não a uma loja — e é aqui que o
+   paciente decide se aquilo vira um ícone no celular dele ou uma aba que ele
+   fecha e nunca mais acha. Três regras, todas voltadas para quem tem 70 anos:
+
+   1. quem já usa não vê nada disso: a tela só aparece na primeira visita;
+   2. no Android existe botão de instalar DE VERDADE, ligado ao aviso que o
+      navegador guarda — instrução escrita é o que se faz quando não há botão;
+   3. no iPhone não existe esse aviso, então ensinamos o gesto exato, com o
+      nome dos itens do menu. "Adicione aos favoritos" não ajuda ninguém.      */
+const bv = {
+  tela: $("bemvindo"), instalar: $("bv-instalar"), ios: $("bv-ios"),
+  comecar: $("bv-comecar"), faixa: $("faixa-instalar"),
+  faixaBtn: $("faixa-btn"), faixaFechar: $("faixa-fechar"),
+};
+
+let convite = null;   // o aviso de instalação guardado pelo navegador
+
+const jaInstalado = () =>
+  window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+
+const ehIOS = () =>
+  /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+// O navegador dispara isto quando considera o app instalável. Guardamos em vez
+// de deixar passar: assim o convite aparece no NOSSO botão, no momento em que
+// faz sentido, e não numa barrinha que o usuário fecha sem ler.
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  convite = e;
+  if (!bv.tela.classList.contains("escondido")) bv.instalar.classList.remove("escondido");
+  else mostrarFaixa();
+});
+
+window.addEventListener("appinstalled", () => {
+  convite = null;
+  bv.faixa.classList.add("escondido");
+  aviso("Pronto! O app está na tela inicial do seu celular.", "ok");
+});
+
+async function pedirInstalacao() {
+  if (!convite) return;
+  convite.prompt();
+  await convite.userChoice;
+  convite = null;
+  bv.instalar.classList.add("escondido");
+  bv.faixa.classList.add("escondido");
+}
+
+function mostrarFaixa() {
+  if (jaInstalado() || !convite) return;
+  if (localStorage.getItem("faixa-instalar-nao") === "1") return;
+  bv.faixa.classList.remove("escondido");
+}
+
+function abrirBoasVindas() {
+  bv.tela.classList.remove("escondido");
+  if (convite) bv.instalar.classList.remove("escondido");
+  else if (ehIOS()) bv.ios.classList.remove("escondido");
+}
+
+function fecharBoasVindas() {
+  bv.tela.classList.add("escondido");
+  try { localStorage.setItem("bemvindo-visto", "1"); } catch (e) {}
+  mostrarFaixa();
+}
+
+bv.instalar.onclick = pedirInstalacao;
+bv.faixaBtn.onclick = pedirInstalacao;
+bv.comecar.onclick = fecharBoasVindas;
+bv.faixaFechar.onclick = () => {
+  bv.faixa.classList.add("escondido");
+  try { localStorage.setItem("faixa-instalar-nao", "1"); } catch (e) {}
+};
+
 /* ── Ligações ─────────────────────────────────────────────────────────── */
 el.fotografar.onclick = () => el.camera.click();
 el.salvar.onclick = guardar;
@@ -431,7 +507,23 @@ el.filtroOrdem.onchange = desenharLista;
           "erro", "Falta configurar");
     return;
   }
+  // A tela de boas-vindas abre ANTES de qualquer espera de rede: quem chegou
+  // pelo QR precisa entender onde está no primeiro segundo, não depois de a
+  // sessão negociar com o servidor.
+  let visto = "1";
+  try { visto = localStorage.getItem("bemvindo-visto"); } catch (e) {}
+  if (!visto && !jaInstalado()) abrirBoasVindas();
+
   if (await entrar()) await carregar();
+
+  // Atalho do ícone: segurar o app na tela inicial oferece "Fotografar
+  // documento" e cai aqui já com a câmera aberta. Promessa feita no
+  // manifesto tem de ser cumprida, senão o atalho só frustra.
+  if (new URLSearchParams(location.search).get("acao") === "fotografar") {
+    history.replaceState(null, "", location.pathname);
+    fecharBoasVindas();
+    el.camera.click();
+  }
 })();
 
 if ("serviceWorker" in navigator) {

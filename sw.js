@@ -3,8 +3,10 @@
    elas vêm por URL assinada que expira, e cache de dado de saúde no disco do
    navegador é risco sem ganho — quem precisa do acervo offline é o dono, e
    isso é assunto da fila de envio, não deste arquivo. */
-const VERSAO = "casca-v1";
-const CASCA = ["./", "./index.html", "./app.js", "./config.js", "./manifest.webmanifest", "./worker.js"];
+const VERSAO = "casca-v2";
+const CASCA = ["./", "./index.html", "./app.js", "./config.js",
+                "./manifest.webmanifest", "./worker.js",
+                "./icone-192.png", "./icone-512.png", "./favicon.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(CASCA)).then(() => self.skipWaiting()));
