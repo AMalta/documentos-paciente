@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a5276">
+<title>Meus documentos de saúde</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-180.png">
+<style>
+  :root{
+    --azul:#1a5276; --azul-claro:#e8f1f7;
+    --tinta:#14212b; --tinta-2:#5b6b78; --tinta-3:#8496a3;
+    --papel:#f4f6f8; --superficie:#fff; --linha:#dde4ea;
+    --verde:#1c6b4a; --verde-fundo:#e4f2ea;
+    --ambar:#8a5d00; --ambar-fundo:#fdf3dd;
+    --vermelho:#9c2f2f;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--papel);color:var(--tinta);
+       font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       padding-bottom:env(safe-area-inset-bottom)}
+  header{background:var(--azul);color:#fff;padding:18px 16px 16px;
+         padding-top:calc(18px + env(safe-area-inset-top))}
+  header h1{margin:0;font-size:19px;font-weight:600;letter-spacing:-.01em}
+  header p{margin:3px 0 0;font-size:13px;opacity:.85}
+  main{padding:16px;max-width:620px;margin:0 auto}
+
+  .aviso{padding:12px 14px;border-radius:8px;font-size:14px;margin-bottom:14px;
+         line-height:1.45}
+  .aviso.erro{background:#fbeaea;color:var(--vermelho)}
+  .aviso.info{background:var(--ambar-fundo);color:var(--ambar)}
+  .aviso.ok{background:var(--verde-fundo);color:var(--verde)}
+  .aviso b{display:block;margin-bottom:2px}
+
+  button{font:inherit;cursor:pointer;border:0;border-radius:10px}
+  .btn-grande{width:100%;background:var(--azul);color:#fff;padding:18px;
+              font-size:17px;font-weight:600;display:flex;align-items:center;
+              justify-content:center;gap:10px}
+  .btn-grande:disabled{opacity:.5}
+  .btn-linha{background:var(--superficie);border:1px solid var(--linha);
+             color:var(--tinta);padding:11px 14px;font-size:15px}
+  .btn-texto{background:none;color:var(--azul);padding:8px 2px;font-size:14px}
+  .btn-salvar{background:var(--verde);color:#fff;padding:15px;font-size:16px;
+              font-weight:600;width:100%}
+
+  .cartao{background:var(--superficie);border:1px solid var(--linha);
+          border-radius:12px;padding:14px;margin-bottom:12px}
+
+  label{display:block;font-size:13px;color:var(--tinta-2);margin:12px 0 4px;
+        font-weight:500}
+  input,select{width:100%;padding:12px;border:1px solid var(--linha);
+               border-radius:9px;font:inherit;background:#fff;color:var(--tinta)}
+  input:focus,select:focus{outline:2px solid var(--azul);outline-offset:-1px}
+
+  .paginas{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .pagina{position:relative;width:74px;height:98px;border-radius:8px;
+          overflow:hidden;border:1px solid var(--linha);background:#000}
+  .pagina img{width:100%;height:100%;object-fit:cover;display:block}
+  .pagina .tirar{position:absolute;top:2px;right:2px;width:24px;height:24px;
+                 border-radius:50%;background:rgba(0,0,0,.65);color:#fff;
+                 font-size:15px;line-height:1;display:flex;align-items:center;
+                 justify-content:center}
+  .pagina .num{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);
+               color:#fff;font-size:11px;text-align:center;padding:1px}
+  .addpagina{width:74px;height:98px;border:1px dashed var(--linha);
+             border-radius:8px;background:var(--superficie);color:var(--tinta-3);
+             font-size:12px;display:flex;flex-direction:column;align-items:center;
+             justify-content:center;gap:3px}
+
+  .filtros{display:flex;gap:8px;margin:18px 0 12px}
+  .filtros select{flex:1;padding:9px 10px;font-size:14px}
+
+  .doc{background:var(--superficie);border:1px solid var(--linha);
+       border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;
+       gap:12px;align-items:center}
+  .doc .capa{width:46px;height:46px;border-radius:8px;flex:0 0 auto;
+             background:var(--azul-claro);display:flex;align-items:center;
+             justify-content:center;font-size:20px;overflow:hidden}
+  .doc .capa img{width:100%;height:100%;object-fit:cover}
+  .doc .txt{min-width:0;flex:1}
+  .doc .nome{font-weight:600;font-size:15px;overflow:hidden;
+             text-overflow:ellipsis;white-space:nowrap}
+  .doc .meta{font-size:13px;color:var(--tinta-2);margin-top:1px}
+  .doc .fila{font-size:12px;color:var(--ambar);margin-top:2px}
+
+  .vazio{text-align:center;color:var(--tinta-2);padding:34px 20px}
+  .vazio .icone{font-size:40px;margin-bottom:8px}
+  .vazio p{margin:0;font-size:14.5px}
+
+  /* ── Telas cheias: recorte e visualização ── */
+  .tela-cheia{position:fixed;inset:0;background:#0d1620;z-index:50;display:flex;
+              flex-direction:column;color:#fff}
+  .tela-cheia .barra{display:flex;align-items:center;justify-content:space-between;
+                     padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top));
+                     gap:12px;background:rgba(0,0,0,.35)}
+  .tela-cheia .barra .titulo{font-size:15px;font-weight:600}
+  .tela-cheia .barra button{background:none;color:#fff;font-size:15px;padding:8px 10px}
+  .tela-cheia .barra .confirmar{background:#1c6b4a;border-radius:9px;font-weight:600;
+                                padding:10px 16px}
+  .tela-cheia .palco{flex:1;position:relative;overflow:hidden;
+                     display:flex;align-items:center;justify-content:center}
+  .tela-cheia .dica{padding:10px 16px;font-size:13px;text-align:center;
+                    color:#b8c6d1;background:rgba(0,0,0,.35);
+                    padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+
+  /* Recorte: a área fora da marca escurece, os cantos se arrastam */
+  #recorte-area{position:absolute}
+  #recorte-img{display:block;max-width:100%;max-height:100%}
+  .marca{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.55);
+         cursor:move;touch-action:none}
+  .canto{position:absolute;width:34px;height:34px;touch-action:none}
+  .canto::after{content:"";position:absolute;width:20px;height:20px;border:3px solid #fff}
+  .canto.tl{top:-17px;left:-17px}       .canto.tl::after{top:14px;left:14px;border-right:0;border-bottom:0}
+  .canto.tr{top:-17px;right:-17px}      .canto.tr::after{top:14px;right:14px;border-left:0;border-bottom:0}
+  .canto.bl{bottom:-17px;left:-17px}    .canto.bl::after{bottom:14px;left:14px;border-right:0;border-top:0}
+  .canto.br{bottom:-17px;right:-17px}   .canto.br::after{bottom:14px;right:14px;border-left:0;border-top:0}
+
+  /* Visualizador: a imagem é do dono, então nada de menu do navegador */
+  #visu-img{max-width:100%;max-height:100%;object-fit:contain;
+            -webkit-touch-callout:none;user-select:none}
+  .paginacao{display:flex;align-items:center;justify-content:center;gap:18px;
+             padding:12px;background:rgba(0,0,0,.35);
+             padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  .paginacao button{background:rgba(255,255,255,.12);border-radius:9px;
+                    color:#fff;padding:10px 18px;font-size:16px}
+  .paginacao button:disabled{opacity:.3}
+  .paginacao .conta{font-size:14px;color:#b8c6d1;min-width:76px;text-align:center}
+
+  .doc{cursor:pointer}
+
+  .rodape{margin:26px 0 8px;text-align:center;font-size:12px;color:var(--tinta-3);
+          line-height:1.6}
+  .escondido{display:none!important}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Meus documentos de saúde</h1>
+  <p id="cabecalho-sub">exames, laudos e receitas num lugar só</p>
+</header>
+
+<main>
+  <div id="avisos"></div>
+
+  <!-- CAPTURA ------------------------------------------------------------ -->
+  <button class="btn-grande" id="btn-fotografar">📷 Fotografar documento</button>
+
+  <!-- Câmera do celular. `capture` abre a traseira direto; sem ele o Android
+       oferece a galeria, o que também serve para quem já tem a foto salva. -->
+  <input type="file" id="camera" accept="image/*" capture="environment"
+         multiple class="escondido">
+
+  <!-- FORMULÁRIO (aparece depois da primeira foto) ------------------------ -->
+  <section id="form" class="cartao escondido" style="margin-top:14px">
+    <div style="font-weight:600;margin-bottom:2px">Novo documento</div>
+    <div style="font-size:13px;color:var(--tinta-2)">
+      Um laudo de várias folhas é <b>um</b> documento — vá adicionando as páginas.
+    </div>
+
+    <div class="paginas" id="paginas"></div>
+
+    <label for="tipo">O que é este documento?</label>
+    <select id="tipo">
+      <option value="exame">Exame</option>
+      <option value="laudo">Laudo</option>
+      <option value="receita">Receita</option>
+      <option value="relatorio">Relatório</option>
+      <option value="outro">Outro</option>
+    </select>
+
+    <label for="nome">Nome <span style="color:var(--tinta-3)">(ex.: Hemograma)</span></label>
+    <input id="nome" type="text" autocomplete="off" placeholder="Como você chama este documento">
+
+    <label for="data">Data do documento</label>
+    <input id="data" type="date">
+
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn-linha" id="btn-cancelar" style="flex:0 0 auto">Cancelar</button>
+      <button class="btn-salvar" id="btn-salvar">Guardar documento</button>
+    </div>
+  </section>
+
+  <!-- LISTA -------------------------------------------------------------- -->
+  <div class="filtros">
+    <select id="filtro-tipo">
+      <option value="">Todos os tipos</option>
+      <option value="exame">Exames</option>
+      <option value="laudo">Laudos</option>
+      <option value="receita">Receitas</option>
+      <option value="relatorio">Relatórios</option>
+      <option value="outro">Outros</option>
+    </select>
+    <select id="filtro-ordem">
+      <option value="recente">Mais recentes</option>
+      <option value="antigo">Mais antigos</option>
+      <option value="tipo">Por tipo</option>
+    </select>
+  </div>
+
+  <div id="lista"></div>
+
+  <div class="rodape">
+    Seus documentos ficam guardados na sua conta.<br>
+    Nenhum médico enxerga nada sem você liberar.
+  </div>
+</main>
+
+<!-- RECORTE DE MARGENS ---------------------------------------------------- -->
+<div class="tela-cheia escondido" id="tela-recorte">
+  <div class="barra">
+    <button id="recorte-cancelar">Cancelar</button>
+    <span class="titulo" id="recorte-titulo">Ajuste as margens</span>
+    <button class="confirmar" id="recorte-ok">Usar</button>
+  </div>
+  <div class="palco">
+    <div id="recorte-area">
+      <img id="recorte-img" alt="">
+      <div class="marca" id="marca">
+        <div class="canto tl" data-canto="tl"></div>
+        <div class="canto tr" data-canto="tr"></div>
+        <div class="canto bl" data-canto="bl"></div>
+        <div class="canto br" data-canto="br"></div>
+      </div>
+    </div>
+  </div>
+  <div class="dica">
+    Arraste os cantos até sobrar só o documento. Cortar a mesa em volta deixa
+    a letra maior e o arquivo menor.
+    <div style="margin-top:6px"><button id="recorte-tudo"
+      style="background:rgba(255,255,255,.12);border-radius:8px;color:#fff;
+             padding:8px 14px;font-size:13px">Usar a foto inteira</button></div>
+  </div>
+</div>
+
+<!-- VISUALIZADOR --------------------------------------------------------- -->
+<div class="tela-cheia escondido" id="tela-visu">
+  <div class="barra">
+    <span class="titulo" id="visu-titulo">Documento</span>
+    <button id="visu-fechar">Fechar</button>
+  </div>
+  <div class="palco"><img id="visu-img" alt=""></div>
+  <div class="paginacao">
+    <button id="visu-antes" aria-label="Página anterior">‹</button>
+    <span class="conta" id="visu-conta">1 / 1</span>
+    <button id="visu-depois" aria-label="Próxima página">›</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
