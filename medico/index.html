@@ -132,10 +132,29 @@
          border-radius:10px;background:var(--branco);color:var(--tinta);font-size:14.5px}
   #busca:focus{outline:2px solid var(--verde);outline-offset:1px;border-color:transparent}
 
-  .conta-docs{font-size:13px;color:var(--suave);margin:0 2px 11px}
   .conta-docs b{color:var(--tinta)}
 
   .grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:13px}
+  .cabeca-lista{display:flex;align-items:center;gap:12px;margin:0 2px 11px}
+  .conta-docs{font-size:13px;color:var(--suave);flex:1}
+  .modos{display:flex;gap:2px;background:var(--branco);border:1px solid var(--linha);
+         border-radius:9px;padding:2px}
+  .modos button{background:none;color:var(--fraco);border-radius:7px;
+                padding:5px 11px;font-size:14px;line-height:1}
+  .modos button[aria-pressed="true"]{background:var(--verde-claro);color:var(--verde)}
+
+  /* Em lista os MESMOS cartoes viram linhas: um so desenho de documento,
+     dois arranjos. Dois componentes separados divergiriam na primeira
+     mudanca — e a miniatura, o nome e a data sao os mesmos dados. */
+  .lista{display:flex;flex-direction:column;gap:7px}
+  .lista .doc{flex-direction:row;align-items:stretch;gap:0}
+  .lista .doc .capa{width:54px;min-height:56px;aspect-ratio:auto;flex:0 0 auto;
+                    font-size:20px;border-right:1px solid var(--linha)}
+  .lista .doc .txt{padding:9px 12px;flex:1;display:flex;flex-direction:column;
+                   justify-content:center}
+  .lista .doc .meta{margin-top:1px}
+  .lista .doc .paginas{display:inline;margin-left:6px}
+
   .doc{background:var(--branco);border:1px solid var(--linha);border-radius:13px;
        overflow:hidden;text-align:left;padding:0;display:flex;flex-direction:column;
        transition:border-color .12s,transform .12s}
@@ -273,7 +292,16 @@
     </div>
 
     <div>
-      <div class="conta-docs" id="conta-docs"></div>
+      <div class="cabeca-lista">
+        <div class="conta-docs" id="conta-docs"></div>
+        <!-- Grade e lista servem a dois modos de olhar: a grade reconhece
+             pela imagem, a lista varre por nome e data. Num acervo de
+             quarenta, a segunda cabe na tela e a primeira nao. -->
+        <div class="modos" role="group" aria-label="Como exibir">
+          <button id="modo-grade" aria-pressed="true" title="Em grade">▦</button>
+          <button id="modo-lista" aria-pressed="false" title="Em lista">☰</button>
+        </div>
+      </div>
       <div class="grade" id="grade"></div>
     </div>
   </div>

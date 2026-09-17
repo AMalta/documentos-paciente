@@ -49,6 +49,7 @@ const el = {
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"),
   corpoDica: $("corpo-dica"), folhinhas: $("folhinhas"), verTodos: $("ver-todos"),
   contaDocs: $("conta-docs"), grade: $("grade"),
+  modoGrade: $("modo-grade"), modoLista: $("modo-lista"),
   telaVisu: $("tela-visu"), visuImg: $("visu-img"), visuTitulo: $("visu-titulo"),
   visuConta: $("visu-conta"), visuAntes: $("visu-antes"),
   visuDepois: $("visu-depois"), visuFechar: $("visu-fechar"),
@@ -57,6 +58,13 @@ const el = {
 let documentos = [];
 let regiaoAtiva = null;
 let pacienteId = null;
+/* Guardado entre pacientes, de proposito: quem prefere lista prefere sempre,
+   e faze-lo escolher de novo a cada codigo digitado seria cobrar duas vezes
+   pela mesma decisao. Nao e sessao — e so o jeito de olhar. */
+let modo = (() => {
+  try { return localStorage.getItem("medico-modo") === "lista" ? "lista" : "grade"; }
+  catch (e) { return "grade"; }
+})();
 
 function erro(texto) {
   el.erroEntrada.innerHTML = texto ? `<div class="erro">${texto}</div>` : "";
@@ -173,8 +181,19 @@ function casaBusca(d, termos) {
   return termos.every((t) => texto.includes(t));
 }
 
+function trocarModo(novo) {
+  modo = novo;
+  try { localStorage.setItem("medico-modo", novo); } catch (e) { /* ignora */ }
+  desenhar();
+}
+el.modoGrade.onclick = () => trocarModo("grade");
+el.modoLista.onclick = () => trocarModo("lista");
+
 function desenhar() {
   const termos = termosDaBusca();
+  el.grade.className = modo;
+  el.modoGrade.setAttribute("aria-pressed", modo === "grade" ? "true" : "false");
+  el.modoLista.setAttribute("aria-pressed", modo === "lista" ? "true" : "false");
   const tipo = el.filtroTipo.value;
   const ordem = el.filtroOrdem.value;
   pintarCorpo();
