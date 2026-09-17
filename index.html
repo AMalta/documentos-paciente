@@ -169,6 +169,12 @@
               background:var(--papel);color:var(--tinta)}
   .comp-corpo label{color:var(--tinta-2)}
 
+  /* Ver o comentario em #avisos-cheia, no fim do documento. */
+  #avisos-cheia{position:fixed;left:0;right:0;z-index:60;
+                top:calc(10px + env(safe-area-inset-top));
+                padding:0 14px;pointer-events:none}
+  #avisos-cheia .aviso{pointer-events:auto;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+
   /* ── Telas cheias: recorte e visualização ── */
   .tela-cheia{position:fixed;inset:0;background:#0d1620;z-index:50;display:flex;
               flex-direction:column;color:#fff}
@@ -740,6 +746,12 @@
             style="width:100%;margin-top:20px">Apagar este compromisso</button>
   </div>
 </div>
+
+<!-- Avisos que precisam aparecer POR CIMA de uma tela cheia. O #avisos da
+     pagina fica atras delas (z-index 50), entao a mensagem existia e ninguem
+     via — e so aparecia depois de fechar a tela, empilhada. Um container so,
+     fixo e acima de tudo, resolve para as telas de hoje e as de amanha. -->
+<div id="avisos-cheia"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>

@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.13";
+const VERSAO_APP = "2026-09-18.14";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -80,10 +80,25 @@ function pedirAoWorker(mensagem) {
    O aviso vai para a tela que está NA FRENTE. A lista principal fica atrás
    do painel de conta; erro desenhado lá some embaixo dele, e o usuário vê um
    botão que pisca e não faz nada — que foi exatamente o que aconteceu.      */
+/* Onde a mensagem vai depende de QUAL TELA esta na frente.
+
+   Nao e detalhe de estilo: as telas cheias tem z-index 50, e o #avisos da
+   pagina fica atras delas. Uma mensagem mandada para la enquanto o
+   visualizador ou a tela de marcar estao abertos existe no DOM e NINGUEM VE
+   — e so aparece quando a tela fecha, empilhada com as outras. Foi assim
+   que "Falta a data" apareceu quatro vezes depois de cancelar: as quatro
+   tentativas de salvar funcionaram, e nenhuma deu sinal.
+
+   A conta tem lugar proprio dentro do painel dela; qualquer outra tela
+   cheia usa o container flutuante.                                        */
 function aviso(texto, tipo = "info", titulo = "") {
   const conta = document.getElementById("tela-conta");
-  const alvo = (conta && !conta.classList.contains("escondido"))
-    ? document.getElementById("avisos-conta") : el.avisos;
+  const contaAberta = conta && !conta.classList.contains("escondido");
+  const outraCheia = [...document.querySelectorAll(".tela-cheia")]
+    .some((t) => t.id !== "tela-conta" && !t.classList.contains("escondido"));
+  const alvo = contaAberta ? document.getElementById("avisos-conta")
+    : outraCheia ? document.getElementById("avisos-cheia")
+    : el.avisos;
   const d = document.createElement("div");
   d.className = "aviso " + tipo;
   d.innerHTML = (titulo ? `<b>${titulo}</b>` : "") + texto;
@@ -121,7 +136,11 @@ function explicar(erro) {
          + "com ele.";
   return "Não consegui concluir agora. Tente de novo em alguns minutos.";
 }
-function limparAvisos() { el.avisos.innerHTML = ""; }
+function limparAvisos() {
+  el.avisos.innerHTML = "";
+  const cheia = document.getElementById("avisos-cheia");
+  if (cheia) cheia.innerHTML = "";
+}
 
 /* ═══ Consentimento ═══════════════════════════════════════════════════════
    Ato afirmativo ANTES da primeira foto. A tela de boas-vindas explica o
@@ -761,20 +780,30 @@ function abrirCompromisso(c, sugestao) {
   cp.onde.value = (c && c.onde) || "";
   cp.repetir.value = (c && c.repetir_meses) ? String(c.repetir_meses) : "";
   cp.apagar.classList.toggle("escondido", !c);
+  limparAvisos();
   el.telaCompromisso.classList.remove("escondido");
   if (!c) setTimeout(() => cp.nome.focus(), 120);
 }
 
 function fecharCompromisso() {
   el.telaCompromisso.classList.add("escondido");
+  // Sem isto, o "falta a data" ficaria pendurado no container flutuante e
+  // reapareceria sobre a proxima tela cheia que abrisse.
+  limparAvisos();
   compEditando = null;
 }
 
 cp.cancelar.onclick = fecharCompromisso;
 cp.salvar.onclick = async () => {
+  limparAvisos();
   const titulo = (cp.nome.value || "").trim() || ROTULO_TIPO[cp.tipo.value];
   if (!cp.data.value) {
-    return aviso("Escolha a data.", "erro", "Falta a data");
+    aviso("Escolha a data do compromisso.", "erro", "Falta a data");
+    // Abre o seletor no proprio campo: a mensagem diz o que falta, e isto
+    // leva a pessoa ate la sem ela ter de procurar.
+    cp.data.focus();
+    if (cp.data.showPicker) { try { cp.data.showPicker(); } catch (e) { /* ignora */ } }
+    return;
   }
   const base = compEditando || {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
