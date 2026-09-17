@@ -18,7 +18,26 @@
    nada expirar, sem sessão para derrubar.
    ═══════════════════════════════════════════════════════════════════════ */
 const { createClient } = supabase;
-const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+/* `storageKey` PRÓPRIO, e sessão que não se grava. Não é detalhe: sem isto,
+   esta página APAGA A CONTA DO PACIENTE.
+
+   As duas páginas moram na mesma origem, e o cliente padrão guarda a sessão
+   em `localStorage` sob uma chave derivada só do projeto. Quando o médico
+   toca em "Abrir acervo", o `signInAnonymously` daqui sobrescreve a sessão
+   do dono do acervo — que é anônima e, sem e-mail vinculado, NÃO VOLTA. O
+   paciente reabre o aplicativo e encontra uma conta nova e vazia, com os
+   documentos dele intactos no servidor e inalcançáveis para sempre.
+
+   Foi o que aconteceu no primeiro teste real desta página, em 17/09/2026.
+
+   `persistSession: false` fecha a porta de vez: a sessão do médico vive só
+   na memória desta aba e morre com ela — o que também é o certo para um
+   acesso que termina no fim do dia. */
+const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+  auth: { storageKey: "sb-medico", persistSession: false,
+          autoRefreshToken: false },
+});
 const $ = (id) => document.getElementById(id);
 
 const el = {
