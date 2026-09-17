@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.18";
+const VERSAO_APP = "2026-09-18.20";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -26,8 +26,6 @@ const el = {
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"), folhinhas: $("folhinhas"),
   corpoDica: $("corpo-dica"),
   agenda: $("agenda"), agendaItens: $("agenda-itens"), agendaMais: $("agenda-mais"),
-  agendaConvite: $("agenda-convite"), agendaConviteSim: $("agenda-convite-sim"),
-  agendaConviteNao: $("agenda-convite-nao"),
   telaCompromisso: $("tela-compromisso"),
   telaRecorte: $("tela-recorte"), recorteArea: $("recorte-area"),
   recorteImg: $("recorte-img"), marca: $("marca"),
@@ -537,44 +535,8 @@ async function guardar() {
   await carregar();
   await enviarFila();
   convidarAProteger();
-  convidarAMarcar();
 }
 
-/* O convite para marcar — uma FAIXA, nunca uma pergunta que interrompe.
-
-   A primeira versao abria um confirm() depois de CADA documento guardado.
-   Era a interrupcao no unico momento garantidamente inoportuno: o cartaz do
-   piloto pede "fotografe o que ja tem, nao so o que for chegando", entao a
-   primeira sessao de qualquer paciente sao quinze, vinte documentos antigos
-   — e ele levaria vinte caixas de dialogo perguntando sobre o retorno de um
-   exame de dois anos atras.
-
-   Agora e uma linha no alto, que nao bloqueia nada e sai com um toque.
-   Aparece so quando faz sentido: ha documentos guardados e NENHUM
-   compromisso futuro. Quem ja usou a agenda nunca mais ve.
-
-   Recusado, some por 30 dias. Insistir depois de um "nao" transforma ajuda
-   em cobranca — e e o caminho mais curto para a pessoa desinstalar.        */
-const CHAVE_CONVITE = "agenda-convite-recusado-em";
-
-function convidarAMarcar() {
-  if (!usuario || !el.agendaConvite) return;
-  const temFuturo = compromissos.some((c) => !c.feito_em && diasAte(c.quando) >= 0);
-  let recusadoHa = 999;
-  try {
-    const q = localStorage.getItem(CHAVE_CONVITE);
-    if (q) recusadoHa = -diasAte(q);
-  } catch (e) { /* janela anonima */ }
-  const mostrar = !temFuturo && (documentos.length + naFila.length) > 0
-                  && recusadoHa >= 30;
-  el.agendaConvite.classList.toggle("escondido", !mostrar);
-}
-
-el.agendaConviteNao.onclick = () => {
-  try { localStorage.setItem(CHAVE_CONVITE, hojeISO()); } catch (e) { /* ignora */ }
-  el.agendaConvite.classList.add("escondido");
-};
-el.agendaConviteSim.onclick = () => abrirCompromisso(null);
 
 /* ═══ Envio da fila ═══════════════════════════════════════════════════════
    Retoma de onde parou. `documento_id` é gravado assim que o documento nasce
@@ -730,7 +692,6 @@ async function sincronizarAgenda() {
 function desenharAgenda() {
   const prox = proximosCompromissos(compromissos);
   el.agenda.classList.toggle("escondido", !usuario);
-  convidarAMarcar();
   el.agendaItens.innerHTML = "";
   if (!prox.length) {
     el.agendaMais.textContent = compromissos.length
