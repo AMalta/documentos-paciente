@@ -179,6 +179,35 @@
                 padding:0 14px;pointer-events:none}
   #avisos-cheia .aviso{pointer-events:auto;box-shadow:0 6px 24px rgba(0,0,0,.35)}
 
+  .btn-mostrar{right:62px;font-size:19px}
+  .mostrar-corpo{flex:1;overflow-y:auto;padding:16px 16px 34px}
+  .cartao-verde{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);
+                border-radius:13px;padding:15px}
+  .mv-texto{margin:0 0 14px;font-size:14px;line-height:1.55;color:#dff0e8}
+  .mv-texto b{color:#fff}
+  /* O codigo e lido em voz alta ou mostrado de longe: grande, espacado e
+     tabular, para nao confundir 6 com 8 do outro lado da mesa. */
+  .mv-codigo{font-size:44px;font-weight:700;letter-spacing:.2em;text-align:center;
+             font-variant-numeric:tabular-nums;color:#fff;margin:4px 0;
+             text-indent:.2em}
+  .mv-prazo{text-align:center;font-size:13px;color:#a8d5c2;margin-bottom:14px}
+  #mv-gerar{margin-top:14px}
+  .mv-endereco{background:rgba(0,0,0,.22);border-radius:9px;padding:10px 12px;
+               font-size:12.5px;line-height:1.6;color:#c8e3d6;text-align:center}
+  .mv-endereco b{color:#fff;word-break:break-all}
+  .mv-titulo{font-size:12px;letter-spacing:.11em;text-transform:uppercase;
+             color:#a8d5c2;margin:24px 2px 9px;font-weight:700}
+  .acesso{background:rgba(255,255,255,.08);border-radius:11px;padding:12px 13px;
+          margin-bottom:8px;display:flex;align-items:center;gap:11px}
+  .acesso .quem{flex:1;min-width:0}
+  .acesso .nome{font-size:14.5px;font-weight:600;color:#fff}
+  .acesso .quando{font-size:12.5px;color:#a8d5c2;margin-top:2px}
+  .acesso .revogar{background:rgba(255,255,255,.14);color:#ffd9d5;border-radius:8px;
+                   padding:8px 12px;font-size:12.5px;font-weight:600;flex:0 0 auto}
+  .acesso.morto{opacity:.55}
+  .acesso.morto .nome{font-weight:500}
+  .mv-nenhum{font-size:13.5px;color:#a8d5c2;line-height:1.55;padding:2px}
+
   /* ── Telas cheias: recorte e visualização ── */
   .tela-cheia{position:fixed;inset:0;background:#0d1620;z-index:50;display:flex;
               flex-direction:column;color:#fff}
@@ -334,6 +363,11 @@
 <body>
 
 <header>
+  <!-- Ao lado da conta, e nao escondido dentro dela: gerar o codigo acontece
+       com o medico esperando do outro lado da mesa. Um toque, de qualquer
+       lugar do aplicativo. -->
+  <button class="btn-conta btn-mostrar" id="btn-mostrar"
+          aria-label="Mostrar ao médico">🩺</button>
   <h1>Meus documentos de saúde</h1>
   <p id="cabecalho-sub">exames, laudos e receitas num lugar só</p>
   <button class="btn-conta" id="btn-conta" aria-label="Minha conta">👤</button>
@@ -757,8 +791,48 @@
      fixo e acima de tudo, resolve para as telas de hoje e as de amanha. -->
 <div id="avisos-cheia"></div>
 
+<!-- MOSTRAR AO MÉDICO ----------------------------------------------------- -->
+<!-- Duas metades da mesma promessa do termo: "você gera um código dentro do
+     aplicativo e o entrega a ele" e "você pode ver, a qualquer momento, quem
+     abriu seu acervo e quando, e pode cancelar acessos". Ficam juntas porque
+     são a mesma pergunta — quem vê os meus documentos — e separá-las faria
+     a segunda nunca ser encontrada. -->
+<div class="tela-cheia escondido" id="tela-mostrar" style="background:#0f4c3a">
+  <div class="barra">
+    <span class="titulo">Mostrar ao médico</span>
+    <button id="mostrar-fechar">Fechar</button>
+  </div>
+
+  <div class="mostrar-corpo">
+    <!-- 1. o código -->
+    <div class="cartao-verde">
+      <p class="mv-texto" id="mv-explica">
+        Na consulta, toque no botão e mostre o número ao médico.
+        Ele digita numa página e vê seus documentos — <b>sem senha e sem
+        cadastro</b>. O acesso termina no fim do dia.
+      </p>
+      <div class="escondido" id="mv-pronto">
+        <div class="mv-codigo" id="mv-codigo">000000</div>
+        <div class="mv-prazo" id="mv-prazo"></div>
+        <div class="mv-endereco">
+          O médico abre:<br><b id="mv-url"></b>
+        </div>
+      </div>
+
+      <button class="btn-salvar" id="mv-gerar" style="width:100%">
+        Gerar código para o médico</button>
+      <div id="avisos-mostrar"></div>
+    </div>
+
+    <!-- 2. quem abriu -->
+    <h3 class="mv-titulo">Quem abriu meu acervo</h3>
+    <div id="mv-acessos"></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
+<script src="comum.js"></script>
 <script src="fila.js"></script>
 <script src="agenda.js"></script>
 <script src="termo.js"></script>

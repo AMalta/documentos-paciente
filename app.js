@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.20";
+const VERSAO_APP = "2026-09-18.23";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -43,7 +43,6 @@ let rascunho = [];        // páginas já preparadas, esperando o "Guardar"
 let documentos = [];
 let naFila = [];     // guardados no celular, ainda sem subir
 
-const ICONES = { exame: "🧪", laudo: "📄", receita: "💊", relatorio: "📋", outro: "📎" };
 const cp = {
   tituloTela: $("comp-titulo-tela"), cancelar: $("comp-cancelar"),
   salvar: $("comp-salvar"), tipo: $("comp-tipo"), nome: $("comp-nome"),
@@ -51,8 +50,6 @@ const cp = {
   repetir: $("comp-repetir"), apagar: $("comp-apagar"),
 };
 
-const ROTULOS = { exame: "Exame", laudo: "Laudo", receita: "Receita",
-                  relatorio: "Relatório", outro: "Documento" };
 
 /* ═══ Worker ══════════════════════════════════════════════════════════════
    Toda decodificação de imagem acontece lá. Aqui só se pede e se espera —
@@ -94,9 +91,13 @@ function pedirAoWorker(mensagem) {
 function aviso(texto, tipo = "info", titulo = "") {
   const conta = document.getElementById("tela-conta");
   const contaAberta = conta && !conta.classList.contains("escondido");
+  const mostrar = document.getElementById("tela-mostrar");
+  const mostrarAberta = mostrar && !mostrar.classList.contains("escondido");
   const outraCheia = [...document.querySelectorAll(".tela-cheia")]
-    .some((t) => t.id !== "tela-conta" && !t.classList.contains("escondido"));
+    .some((t) => t.id !== "tela-conta" && t.id !== "tela-mostrar"
+                 && !t.classList.contains("escondido"));
   const alvo = contaAberta ? document.getElementById("avisos-conta")
+    : mostrarAberta ? document.getElementById("avisos-mostrar")
     : outraCheia ? document.getElementById("avisos-cheia")
     : el.avisos;
   // Abaixo da BARRA da tela que esta na frente, nunca por cima dela. A
@@ -154,6 +155,8 @@ function explicar(erro) {
 }
 function limparAvisos() {
   el.avisos.innerHTML = "";
+  const m = document.getElementById("avisos-mostrar");
+  if (m) m.innerHTML = "";
   const cheia = document.getElementById("avisos-cheia");
   if (cheia) cheia.innerHTML = "";
 }
@@ -243,44 +246,6 @@ tm.recusar.onclick = () => {
 };
 tm.verNaConta.onclick = () => { ct.tela.classList.add("escondido"); abrirTermo(true); };
 
-/* ── CAPTCHA ──────────────────────────────────────────────────────────────
-   Existe por um motivo só: a chave anônima é pública, e sem barreira
-   qualquer um cria contas e enche o armazenamento. Não protege dado nenhum
-   — disso cuida o RLS.
-
-   Fica DESLIGADO enquanto `TURNSTILE_SITE_KEY` estiver vazio, e por isso
-   ligar é uma decisão em dois lugares: a chave aqui e a proteção no painel
-   do Supabase. Um sem o outro derruba o login — com a chave aqui e sem o
-   painel, o token é ignorado; com o painel e sem a chave, toda sessão nova
-   é recusada.                                                               */
-async function tokenCaptcha() {
-  const chave = (CONFIG.TURNSTILE_SITE_KEY || "").trim();
-  if (!chave) return null;
-  try {
-    await new Promise((ok, falha) => {
-      if (window.turnstile) return ok();
-      const s = document.createElement("script");
-      s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-      s.onload = ok; s.onerror = falha;
-      document.head.appendChild(s);
-    });
-    const caixa = document.createElement("div");
-    caixa.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:70";
-    document.body.appendChild(caixa);
-    const token = await new Promise((ok) => {
-      window.turnstile.render(caixa, { sitekey: chave, callback: ok,
-                                       "error-callback": () => ok(null) });
-    });
-    caixa.remove();
-    return token;
-  } catch (e) {
-    // Falhando o carregamento, deixa passar: barrar o paciente por causa de
-    // um script de terceiro que não abriu seria trocar abuso por exclusão.
-    // Quem recusa de verdade é o Supabase, do outro lado.
-    console.warn("[captcha]", e.message || e);
-    return null;
-  }
-}
 
 /* ── Sessão ───────────────────────────────────────────────────────────────
    Sessão anônima na primeira aberta: o app deixa fotografar antes de pedir
@@ -537,6 +502,139 @@ async function guardar() {
   convidarAProteger();
 }
 
+
+/* ═══ Mostrar ao médico ═══════════════════════════════════════════════════
+   As duas metades da mesma promessa do termo, na mesma tela:
+
+     "será você quem gera um código dentro do aplicativo e o entrega a ele"
+     "você pode ver, a qualquer momento, quem abriu seu acervo e quando,
+      e pode cancelar acessos"
+
+   Juntas porque respondem a mesma pergunta — quem vê os meus documentos.
+   Separadas, a segunda nunca seria encontrada, e ela é a que sustenta o
+   consentimento: autorização sem como cancelar não é autorização.         */
+const mv = {
+  botao: $("btn-mostrar"), tela: $("tela-mostrar"), fechar: $("mostrar-fechar"),
+  gerar: $("mv-gerar"), pronto: $("mv-pronto"), codigo: $("mv-codigo"),
+  prazo: $("mv-prazo"), url: $("mv-url"), acessos: $("mv-acessos"),
+};
+
+// O endereço que o médico digita. Sai do próprio endereço do aplicativo:
+// cravá-lo aqui faria a tela mentir no dia em que o site mudar de lugar.
+const URL_MEDICO = new URL("medico/", location.href.replace(/[^/]*$/, "")).href;
+
+mv.botao.onclick = () => {
+  mv.tela.classList.remove("escondido");
+  mv.pronto.classList.add("escondido");
+  mv.gerar.disabled = false;
+  mv.gerar.textContent = "Gerar código para o médico";
+  mv.url.textContent = URL_MEDICO.replace(/^https?:\/\//, "");
+  listarAcessos();
+};
+mv.fechar.onclick = () => { mv.tela.classList.add("escondido"); limparAvisos(); };
+
+mv.gerar.onclick = async () => {
+  if (!navigator.onLine) {
+    return aviso("Gerar o código precisa de internet — é o servidor que "
+                 + "reconhece o número quando o médico digitar.", "info", "Sem conexão");
+  }
+  mv.gerar.disabled = true;
+  mv.gerar.textContent = "Gerando…";
+  try {
+    const { data, error } = await sb.rpc("gerar_liberacao", { minutos: 15 });
+    if (error) throw error;
+    const lib = Array.isArray(data) ? data[0] : data;
+    // Espaço no meio: seis dígitos corridos se lêem errado em voz alta, e
+    // quem digita do outro lado não tem como conferir onde parou.
+    mv.codigo.textContent = String(lib.codigo).replace(/(\d{3})(\d{3})/, "$1 $2");
+    mv.prazo.textContent = "Vale até " + horaBR(lib.expira_em)
+      + " · depois disso, gere outro";
+    mv.pronto.classList.remove("escondido");
+    mv.gerar.textContent = "Gerar outro código";
+    mv.gerar.disabled = false;
+    listarAcessos();
+  } catch (e) {
+    console.warn("[liberacao]", e?.message || e);
+    aviso("Não consegui gerar o código agora. Tente de novo em instantes.", "erro");
+    mv.gerar.disabled = false;
+    mv.gerar.textContent = "Gerar código para o médico";
+  }
+};
+
+function horaBR(iso) {
+  try {
+    return new Date(iso).toLocaleTimeString("pt-BR",
+      { hour: "2-digit", minute: "2-digit" });
+  } catch (e) { return "daqui a pouco"; }
+}
+
+function quandoBR(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+      + " às " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  } catch (e) { return ""; }
+}
+
+/* A lista mostra SÓ quem chegou a abrir. Código gerado e não usado não é
+   acesso — é papel rasgado, e enchê-la deles faria a pessoa parar de olhar
+   justamente a lista que precisa olhar. */
+async function listarAcessos() {
+  mv.acessos.innerHTML = '<div class="mv-nenhum">Carregando…</div>';
+  const { data, error } = await sb.from("liberacoes")
+    .select("id, medico_nome, medico_crm, usado_em, expira_em, revogado_em")
+    .not("usado_em", "is", null)
+    .order("usado_em", { ascending: false });
+  if (error) {
+    mv.acessos.innerHTML = '<div class="mv-nenhum">Não consegui ler agora.</div>';
+    return;
+  }
+  const usados = data || [];
+  if (!usados.length) {
+    mv.acessos.innerHTML = '<div class="mv-nenhum">Ninguém abriu seu acervo ainda.'
+      + "<br>Quando um médico usar um código, ele aparece aqui com nome e hora.</div>";
+    return;
+  }
+  mv.acessos.innerHTML = "";
+  for (const a of usados) {
+    const vivo = !a.revogado_em && new Date(a.expira_em) > new Date();
+    const div = document.createElement("div");
+    div.className = "acesso" + (vivo ? "" : " morto");
+    const estado = a.revogado_em ? "acesso cancelado por você"
+      : vivo ? "pode ver até " + horaBR(a.expira_em) : "acesso encerrado";
+    div.innerHTML = `
+      <div class="quem">
+        <div class="nome">${a.medico_nome || "Médico não identificado"}${
+          a.medico_crm ? " · CRM " + a.medico_crm : ""}</div>
+        <div class="quando">Abriu em ${quandoBR(a.usado_em)} · ${estado}</div>
+      </div>`;
+    if (vivo) {
+      const b = document.createElement("button");
+      b.className = "revogar";
+      b.textContent = "Cancelar";
+      b.onclick = () => revogar(a);
+      div.appendChild(b);
+    }
+    mv.acessos.appendChild(div);
+  }
+}
+
+async function revogar(a) {
+  if (!confirm(`Cancelar o acesso de ${a.medico_nome || "este médico"}?`
+               + LINHA + LINHA
+               + "Ele deixa de ver seus documentos imediatamente.")) return;
+  // `update`, nunca `delete`: a linha é o registro de consentimento, e a
+  // prova de que alguém viu não pode sumir porque o acesso acabou. É por
+  // isso que `liberacoes` não tem política de exclusão.
+  const { error } = await sb.from("liberacoes")
+    .update({ revogado_em: new Date().toISOString() }).eq("id", a.id);
+  if (error) {
+    console.warn("[revogar]", error.message);
+    return aviso("Não consegui cancelar agora. Tente de novo.", "erro");
+  }
+  aviso("Acesso cancelado.", "ok");
+  listarAcessos();
+}
 
 /* ═══ Envio da fila ═══════════════════════════════════════════════════════
    Retoma de onde parou. `documento_id` é gravado assim que o documento nasce
@@ -1117,136 +1215,6 @@ const MINIMO_BUSCA = 1;
    sem acento e em minusculas, e o documento se chama "COLESTEROL TOTAL E
    FRAÇÕES". Exigir que os dois coincidam mediria a paciencia de quem digita,
    nao a vontade de achar. */
-// A faixa U+0300 a U+036F sao os acentos que o NFD separa da letra.
-// Montada com fromCharCode e nao escrita direto no regex: esses
-// caracteres nao tem desenho proprio, e ficariam invisiveis para quem
-// ler o codigo depois — um intervalo que parece vazio e nao esta.
-const ACENTOS = new RegExp("[" + String.fromCharCode(0x0300) + "-"
-                              + String.fromCharCode(0x036F) + "]", "g");
-function semAcento(t) {
-  return String(t || "").normalize("NFD").replace(ACENTOS, "").toLowerCase();
-}
-
-/* O que cada documento oferece a busca. O rotulo do tipo entra para que
-   "receita" funcione sem descobrir o seletor, e a data no formato BRASILEIRO
-   para que "02/2026" e "2026" achem — e a data que a pessoa lembra. */
-function textoBuscavel(d) {
-  return semAcento([
-    d.nome || "",
-    ROTULOS[d.tipo] || d.tipo || "",
-    dataBR(d.data_documento || d.criado_em) || "",
-    (d.data_documento || d.criado_em || "").slice(0, 10),
-  ].join(" "));
-}
-
-/* Todos os termos precisam casar, em qualquer ordem: "eco 2026" acha o
-   ecocardiograma de 2026 sem exigir que a pessoa lembre a ordem em que as
-   palavras aparecem no documento. */
-function casaBusca(d, termos) {
-  if (!termos.length) return true;
-  const texto = textoBuscavel(d);
-  return termos.every((t) => texto.includes(t));
-}
-
-function termosDaBusca() {
-  return semAcento(el.busca.value).split(/\s+/).filter(Boolean);
-}
-
-/* ── Corpo e folhinhas ─────────────────────────────────────────────────
-   Achar sem ler e sem digitar: toca-se a parte do corpo. Existe porque a
-   busca por texto, por melhor que esteja, cobra duas coisas do paciente —
-   saber escrever o nome do exame e enxergar o teclado. O piloto pede
-   explicitamente uma pessoa com dificuldade real com celular, e para ela
-   isto e a diferenca entre usar e desistir.
-
-   POR QUE UM DOCUMENTO PODE ESTAR EM VARIAS REGIOES. Foi o que matou a
-   ideia anterior de `especialidade`: la o campo tinha de escolher UMA
-   gaveta, e o colesterol era sangue OU coracao, nunca os dois — quem
-   procurasse pelo lado errado nao achava. Aqui e filtro, e filtro aceita
-   pertencer a varios lugares. O TSH responde a "sangue" e a "pescoco"; o
-   colesterol, a "sangue" e a "peito". Ninguem fica sem.
-
-   POR QUE SANGUE E OSSO SAO FOLHINHA E NAO PARTE DO BONECO. Exame de
-   laboratorio e a MAIOR parte de qualquer acervo e nao mora em canto nenhum
-   da anatomia. Force-lo no braco ("foi de onde tiraram") explicaria a
-   COLETA, nao o exame. Densitometria e o mesmo caso: coluna, quadril ou
-   punho, conforme o aparelho. Folhinha com a palavra escrita resolve sem
-   metafora torta — e a palavra escrita e justamente o que um icone sozinho
-   nao entrega.
-
-   O COMBUSTIVEL E O NOME do documento. Se o paciente nao digitar nada, o
-   app grava o rotulo generico ("Exame") e nenhuma regiao acende. Isso e
-   informacao sobre o piloto, nao defeito — e e um motivo a mais para a fase
-   2: IA que preenche o nome acende o boneco sem ninguem digitar.
-
-   Para estender: acrescente a palavra na lista da regiao. Nada mais muda. */
-const REGIOES = [
-  // no boneco
-  { id: "cabeca", corpo: true, rotulo: "Cabeça",
-    chaves: ["cranio", "encefalo", "cerebro", "eeg", "enxaqueca", "hipofise",
-             "sela turcica", "seios da face", "olho", "oftalm", "retina",
-             "oculos", "visao", "acuidade", "fundo de olho", "ouvido",
-             "audiometria", "otorrino", "nasal", "sinusite"] },
-  { id: "pescoco", corpo: true, rotulo: "Pescoço",
-    chaves: ["tireoide", "tireoid", "tsh", "t3", "t4", "trab", "carotida",
-             "cervical", "paratireoide", "tiroglobulina"] },
-  { id: "peito", corpo: true, rotulo: "Peito",
-    // "ecocardio", nao "eco": "eco" casa dentro de "ecografia", e mandaria
-    // todo ultrassom — de abdome, de tireoide, obstetrico — para o peito.
-    chaves: ["coracao", "cardiac", "cardio", "ecocardio", "ecg", "eletrocardio",
-             "holter", "mapa", "ergometr", "troponina", "ck-mb", "bnp",
-             // O perfil lipidico e exame de sangue E assunto do coracao: e o
-             // caso que a regiao unica nao resolvia, e aqui ele entra nos dois.
-             "colesterol", "hdl", "ldl", "triglicer", "lipidograma",
-             "pressao arterial", "pulmao", "pulmonar", "torax", "espirometr",
-             "polissonograf", "respirat", "mama", "mamograf", "mamaria"] },
-  { id: "barriga", corpo: true, rotulo: "Barriga",
-    chaves: ["abdome", "abdominal", "figado", "hepat", "tgo", "tgp",
-             "transaminase", "gama gt", "glutamil", "bilirrubina", "amilase",
-             "lipase", "pancrea", "vesicula", "biliar", "estomago", "gastr",
-             "endoscopia", "colonoscopia", "intestin", "colon", "reto",
-             "fezes", "parasit", "helicobacter"] },
-  { id: "quadril", corpo: true, rotulo: "Quadril",
-    chaves: ["rim", "rins", "renal", "urina", "urinar", "eas", "elementos anormais",
-             "creatinina", "ureia", "clearance", "bexiga", "prostata", "psa",
-             "utero", "uterin", "ovario", "transvaginal", "papanicolau",
-             "preventivo", "ginecolog", "pelvic"] },
-
-  // folhinhas — o que nao tem lugar no corpo
-  { id: "sangue", corpo: false, rotulo: "Sangue", icone: "🩸",
-    chaves: ["hemograma", "sangue", "hematocrito", "hemoglobina", "plaqueta",
-             "leucocit", "glicose", "glicemia", "glicada", "hba1c",
-             "colesterol", "hdl", "ldl", "triglicer", "lipidograma",
-             "creatinina", "ureia", "acido urico", "tsh", "t3", "t4",
-             "vitamina", "ferritina", "ferro", "albumina", "proteina",
-             "sorologia", "anticorpo", "pcr", "vhs", "coagulograma", "tap",
-             "protrombina", "fosfatase", "gama gt", "tgo", "tgp",
-             "bilirrubina", "eletroforese", "tipagem", "dosagem"] },
-  { id: "ossos", corpo: false, rotulo: "Ossos", icone: "🦴",
-    chaves: ["osso", "ossea", "densitometr", "coluna", "lombar", "vertebr",
-             "joelho", "ombro", "quadril", "punho", "tornozelo", "fratura",
-             "artro", "reumat", "calcio", "fator reumatoide", "ortoped"] },
-  { id: "receitas", corpo: false, rotulo: "Receitas", icone: "💊",
-    tipos: ["receita"], chaves: ["receita", "receitu", "prescric", "medicament"] },
-  { id: "papeis", corpo: false, rotulo: "Outros papéis", icone: "📄",
-    tipos: ["relatorio", "outro"], chaves: ["atestado", "declarac", "encaminh",
-             "relatorio", "guia", "autorizac", "vacina"] },
-];
-
-/* Em quais regioes este documento entra. Conjunto, nao valor unico — ver o
-   comentario acima. Documento que nao casa com nada nao entra em nenhuma,
-   e continua alcancavel pela lista e pela busca: o boneco ACRESCENTA um
-   caminho, nunca e o unico. */
-function regioesDoDocumento(d) {
-  const texto = semAcento((d.nome || "") + " " + (ROTULOS[d.tipo] || ""));
-  const achadas = new Set();
-  for (const r of REGIOES) {
-    if (r.tipos && r.tipos.includes(d.tipo)) { achadas.add(r.id); continue; }
-    if (r.chaves.some((c) => texto.includes(c))) achadas.add(r.id);
-  }
-  return achadas;
-}
-
 let regiaoAtiva = null;
 
 /* Acende o que tem documento e desenha as folhinhas.
