@@ -185,7 +185,22 @@ const REGIOES = [
     chaves: ["urina", "urinar", "urinari", "urocultura", "elementos anormais",
              "sedimentoscopia", "proteinuria", "microalbumin", "urina de 24",
              "clearance"] },
-  { id: "fezes", corpo: false, rotulo: "Fezes", icone: "🧫",
+  // Potinho coletor, desenhado. Era a 🧫 do teclado, e emoji nao e nosso:
+  // cada sistema desenha o seu, e a mesma placa de Petri sai rosa no Android
+  // e AZULADA no Windows — que e onde a pagina do medico e aberta. Icone que
+  // muda de cor conforme o aparelho nao pode carregar significado.
+  //
+  // O potinho e o que o paciente reconhece: e o objeto que ele leva ao
+  // laboratorio. Marrom porque e a unica cor que ninguem confunde com a
+  // gota do sangue nem com a da urina — as tres ficam lado a lado.
+  { id: "fezes", corpo: false, rotulo: "Fezes",
+    icone: '<svg viewBox="0 0 16 16" width="1.05em" height="1.05em" '
+         + 'style="vertical-align:-2px" aria-hidden="true">'
+         + '<rect x="3.6" y="2.2" width="8.8" height="2.8" rx="1" fill="#6f4a2b"/>'
+         + '<path d="M4.4 5.2h7.2v7.4a1.6 1.6 0 0 1-1.6 1.6H6a1.6 1.6 0 0 1-1.6-1.6Z" '
+         + 'fill="#a97142"/>'
+         + '<rect x="4.4" y="7.4" width="7.2" height="1.5" fill="#c08a58"/>'
+         + '</svg>',
     chaves: ["fezes", "parasitolog", "coprocultura", "coproscopia",
              "sangue oculto", "oxiuro", "calprotectina", "rotavirus"] },
   { id: "ossos", corpo: false, rotulo: "Ossos", icone: "🦴",
