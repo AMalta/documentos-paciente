@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.6";
+const VERSAO_APP = "2026-09-18.7";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -22,6 +22,7 @@ const el = {
   data: $("data"), salvar: $("btn-salvar"), cancelar: $("btn-cancelar"),
   filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   lista: $("lista"), sub: $("cabecalho-sub"),
+  busca: $("busca"), buscaCaixa: $("busca-caixa"), buscaLimpar: $("busca-limpar"),
   telaRecorte: $("tela-recorte"), recorteArea: $("recorte-area"),
   recorteImg: $("recorte-img"), marca: $("marca"),
   recorteOk: $("recorte-ok"), recorteCancelar: $("recorte-cancelar"),
@@ -834,10 +835,70 @@ function dataBR(iso) {
   return `${d}/${m}/${a}`;
 }
 
+/* ── Busca ─────────────────────────────────────────────────────────────
+   Procurar pelo NOME e o que realmente acha um documento. A categoria foi
+   avaliada e descartada: a tabela de procedimentos do Indiclin joga 90% do
+   laboratorio em "Patologia", palavra que paciente nenhum clica, e um eco e
+   ao mesmo tempo imagem e coracao — eixo unico sempre erra um dos dois.
+   "eco" acha o ecocardiograma sem discussao de taxonomia.
+
+   Aparece so a partir de MINIMO_BUSCA documentos. Caixa de busca sobre tres
+   itens e ruido, e anuncia um problema que a pessoa ainda nao tem.          */
+const MINIMO_BUSCA = 6;
+
+/* Compara conteudo, nao grafia. Quem procura digita "colesterol" no celular,
+   sem acento e em minusculas, e o documento se chama "COLESTEROL TOTAL E
+   FRAÇÕES". Exigir que os dois coincidam mediria a paciencia de quem digita,
+   nao a vontade de achar. */
+// A faixa U+0300 a U+036F sao os acentos que o NFD separa da letra.
+// Montada com fromCharCode e nao escrita direto no regex: esses
+// caracteres nao tem desenho proprio, e ficariam invisiveis para quem
+// ler o codigo depois — um intervalo que parece vazio e nao esta.
+const ACENTOS = new RegExp("[" + String.fromCharCode(0x0300) + "-"
+                              + String.fromCharCode(0x036F) + "]", "g");
+function semAcento(t) {
+  return String(t || "").normalize("NFD").replace(ACENTOS, "").toLowerCase();
+}
+
+/* O que cada documento oferece a busca. O rotulo do tipo entra para que
+   "receita" funcione sem descobrir o seletor, e a data no formato BRASILEIRO
+   para que "02/2026" e "2026" achem — e a data que a pessoa lembra. */
+function textoBuscavel(d) {
+  return semAcento([
+    d.nome || "",
+    ROTULOS[d.tipo] || d.tipo || "",
+    dataBR(d.data_documento || d.criado_em) || "",
+    (d.data_documento || d.criado_em || "").slice(0, 10),
+  ].join(" "));
+}
+
+/* Todos os termos precisam casar, em qualquer ordem: "eco 2026" acha o
+   ecocardiograma de 2026 sem exigir que a pessoa lembre a ordem em que as
+   palavras aparecem no documento. */
+function casaBusca(d, termos) {
+  if (!termos.length) return true;
+  const texto = textoBuscavel(d);
+  return termos.every((t) => texto.includes(t));
+}
+
+function termosDaBusca() {
+  return semAcento(el.busca.value).split(/\s+/).filter(Boolean);
+}
+
 function desenharLista() {
   const tipo = el.filtroTipo.value;
   const ordem = el.filtroOrdem.value;
-  let lista = documentos.filter((d) => !tipo || d.tipo === tipo);
+  const termos = termosDaBusca();
+
+  // A caixa aparece pelo TOTAL do acervo, nao pelo que sobrou do filtro:
+  // senao ela sumiria no meio de uma busca que nao achou nada, levando
+  // embora o campo com o texto digitado.
+  const total = documentos.length + naFila.length;
+  el.buscaCaixa.classList.toggle("escondido",
+    total < MINIMO_BUSCA && !termos.length);
+  el.buscaCaixa.classList.toggle("tem-texto", !!el.busca.value);
+
+  let lista = documentos.filter((d) => (!tipo || d.tipo === tipo) && casaBusca(d, termos));
 
   const quando = (d) => d.data_documento || d.criado_em;
   if (ordem === "antigo") lista.sort((a, b) => String(quando(a)).localeCompare(String(quando(b))));
@@ -845,12 +906,23 @@ function desenharLista() {
       || String(quando(b)).localeCompare(String(quando(a))));
   else lista.sort((a, b) => String(quando(b)).localeCompare(String(quando(a))));
 
-  const pend = naFila.filter((e) => !tipo || e.tipo === tipo);
+  const pend = naFila.filter((e) => (!tipo || e.tipo === tipo) && casaBusca(e, termos));
 
   if (!lista.length && !pend.length) {
-    el.lista.innerHTML = `<div class="vazio"><div class="icone">🗂️</div>
-      <p>${documentos.length || naFila.length ? "Nenhum documento com esse filtro."
-        : "Ainda não há nada guardado.<br>Comece fotografando um exame."}</p></div>`;
+    // Tres situacoes diferentes, tres respostas. Dizer "nenhum documento"
+    // para quem acabou de digitar uma palavra faz pensar que o acervo sumiu.
+    let texto;
+    if (termos.length) {
+      texto = `Nada encontrado para <b>${el.busca.value}</b>.`
+            + `<br><span style="font-size:13px">Procure por parte do nome, `
+            + `pelo tipo (“receita”) ou pelo ano.</span>`;
+    } else if (documentos.length || naFila.length) {
+      texto = "Nenhum documento com esse filtro.";
+    } else {
+      texto = "Ainda não há nada guardado.<br>Comece fotografando um exame.";
+    }
+    el.lista.innerHTML = `<div class="vazio"><div class="icone">${
+      termos.length ? "🔎" : "🗂️"}</div><p>${texto}</p></div>`;
     return;
   }
 
@@ -1367,6 +1439,19 @@ el.salvar.onclick = guardar;
 el.cancelar.onclick = cancelar;
 el.filtroTipo.onchange = desenharLista;
 el.filtroOrdem.onchange = desenharLista;
+
+// Filtra a cada tecla, sem botao de buscar. A lista e local e pequena: nao
+// ha ida ao servidor para economizar, e ver o resultado encolher enquanto
+// digita e o que ensina a pessoa que bastam tres letras.
+el.busca.oninput = desenharLista;
+el.buscaLimpar.onclick = () => {
+  el.busca.value = "";
+  desenharLista();
+  el.busca.focus();
+};
+// Enter fecha o teclado do celular em vez de submeter coisa nenhuma: com a
+// lista ja filtrada, o teclado so esta tapando o resultado.
+el.busca.onkeydown = (e) => { if (e.key === "Enter") el.busca.blur(); };
 
 /* ── Partida ──────────────────────────────────────────────────────────── */
 (async () => {
