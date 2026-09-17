@@ -115,14 +115,22 @@ const REGIOES = [
   // numa silhueta e arbitraria: exige adivinhar onde uma acaba, que e um
   // tipo de leitura — justamente o que o boneco existe para evitar.
   //
-  // O ROTULO diz as duas, e isso importa: anatomicamente abdome e pelve sao
-  // cavidades distintas — figado, estomago, intestino e rins de um lado;
-  // bexiga, prostata, utero e ovarios do outro. Na fala comum "barriga"
-  // cobre as duas, mas quem procura o exame de prostata nao pode ter de
-  // adivinhar se cobre. "Baixo-ventre" e a palavra leiga que nomeia a
-  // pelve sem ser "quadril", que o paciente ouve como o OSSO — e osso e
-  // outra gaveta aqui.
-  { id: "barriga", corpo: true, rotulo: "Barriga e baixo-ventre",
+  // O ROTULO e so "Barriga", e a precisao mora noutro lugar. Chegou a ser
+  // "Barriga e baixo-ventre", pela razao certa: anatomicamente abdome e
+  // pelve sao cavidades distintas, e quem procura o exame de prostata nao
+  // deveria adivinhar se "barriga" cobre. Mas essa duvida nao chega a
+  // existir — quem digita "prostata" acha pelo nome do documento, e quem
+  // toca embaixo no boneco acha porque a regiao desenhada vai ate o
+  // quadril. O rotulo nao e especificacao, e nome; a especificacao esta no
+  // DESENHO e no aria-label, que lista os orgaos dos dois lados.
+  //
+  // "Abdome" seria pior nas duas pontas: registro clinico num aplicativo de
+  // paciente, e anatomicamente EXCLUI a pelve.
+  //
+  // "Cabeca e pescoco" segue composto, e nao e incoerencia: o pescoco SE VE
+  // como parte separada no desenho, entao o nome precisa dizer que ela
+  // responde junto. O baixo-ventre nao — e a mesma faixa continua.
+  { id: "barriga", corpo: true, rotulo: "Barriga",
     chaves: ["abdome", "abdominal", "figado", "hepat", "tgo", "tgp",
              "transaminase", "gama gt", "glutamil", "bilirrubina", "amilase",
              "lipase", "pancrea", "vesicula", "biliar", "estomago", "gastr",
