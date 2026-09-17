@@ -4,6 +4,12 @@
    paciente fotografa. Se ele não fotografa, nenhuma extração salva o módulo.
    ═══════════════════════════════════════════════════════════════════════ */
 
+// Marca da versão. Existe porque "o conserto subiu?" e "o celular já pegou?"
+// são perguntas diferentes: o service worker guarda a casca e, sem internet,
+// SEMPRE serve o cache — dá para passar uma hora testando a versão errada sem
+// perceber. Aparece no rodapé da tela de conta.
+const VERSAO_APP = "2026-09-17.1";
+
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
@@ -364,6 +370,64 @@ function convidarAProteger() {
   d.querySelector("#convite-proteger").onclick = () => { d.remove(); abrirConta(false); };
 }
 
+/* ═══ Visualizador ════════════════════════════════════════════════════════
+   Sem esta tela, tocar na miniatura não fazia nada e o toque longo abria o
+   menu do Chrome — "abrir imagem", "baixar", "compartilhar". O documento é
+   do paciente, e quem manda nele deve ser o app, não o navegador.           */
+let visuPaginas = [], visuIndice = 0;
+
+async function abrirDocumento(doc) {
+  const paginas = (doc.documento_paginas || []).slice().sort((a, b) => a.ordem - b.ordem);
+  if (!paginas.length) return;
+  visuTitulo(doc);
+  el.telaVisu.classList.remove("escondido");
+  el.visuImg.removeAttribute("src");
+
+  // Uma hora de validade: tempo de sobra para olhar, e o link morre depois.
+  // A imagem mora no servidor e vem por link assinado — sem internet não há
+  // como buscá-la. Antes o visualizador abria preto, e tela preta sem
+  // explicação o usuário lê como app quebrado.
+  const { data, error } = await sb.storage.from("documentos")
+    .createSignedUrls(paginas.map((p) => p.storage_path), 3600);
+  visuPaginas = (data || []).map((d) => d.signedUrl).filter(Boolean);
+  if (!visuPaginas.length) {
+    el.telaVisu.classList.add("escondido");
+    console.warn("[visualizador]", error?.message || "sem urls");
+    aviso(navigator.onLine
+      ? "Não consegui abrir as imagens agora. Tente de novo em instantes."
+      : "Este documento está guardado na nuvem e precisa de internet para ser "
+        + "aberto. Ele não foi perdido — volta assim que a conexão voltar.",
+      "info", "Sem conexão");
+    return;
+  }
+  visuIndice = 0;
+  mostrarPagina();
+}
+
+function visuTitulo(doc) {
+  el.visuTitulo.textContent = doc.nome || ROTULOS[doc.tipo];
+}
+
+function mostrarPagina() {
+  if (!visuPaginas.length) return;
+  el.visuImg.src = visuPaginas[visuIndice];
+  el.visuConta.textContent = `${visuIndice + 1} / ${visuPaginas.length}`;
+  el.visuAntes.disabled = visuIndice === 0;
+  el.visuDepois.disabled = visuIndice === visuPaginas.length - 1;
+}
+
+el.visuAntes.onclick = () => { if (visuIndice > 0) { visuIndice--; mostrarPagina(); } };
+el.visuDepois.onclick = () => {
+  if (visuIndice < visuPaginas.length - 1) { visuIndice++; mostrarPagina(); }
+};
+el.visuFechar.onclick = () => {
+  el.telaVisu.classList.add("escondido");
+  el.visuImg.removeAttribute("src");
+  visuPaginas = [];
+};
+// Toque longo na imagem não abre o menu do navegador.
+el.visuImg.addEventListener("contextmenu", (e) => e.preventDefault());
+
 /* O pendente também abre: ele está guardado, e só não subiu ainda. Impedir
    de ver o que se acabou de fotografar faria o "aguardando envio" parecer
    perda. */
@@ -642,6 +706,12 @@ const confirmado = (u) => !!(u?.email && (u.email_confirmed_at || u.confirmed_at
 const contaAnonima = () => !confirmado(usuario);
 
 function pintarConta() {
+  const rodape = ct.tela.querySelector(".conta-caixa > div:last-child");
+  if (rodape && !rodape.dataset.versao) {
+    rodape.dataset.versao = "1";
+    rodape.insertAdjacentHTML("beforeend",
+      `<br><span style="opacity:.55">versão ${VERSAO_APP}</span>`);
+  }
   const protegida = !contaAnonima();
   ct.pronta.classList.toggle("escondido", !protegida);
   ct.proteger.classList.toggle("escondido", protegida);
