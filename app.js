@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.10";
+const VERSAO_APP = "2026-09-18.12";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -24,6 +24,7 @@ const el = {
   lista: $("lista"), sub: $("cabecalho-sub"),
   busca: $("busca"), buscaCaixa: $("busca-caixa"), buscaLimpar: $("busca-limpar"),
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"), folhinhas: $("folhinhas"),
+  corpoDica: $("corpo-dica"),
   telaRecorte: $("tela-recorte"), recorteArea: $("recorte-area"),
   recorteImg: $("recorte-img"), marca: $("marca"),
   recorteOk: $("recorte-ok"), recorteCancelar: $("recorte-cancelar"),
@@ -1013,6 +1014,29 @@ function pintarCorpo() {
     alvo.setAttribute("aria-hidden", tem ? "false" : "true");
     alvo.setAttribute("tabindex", tem ? "0" : "-1");
     alvo.setAttribute("aria-pressed", regiaoAtiva === r.id ? "true" : "false");
+  }
+
+  // A dica nomeia o que EXISTE, e muda quando ha filtro. Duas razoes:
+  // mandar tocar numa regiao apagada ensina em um segundo que o recurso nao
+  // funciona; e quem filtrou precisa de uma saida visivel — sem ela, "sumiu
+  // metade dos meus documentos" e a leitura natural.
+  if (regiaoAtiva) {
+    const r = REGIOES.find((x) => x.id === regiaoAtiva);
+    el.corpoDica.innerHTML = `Mostrando <b>${(r && r.rotulo) || ""}</b>`
+      + ` · toque de novo para ver todos`;
+  } else {
+    // SO as regioes do corpo. A primeira versao listava as nove, folhinhas
+    // inclusive, e ocupava tres linhas — mais dificil de ler que a propria
+    // instrucao. As folhinhas ja trazem o nome escrito nelas; quem precisa
+    // de legenda e o desenho.
+    const nomes = REGIOES.filter((r) => r.corpo && conta[r.id])
+      .map((r) => r.rotulo.toLowerCase());
+    const lista = nomes.length > 1
+      ? nomes.slice(0, -1).join(", ") + " ou " + nomes[nomes.length - 1]
+      : nomes[0] || "";
+    el.corpoDica.innerHTML = lista
+      ? `Toque no corpo — <b>${lista}</b> — para ver só esses documentos`
+      : `Toque num cartão para ver só esses documentos`;
   }
 
   el.folhinhas.innerHTML = "";

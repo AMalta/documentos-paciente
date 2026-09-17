@@ -101,9 +101,12 @@
   .vazio p{margin:0;font-size:14.5px}
 
   /* ── Corpo e folhinhas ── */
-  .corpo-bloco{display:flex;gap:12px;align-items:center;margin:4px 0 14px;
-               background:var(--superficie);border:1px solid var(--linha);
-               border-radius:12px;padding:10px 12px}
+  .corpo-bloco{margin:4px 0 14px;background:var(--superficie);
+               border:1px solid var(--linha);border-radius:12px;padding:10px 12px}
+  .corpo-linha{display:flex;gap:12px;align-items:center}
+  .corpo-dica{margin:2px 2px 8px;font-size:12.5px;line-height:1.4;
+              color:var(--tinta-2)}
+  .corpo-dica b{color:var(--tinta)}
   #corpo{width:76px;height:auto;flex:0 0 auto}
   #corpo .silhueta path{fill:#eaeff3}
   /* O contorno branco separa as regioes. Sem ele o tronco vira um bloco so
@@ -115,6 +118,11 @@
   #corpo .regiao.tem{fill:#8fb8d4;cursor:pointer}
   #corpo .regiao.tem:hover{fill:#77a6c7}
   #corpo .regiao.ativa{fill:var(--azul)}
+  /* O Chrome desenha um contorno PRETO em elemento com tabindex, e ele
+     aparecia como uma caixa em volta da cabeca. Some com ele e desenha o
+     nosso — mas so no :focus-visible, para o teclado continuar tendo pista
+     de onde esta e o dedo nao ganhar moldura a cada toque. */
+  #corpo .regiao:focus{outline:none}
   #corpo .regiao:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
 
   .folhinhas{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -415,6 +423,12 @@
      efeito de graca — o desenho passa a retratar quem usa: quem tem
      cardiopatia ve o peito aceso; quem trata tireoide, o pescoco. -->
 <div class="corpo-bloco escondido" id="corpo-bloco">
+  <!-- O texto nomeia SO as regioes acesas (ver `pintarCorpo`). Listar
+       "cabeça, pescoço, peito..." fixo mandaria a pessoa tocar onde nao ha
+       nada — e um controle que nao responde ao toque ensina, em um
+       segundo, que o recurso nao funciona. -->
+  <p class="corpo-dica" id="corpo-dica"></p>
+  <div class="corpo-linha">
   <svg id="corpo" viewBox="0 0 100 222" role="group"
        aria-label="Procurar por parte do corpo">
     <!-- Bracos e pernas sao SO desenho: nao sao regioes e nao respondem ao
@@ -422,10 +436,10 @@
          e o unico sinal de que o corpo tem partes tocaveis e partes que
          nao sao. -->
     <g class="silhueta" aria-hidden="true">
-      <path d="M26 48 L20 57 L15 101 L13 136 L21 137 L24 102 L26 60 Z"/>
-      <path d="M74 48 L80 57 L85 101 L87 136 L79 137 L76 102 L74 60 Z"/>
-      <path d="M33 153 L31 191 L29 216 L39 217 L43 191 L50 162
-               L57 191 L61 217 L71 216 L69 191 L67 153 Z"/>
+      <path d="M26 48 L20 57 L15 96 L13 130 L21 131 L24 97 L26 58 Z"/>
+      <path d="M74 48 L80 57 L85 96 L87 130 L79 131 L76 97 L74 58 Z"/>
+      <path d="M32 145 L30 186 L28 214 L38 215 L42 186 L50 156
+               L58 186 L62 215 L72 214 L70 186 L68 145 Z"/>
     </g>
 
     <!-- Cada regiao e um botao de verdade, com nome falado: para leitor de
@@ -439,16 +453,17 @@
           d="M44 32 h12 v9 h-12 Z"/>
     <path class="regiao" data-regiao="peito" tabindex="0" role="button"
           aria-label="Peito, coração e pulmões"
-          d="M31 41 h38 l5 12 v40 h-48 v-40 Z"/>
+          d="M31 41 h38 l5 12 v28 h-48 v-28 Z"/>
     <path class="regiao" data-regiao="barriga" tabindex="0" role="button"
           aria-label="Barriga, fígado e intestino"
-          d="M26 93 h48 l-2 34 h-44 Z"/>
+          d="M26 81 h48 l-2 36 h-44 Z"/>
     <path class="regiao" data-regiao="quadril" tabindex="0" role="button"
           aria-label="Rins, bexiga e órgãos pélvicos"
-          d="M28 127 h44 l-4 26 h-36 Z"/>
+          d="M28 117 h44 l-4 28 h-36 Z"/>
   </svg>
 
-  <div class="folhinhas" id="folhinhas"></div>
+    <div class="folhinhas" id="folhinhas"></div>
+  </div>
 </div>
 
   <div class="filtros">
