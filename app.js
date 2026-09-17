@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.15";
+const VERSAO_APP = "2026-09-18.16";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -524,6 +524,14 @@ async function guardar() {
   cancelar();
   el.salvar.disabled = false;
   el.salvar.textContent = "Guardar documento";
+  // Acabou de guardar: MOSTRE o que ela guardou. Com um filtro ligado, o
+  // documento novo pode nao casar com ele e some da tela — e ela conclui
+  // que a foto se perdeu. Foi exatamente o que aconteceu com um documento
+  // salvo sem nome: ele vira "Exame", nao cai em regiao nenhuma do boneco,
+  // e ficou invisivel atras do filtro que estava ligado.
+  regiaoAtiva = null;
+  el.busca.value = "";
+  el.filtroTipo.value = "";
   await carregar();
   await enviarFila();
   convidarAProteger();
@@ -1297,8 +1305,14 @@ function pintarCorpo() {
   // metade dos meus documentos" e a leitura natural.
   if (regiaoAtiva) {
     const r = REGIOES.find((x) => x.id === regiaoAtiva);
-    el.corpoDica.innerHTML = `Mostrando <b>${(r && r.rotulo) || ""}</b>`
-      + ` · toque de novo para ver todos`;
+    // Botao de SAIR, e nao so a instrucao "toque de novo". Soltar tocando na
+    // mesma regiao exige lembrar em qual se tocou — e tocar noutra apenas
+    // TROCA o filtro, nunca limpa. Sem uma saida explicita, quem escolheu
+    // errado fica presto num acervo que parece ter encolhido.
+    el.corpoDica.innerHTML = `Mostrando <b>${(r && r.rotulo) || ""}</b> `
+      + `<button class="ver-todos" id="ver-todos">✕ ver todos</button>`;
+    const b = document.getElementById("ver-todos");
+    if (b) b.onclick = () => { regiaoAtiva = null; desenharLista(); };
   } else {
     // SO as regioes do corpo. A primeira versao listava as nove, folhinhas
     // inclusive, e ocupava tres linhas — mais dificil de ler que a propria
