@@ -167,6 +167,14 @@
                flex:0 0 auto}
   .agenda-mais{width:100%;margin-top:8px;background:none;color:var(--azul);
                font-size:13.5px;padding:8px;font-weight:600}
+  .convite{background:var(--azul-claro);border:1px solid #cfe0ee;
+           border-radius:11px;padding:12px 13px;margin-bottom:8px}
+  .convite-txt{font-size:13.5px;line-height:1.45;color:var(--tinta)}
+  .convite-txt b{display:block;margin-bottom:2px}
+  .convite-bts{display:flex;gap:8px;margin-top:10px}
+  .convite-bts button{flex:1;background:var(--azul);color:#fff;border-radius:9px;
+                      padding:9px;font-size:13.5px;font-weight:600}
+  .convite-bts .fraco{background:none;color:var(--tinta-2);font-weight:500}
   .comp-corpo{flex:1;overflow-y:auto;padding:16px 18px 30px;
               background:var(--papel);color:var(--tinta)}
   .comp-corpo label{color:var(--tinta-2)}
@@ -410,6 +418,22 @@
        QUALQUER motivo — nao para quem abriu para ver a agenda. Depender de
        a pessoa procurar a agenda e o mesmo que nao ter lembrete. -->
   <div class="agenda escondido" id="agenda">
+    <!-- Faixa, nao pergunta. A versao anterior abria uma caixa de dialogo
+         depois de CADA documento guardado — e o piloto pede justamente que
+         a pessoa fotografe o acervo inteiro de uma vez, entao seriam vinte
+         interrupcoes sobre retornos de exames antigos. Aqui ela le se
+         quiser, ignora se nao quiser, e um "agora nao" vale 30 dias. -->
+    <div class="convite escondido" id="agenda-convite">
+      <div class="convite-txt">
+        <b>Tem consulta ou exame marcado?</b>
+        Anote a data e o aplicativo mostra o aviso aqui em cima quando ela
+        estiver chegando — dá tempo de separar os exames para levar.
+      </div>
+      <div class="convite-bts">
+        <button id="agenda-convite-sim">Anotar a data</button>
+        <button class="fraco" id="agenda-convite-nao">Agora não</button>
+      </div>
+    </div>
     <div class="agenda-itens" id="agenda-itens"></div>
     <button class="agenda-mais" id="agenda-mais">+ Marcar consulta ou exame</button>
   </div>
