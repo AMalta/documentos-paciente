@@ -138,6 +138,9 @@
              padding-bottom:calc(12px + env(safe-area-inset-bottom))}
   .paginacao button{background:rgba(255,255,255,.12);border-radius:9px;
                     color:#fff;padding:10px 18px;font-size:16px}
+  .paginacao button:disabled{opacity:.35}
+  /* Separado dos de navegar: girar MUDA o arquivo, ‹ › só andam nele. */
+  #visu-girar{margin-left:18px;background:rgba(255,255,255,.22)}
   .paginacao button:disabled{opacity:.3}
   .paginacao .conta{font-size:14px;color:#b8c6d1;min-width:76px;text-align:center}
 
@@ -514,6 +517,10 @@
     <button id="visu-antes" aria-label="Página anterior">‹</button>
     <span class="conta" id="visu-conta">1 / 1</span>
     <button id="visu-depois" aria-label="Próxima página">›</button>
+    <!-- Girar depois de guardado: quem fotografa dez documentos seguidos só
+         percebe que três saíram deitados quando o papel já voltou para a
+         gaveta. Sem isto, a única saída seria apagar e refotografar. -->
+    <button id="visu-girar" aria-label="Girar a página">↻</button>
   </div>
 </div>
 

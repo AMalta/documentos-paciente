@@ -8,7 +8,7 @@
 // são perguntas diferentes: o service worker guarda a casca e, sem internet,
 // SEMPRE serve o cache — dá para passar uma hora testando a versão errada sem
 // perceber. Aparece no rodapé da tela de conta.
-const VERSAO_APP = "2026-09-18.1";
+const VERSAO_APP = "2026-09-18.3";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -28,7 +28,7 @@ const el = {
   recorteDicaGirar: $("recorte-dica-girar"),
   telaVisu: $("tela-visu"), visuImg: $("visu-img"), visuTitulo: $("visu-titulo"),
   visuConta: $("visu-conta"), visuAntes: $("visu-antes"),
-  visuDepois: $("visu-depois"), visuFechar: $("visu-fechar"),
+  visuDepois: $("visu-depois"), visuGirar: $("visu-girar"), visuFechar: $("visu-fechar"),
 };
 
 let usuario = null;
@@ -571,6 +571,23 @@ function convidarAProteger() {
    menu do Chrome — "abrir imagem", "baixar", "compartilhar". O documento é
    do paciente, e quem manda nele deve ser o app, não o navegador.           */
 let visuPaginas = [], visuIndice = 0;
+// De onde veio a pagina aberta. O giro precisa saber: documento guardado se
+// regrava no servidor, pendente se regrava no IndexedDB, e sem isso o botao
+// nao teria onde escrever.
+let visuOrigem = null;      // "documento" | "pendente"
+let visuCaminhos = [];      // storage_path de cada pagina (so em documento)
+let visuEntrada = null;     // a entrada da fila (so em pendente)
+// O blob como estava quando o visualizador abriu. Girar SEMPRE parte daqui,
+// nunca do resultado do giro anterior: cada toque seria uma recodificacao
+// JPEG em cima da outra, e quatro toques (que voltam a orientacao original)
+// deixariam a imagem visivelmente pior do que comecou.
+let visuOriginal = new Map();
+/* Capa recem-girada, por storage_path. A miniatura da lista vem por URL
+   assinada, e duas assinaturas pedidas no mesmo segundo saem iguais — o
+   navegador serviria a imagem antiga do cache e a lista mostraria a pagina
+   ainda deitada enquanto o visualizador ja a mostra em pe. Guardar o arquivo
+   local tira a duvida e ainda aparece na hora, sem ida ao servidor. */
+const capaLocal = new Map();
 
 async function abrirDocumento(doc) {
   const paginas = (doc.documento_paginas || []).slice().sort((a, b) => a.ordem - b.ordem);
@@ -586,6 +603,10 @@ async function abrirDocumento(doc) {
   const { data, error } = await sb.storage.from("documentos")
     .createSignedUrls(paginas.map((p) => p.storage_path), 3600);
   visuPaginas = (data || []).map((d) => d.signedUrl).filter(Boolean);
+  visuOrigem = "documento";
+  visuCaminhos = paginas.map((p) => p.storage_path);
+  visuEntrada = null;
+  visuOriginal.clear();
   if (!visuPaginas.length) {
     el.telaVisu.classList.add("escondido");
     console.warn("[visualizador]", error?.message || "sem urls");
@@ -620,7 +641,83 @@ el.visuFechar.onclick = () => {
   el.telaVisu.classList.add("escondido");
   el.visuImg.removeAttribute("src");
   visuPaginas = [];
+  visuOrigem = null; visuCaminhos = []; visuEntrada = null;
+  visuOriginal.clear();
 };
+/* ── Girar uma página já guardada ──────────────────────────────────────
+   Gira 90° por toque e REGRAVA. O recorte não tem equivalente aqui de
+   propósito: o original de 12 MP morre no celular logo depois da foto, então
+   um segundo recorte só cortaria mais de uma imagem que já está em 1600px —
+   prometeria reenquadrar e entregaria encolher. Girar não perde nada: é
+   rearranjo de pixels, e o único custo é recodificar o JPEG uma vez.        */
+async function girarPaginaAberta() {
+  if (!visuPaginas.length || !visuOrigem) return;
+  const i = visuIndice;
+
+  el.visuGirar.disabled = true;
+  try {
+    // Sempre a partir do blob como estava ao abrir a tela: ver o comentário
+    // de visuOriginal. Na primeira vez ele é buscado e fica guardado.
+    let base = visuOriginal.get(i);
+    if (!base) {
+      const bruto = visuOrigem === "pendente"
+        ? visuEntrada.paginas[i].blob
+        : await (await fetch(visuPaginas[i])).blob();
+      base = { blob: bruto, giro: 0 };
+      visuOriginal.set(i, base);
+    }
+    base.giro = (base.giro + 90) % 360;
+
+    const fim = await pedirAoWorker({
+      tipo: "final", blob: base.blob, rect: { x: 0, y: 0, l: 1, a: 1 },
+      giro: base.giro, lado: CONFIG.LADO_MAXIMO, qualidade: CONFIG.QUALIDADE,
+    });
+
+    if (visuOrigem === "pendente") {
+      // Ainda não subiu: o lugar dela é o IndexedDB, e girar funciona offline.
+      const pag = visuEntrada.paginas[i];
+      pag.blob = fim.blob; pag.largura = fim.largura; pag.altura = fim.altura;
+      await FilaDB.guardar(visuEntrada);
+    } else {
+      if (!navigator.onLine) {
+        base.giro = (base.giro + 270) % 360;   // desfaz: nada foi gravado
+        return aviso("Girar um documento já guardado precisa de internet. "
+                     + "A imagem está no servidor.", "info", "Sem conexão");
+      }
+      const caminho = visuCaminhos[i];
+      const { error } = await sb.storage.from("documentos")
+        .upload(caminho, fim.blob, { contentType: "image/jpeg", upsert: true });
+      if (error) throw error;
+      // bytes alimenta o contador de consumo, que é a base do limite
+      // gratuito: deixá-lo desatualizado faria o teto contar o tamanho errado.
+      await sb.from("documento_paginas")
+        .update({ bytes: fim.blob.size, largura: fim.largura, altura: fim.altura })
+        .eq("storage_path", caminho);
+      // Só a primeira página vira capa na lista.
+      if (i === 0) {
+        const antiga = capaLocal.get(caminho);
+        if (antiga) URL.revokeObjectURL(antiga);
+        capaLocal.set(caminho, URL.createObjectURL(fim.blob));
+      }
+    }
+
+    // Mostra o resultado do arquivo local, não do link assinado: o link
+    // devolveria a versão em cache e o giro pareceria não ter acontecido.
+    if (visuPaginas[i].startsWith("blob:")) URL.revokeObjectURL(visuPaginas[i]);
+    visuPaginas[i] = URL.createObjectURL(fim.blob);
+    mostrarPagina();
+    carregar();
+  } catch (e) {
+    // Erro do Supabase e objeto, e console.warn(obj) imprime "Object" — o
+    // suficiente para saber que falhou e nada para saber por que.
+    console.warn("[girar]", e?.message || e?.error || JSON.stringify(e));
+    aviso("Não consegui girar esta página agora. Tente de novo.", "erro");
+  } finally {
+    el.visuGirar.disabled = false;
+  }
+}
+el.visuGirar.onclick = girarPaginaAberta;
+
 // Toque longo na imagem não abre o menu do navegador.
 el.visuImg.addEventListener("contextmenu", (e) => e.preventDefault());
 
@@ -631,6 +728,10 @@ function abrirPendente(entrada) {
   el.visuTitulo.textContent = entrada.nome || ROTULOS[entrada.tipo];
   el.telaVisu.classList.remove("escondido");
   visuPaginas = entrada.paginas.map((p) => URL.createObjectURL(p.blob));
+  visuOrigem = "pendente";
+  visuEntrada = entrada;
+  visuCaminhos = [];
+  visuOriginal.clear();
   visuIndice = 0;
   mostrarPagina();
 }
@@ -730,12 +831,17 @@ function desenharLista() {
     // o único jeito de o navegador mostrar a imagem sem abrir o acervo para
     // quem descobrir o caminho do arquivo.
     if (paginas[0]) {
-      sb.storage.from("documentos").createSignedUrl(paginas[0].storage_path, 3600)
-        .then(({ data }) => {
-          if (data?.signedUrl) {
-            div.querySelector(".capa").innerHTML = `<img src="${data.signedUrl}" alt="">`;
-          }
-        });
+      const local = capaLocal.get(paginas[0].storage_path);
+      if (local) {
+        div.querySelector(".capa").innerHTML = `<img src="${local}" alt="">`;
+      } else {
+        sb.storage.from("documentos").createSignedUrl(paginas[0].storage_path, 3600)
+          .then(({ data }) => {
+            if (data?.signedUrl) {
+              div.querySelector(".capa").innerHTML = `<img src="${data.signedUrl}" alt="">`;
+            }
+          });
+      }
     }
   }
 }
