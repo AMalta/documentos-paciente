@@ -17,7 +17,7 @@ window.CONFIG = {
   // Cloudflare Turnstile, não hCaptcha: o público aqui tem 70 anos, e
   // quebra-cabeça de imagem com semáforo e ônibus é barreira para quem o
   // app mais quer atender. O Turnstile resolve sozinho na maioria das vezes.
-  TURNSTILE_SITE_KEY: "",
+  TURNSTILE_SITE_KEY: "0x4AAAAAAE5uVOs4XBUBL367",
 
   // Compressão antes de subir. Não é ajuste fino: é o que decide o custo do
   // produto. A 250 KB por imagem, 1 GB guarda ~4.000 documentos; sem comprimir,

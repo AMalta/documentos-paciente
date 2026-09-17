@@ -859,7 +859,13 @@ async function enviarCodigo() {
           + "com outra conta, eles deixam de aparecer aqui. Deseja continuar?");
         if (!ok) throw new Error("cancelado");
       }
-      const { error } = await sb.auth.signInWithOtp({ email });
+      // Com CAPTCHA ligado no Supabase, TODA porta de entrada passa a exigir
+      // o token — inclusive esta. Sem o token aqui, ligar a proteção
+      // quebraria justamente a recuperação de conta: a tela que a pessoa
+      // procura no dia em que o celular quebrou.
+      const captcha = await tokenCaptcha();
+      const { error } = await sb.auth.signInWithOtp(
+        captcha ? { email, options: { captchaToken: captcha } } : { email });
       if (error) throw error;
     } else {
       const { error } = await sb.auth.updateUser({ email });
