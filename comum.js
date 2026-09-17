@@ -129,7 +129,7 @@ const REGIOES = [
              "endoscopia", "colonoscopia", "intestin", "colon", "reto",
              "fezes", "parasit", "helicobacter",
              // pelvicas
-             "rim", "rins", "renal", "urina", "urinar", "eas", "elementos anormais",
+             "rim", "rins", "renal", "urina", "urinar", "elementos anormais",
              "creatinina", "ureia", "clearance", "bexiga", "prostata", "psa",
              "utero", "uterin", "ovario", "transvaginal", "papanicolau",
              "preventivo", "ginecolog", "pelvic"] },
@@ -153,6 +153,21 @@ const REGIOES = [
              "sorologia", "anticorpo", "pcr", "vhs", "coagulograma", "tap",
              "protrombina", "fosfatase", "gama gt", "tgo", "tgp",
              "bilirrubina", "eletroforese", "tipagem", "dosagem"] },
+  // Urina e fezes sao MATERIAL COLHIDO, como sangue — e e assim que a pessoa
+  // procura: "exame de urina", nunca "exame da bexiga". Continuam acendendo
+  // tambem a regiao do corpo, porque um documento cabe em varias: quem pensa
+  // no material acha, quem pensa no lugar tambem.
+  //
+  // Nada de "eas" solto na lista: ele casa dentro de PANCREAS. Palavra curta
+  // em busca por pedaco e armadilha — a mesma que fez "eco" mandar toda
+  // ecografia para o peito.
+  { id: "urina", corpo: false, rotulo: "Urina", icone: "💧",
+    chaves: ["urina", "urinar", "urinari", "urocultura", "elementos anormais",
+             "sedimentoscopia", "proteinuria", "microalbumin", "urina de 24",
+             "clearance"] },
+  { id: "fezes", corpo: false, rotulo: "Fezes", icone: "🧫",
+    chaves: ["fezes", "parasitolog", "coprocultura", "coproscopia",
+             "sangue oculto", "oxiuro", "calprotectina", "rotavirus"] },
   { id: "ossos", corpo: false, rotulo: "Ossos", icone: "🦴",
     chaves: ["osso", "ossea", "densitometr", "coluna", "lombar", "vertebr",
              "joelho", "ombro", "quadril", "punho", "tornozelo", "fratura",
