@@ -82,19 +82,24 @@ function aviso(texto, tipo = "info", titulo = "") {
 function explicar(erro) {
   const cru = String(erro?.message || erro || "");
   console.error("[conta]", cru);
-  if (/sending|smtp|mail/i.test(cru))
-    return "Não consegui enviar o e-mail agora. Isso é um problema do nosso "
-         + "lado — tente de novo em alguns minutos.";
-  if (/rate|limit|too many/i.test(cru))
-    return "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.";
-  if (/invalid|expired|token/i.test(cru))
-    return "Código inválido ou vencido. Peça um novo código.";
+  // As etiquetas do banco vêm PRIMEIRO: são exatas, e um padrão genérico
+  // logo acima as sequestra. Foi o que aconteceu — "LIMITE_DOCUMENTOS" casa
+  // com /limit/ e o paciente lia "muitas tentativas seguidas" ao chegar no
+  // teto de documentos.
   if (/LIMITE_DOCUMENTOS/.test(cru))
     return "Você chegou ao limite de documentos guardados. Para guardar mais, "
          + "apague algum que não precise mais.";
   if (/LIMITE_PAGINAS/.test(cru))
     return "Este documento já tem páginas demais. Guarde o restante como um "
          + "segundo documento.";
+  if (/sending|smtp|mail/i.test(cru))
+    return "Não consegui enviar o e-mail agora. Isso é um problema do nosso "
+         + "lado — tente de novo em alguns minutos.";
+  // "rate limit" e não só "limit", pela mesma razão.
+  if (/rate limit|too many|over_.*_rate/i.test(cru))
+    return "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.";
+  if (/invalid|expired|token/i.test(cru))
+    return "Código inválido ou vencido. Peça um novo código.";
   if (/already registered|already exists/i.test(cru))
     return "Este e-mail já está em uso. Toque em “Já usei antes” para entrar "
          + "com ele.";
