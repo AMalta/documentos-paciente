@@ -179,6 +179,24 @@
   #faixa-instalar .fechar{background:none;color:var(--tinta-3);font-size:20px;
                           padding:4px 6px}
 
+  /* ── Conta ── */
+  .btn-conta{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;
+             background:rgba(255,255,255,.16);color:#fff;width:40px;height:40px;
+             border-radius:50%;font-size:18px;display:flex;align-items:center;
+             justify-content:center}
+  header{position:relative}
+  .conta-caixa{max-width:460px;margin:0 auto;padding:22px 20px 40px;width:100%}
+  .conta-cartao{background:#fff;border-radius:14px;padding:18px;color:var(--tinta)}
+  .conta-cartao h3{margin:0 0 4px;font-size:17px}
+  .conta-cartao p{margin:0 0 14px;font-size:14.5px;color:var(--tinta-2);line-height:1.5}
+  .conta-estado{display:flex;gap:11px;align-items:center;background:var(--verde-fundo);
+                border-radius:11px;padding:12px 14px;margin-bottom:14px}
+  .conta-estado.alerta{background:var(--ambar-fundo)}
+  .conta-estado .ico{font-size:20px}
+  .conta-estado .txt{font-size:14px;line-height:1.4;color:var(--tinta)}
+  .conta-estado .txt b{display:block}
+  .passo-oculto{display:none}
+
   .rodape{margin:26px 0 8px;text-align:center;font-size:12px;color:var(--tinta-3);
           line-height:1.6}
   .escondido{display:none!important}
@@ -189,6 +207,7 @@
 <header>
   <h1>Meus documentos de saúde</h1>
   <p id="cabecalho-sub">exames, laudos e receitas num lugar só</p>
+  <button class="btn-conta" id="btn-conta" aria-label="Minha conta">👤</button>
 </header>
 
 <!-- BOAS-VINDAS ---------------------------------------------------------- -->
@@ -232,6 +251,9 @@
       </div>
 
       <button class="bv-comecar" id="bv-comecar">Começar agora</button>
+      <button class="bv-comecar" id="bv-voltar"
+              style="color:#cfe2ef;font-weight:400;font-size:14.5px;padding:2px">
+        Já usei antes em outro celular</button>
     </div>
 
     <div class="bv-rodape">
@@ -315,6 +337,68 @@
     Nenhum médico enxerga nada sem você liberar.
   </div>
 </main>
+
+<!-- CONTA ----------------------------------------------------------------- -->
+<!-- Duas coisas na mesma tela, porque são a mesma pergunta vista de dois
+     lados: como não perder o acervo, e como trazê-lo de volta. -->
+<div class="tela-cheia escondido" id="tela-conta" style="background:#1a5276">
+  <div class="barra">
+    <span class="titulo">Minha conta</span>
+    <button id="conta-fechar">Fechar</button>
+  </div>
+  <div class="palco" style="align-items:flex-start;overflow-y:auto">
+    <div class="conta-caixa">
+
+      <div class="conta-estado" id="conta-estado">
+        <span class="ico">⚠️</span>
+        <span class="txt" id="conta-estado-txt"></span>
+      </div>
+
+      <!-- Guardar o e-mail (conta anônima) -->
+      <div class="conta-cartao" id="conta-proteger">
+        <h3>Guarde seu acesso</h3>
+        <p>Informe um e-mail para conseguir abrir seus documentos em outro
+          celular — ou neste mesmo, se um dia ele for limpo ou trocado.</p>
+
+        <div id="proteger-passo1">
+          <label for="conta-email">Seu e-mail</label>
+          <input id="conta-email" type="email" inputmode="email" autocomplete="email"
+                 placeholder="nome@exemplo.com">
+          <button class="btn-salvar" id="conta-enviar" style="margin-top:14px">
+            Enviar código</button>
+        </div>
+
+        <div id="proteger-passo2" class="passo-oculto">
+          <p style="margin-bottom:10px">Enviamos um código para
+            <b id="conta-email-eco"></b>. Digite abaixo — ou toque no link do
+            e-mail, que funciona igual.</p>
+          <label for="conta-codigo">Código de 6 dígitos</label>
+          <input id="conta-codigo" type="text" inputmode="numeric" maxlength="6"
+                 autocomplete="one-time-code" placeholder="000000"
+                 style="letter-spacing:.3em;font-size:22px;text-align:center">
+          <button class="btn-salvar" id="conta-confirmar" style="margin-top:14px">
+            Confirmar</button>
+          <button class="btn-texto" id="conta-voltar" style="width:100%;margin-top:6px">
+            usar outro e-mail</button>
+        </div>
+      </div>
+
+      <!-- Conta já protegida -->
+      <div class="conta-cartao escondido" id="conta-pronta">
+        <h3>Acesso guardado</h3>
+        <p>Seus documentos estão ligados a <b id="conta-email-atual"></b>.
+          Em outro celular, toque em “Já usei antes” e informe esse e-mail.</p>
+        <button class="btn-linha" id="conta-sair" style="width:100%">Sair desta conta</button>
+      </div>
+
+      <div style="color:#cfe2ef;font-size:12.5px;line-height:1.6;margin-top:18px;
+                  text-align:center">
+        Usamos o e-mail só para você voltar ao seu acervo.<br>
+        Nada é enviado a médico, clínica ou laboratório.
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- RECORTE DE MARGENS ---------------------------------------------------- -->
 <div class="tela-cheia escondido" id="tela-recorte">

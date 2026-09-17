@@ -244,6 +244,7 @@ async function guardar() {
     cancelar();
     aviso("Documento guardado.", "ok");
     await carregar();
+    convidarAProteger();
   } catch (erro) {
     console.error(erro);
     aviso("Nada foi perdido: as fotos continuam aqui. Confira a internet e "
@@ -299,6 +300,24 @@ el.visuFechar.onclick = () => {
 };
 // Toque longo na imagem não abre o menu do navegador.
 el.visuImg.addEventListener("contextmenu", (e) => e.preventDefault());
+
+/* Convite para guardar o acesso, no único momento em que ele faz sentido:
+   logo depois do primeiro documento salvo. Aparece uma vez por sessão e
+   some se a pessoa já tem e-mail — cobrança repetida vira ruído e ensina o
+   usuário a ignorar avisos, inclusive os importantes. */
+let convidou = false;
+function convidarAProteger() {
+  if (convidou || !contaAnonima() || documentos.length !== 1) return;
+  convidou = true;
+  const d = aviso(
+    "Se este celular for limpo ou trocado, você perde o caminho de volta. "
+    + "Leva 30 segundos guardar um e-mail.<br>"
+    + "<button id='convite-proteger' style=\"margin-top:9px;background:var(--azul);"
+    + "color:#fff;border:0;border-radius:8px;padding:9px 14px;font:inherit;"
+    + "font-size:14px;font-weight:600\">Guardar meu acesso</button>",
+    "info", "Seu primeiro documento está guardado");
+  d.querySelector("#convite-proteger").onclick = () => { d.remove(); abrirConta(false); };
+}
 
 /* ── Lista ────────────────────────────────────────────────────────────── */
 async function carregar() {
@@ -492,6 +511,170 @@ bv.faixaFechar.onclick = () => {
   bv.faixa.classList.add("escondido");
   try { localStorage.setItem("faixa-instalar-nao", "1"); } catch (e) {}
 };
+
+/* ═══ Conta ═══════════════════════════════════════════════════════════════
+   A sessão anônima resolve o começo — fotografar sem cadastro — e cria um
+   problema que só aparece depois: limpar o navegador ou trocar de celular
+   apaga o CAMINHO de volta. Os documentos continuam no banco e ninguém mais
+   os alcança. Por isso o e-mail não é login, é chave de retorno.
+
+   Pedido no momento certo: nunca na entrada, e sim depois do primeiro
+   documento guardado, quando já existe algo a perder. Antes disso é só
+   formulário barrando quem ainda não viu valor nenhum.
+
+   Código de 6 dígitos em vez de só link: no celular, o link do e-mail abre
+   noutro app, às vezes noutro navegador, e a sessão se perde no caminho.
+   Digitar o código mantém tudo na mesma tela. O link continua valendo para
+   quem preferir tocar nele.                                                 */
+const ct = {
+  botao: $("btn-conta"), tela: $("tela-conta"), fechar: $("conta-fechar"),
+  estado: $("conta-estado"), estadoTxt: $("conta-estado-txt"),
+  proteger: $("conta-proteger"), pronta: $("conta-pronta"),
+  passo1: $("proteger-passo1"), passo2: $("proteger-passo2"),
+  email: $("conta-email"), enviar: $("conta-enviar"), eco: $("conta-email-eco"),
+  codigo: $("conta-codigo"), confirmar: $("conta-confirmar"), voltar: $("conta-voltar"),
+  emailAtual: $("conta-email-atual"), sair: $("conta-sair"),
+  bvVoltar: $("bv-voltar"),
+};
+
+// `recuperando` distingue as duas jornadas que usam a MESMA tela: guardar o
+// e-mail de quem já está aqui, e trazer de volta o acervo de quem chegou num
+// celular novo. O código do Supabase é diferente em cada caso.
+let recuperando = false;
+
+const contaAnonima = () => !usuario?.email;
+
+function pintarConta() {
+  const protegida = !contaAnonima();
+  ct.pronta.classList.toggle("escondido", !protegida);
+  ct.proteger.classList.toggle("escondido", protegida);
+  ct.estado.classList.toggle("alerta", !protegida);
+  ct.estado.querySelector(".ico").textContent = protegida ? "✅" : "⚠️";
+  ct.estadoTxt.innerHTML = protegida
+    ? "<b>Seu acesso está guardado</b>Você consegue abrir seus documentos em outro celular."
+    : "<b>Seu acesso ainda não está guardado</b>Se este celular for limpo ou trocado, "
+      + "você perde o caminho de volta aos documentos.";
+  if (protegida) ct.emailAtual.textContent = usuario.email;
+}
+
+function abrirConta(paraRecuperar = false) {
+  recuperando = paraRecuperar;
+  ct.passo1.classList.remove("passo-oculto");
+  ct.passo2.classList.add("passo-oculto");
+  ct.codigo.value = "";
+  pintarConta();
+  if (paraRecuperar) {
+    ct.proteger.classList.remove("escondido");
+    ct.proteger.querySelector("h3").textContent = "Voltar ao meu acervo";
+    ct.proteger.querySelector("p").textContent =
+      "Informe o e-mail que você usou antes. Enviamos um código para confirmar "
+      + "que é você.";
+  } else {
+    ct.proteger.querySelector("h3").textContent = "Guarde seu acesso";
+    ct.proteger.querySelector("p").textContent =
+      "Informe um e-mail para conseguir abrir seus documentos em outro celular "
+      + "— ou neste mesmo, se um dia ele for limpo ou trocado.";
+  }
+  ct.tela.classList.remove("escondido");
+}
+
+async function enviarCodigo() {
+  const email = (ct.email.value || "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    aviso("Confira o e-mail digitado.", "erro");
+    return;
+  }
+  ct.enviar.disabled = true;
+  ct.enviar.textContent = "Enviando…";
+  try {
+    if (recuperando) {
+      // Trazer de volta um acervo que já existe. Se houver documentos nesta
+      // sessão anônima, eles ficam para trás — avisa antes, não depois.
+      if (documentos.length) {
+        const ok = confirm(`Você tem ${documentos.length} documento(s) guardado(s) `
+          + "neste celular que ainda não estão ligados a e-mail nenhum. Ao entrar "
+          + "com outra conta, eles deixam de aparecer aqui. Deseja continuar?");
+        if (!ok) throw new Error("cancelado");
+      }
+      const { error } = await sb.auth.signInWithOtp({ email });
+      if (error) throw error;
+    } else {
+      const { error } = await sb.auth.updateUser({ email });
+      if (error) throw error;
+    }
+    ct.eco.textContent = email;
+    ct.passo1.classList.add("passo-oculto");
+    ct.passo2.classList.remove("passo-oculto");
+    ct.codigo.focus();
+  } catch (e) {
+    if (e.message !== "cancelado") {
+      aviso(e.message || "Não consegui enviar o código.", "erro");
+    }
+  } finally {
+    ct.enviar.disabled = false;
+    ct.enviar.textContent = "Enviar código";
+  }
+}
+
+async function confirmarCodigo() {
+  const email = (ct.eco.textContent || "").trim();
+  const token = (ct.codigo.value || "").replace(/\D/g, "");
+  if (token.length < 6) { aviso("O código tem 6 dígitos.", "erro"); return; }
+
+  ct.confirmar.disabled = true;
+  ct.confirmar.textContent = "Confirmando…";
+  try {
+    // `email_change` liga o e-mail a quem já está aqui; `email` entra numa
+    // conta que já existia. Trocar os dois faz o Supabase recusar o código
+    // sem dizer o motivo.
+    const { data, error } = await sb.auth.verifyOtp({
+      email, token, type: recuperando ? "email" : "email_change",
+    });
+    if (error) throw error;
+    usuario = data.user || (await sb.auth.getUser()).data.user;
+    await sb.from("pacientes_app").upsert({ id: usuario.id }, { onConflict: "id" });
+    ct.tela.classList.add("escondido");
+    aviso(recuperando ? "Pronto! Seus documentos foram recuperados."
+                      : "Acesso guardado. Agora dá para abrir em outro celular.", "ok");
+    await carregar();
+  } catch (e) {
+    aviso((e.message || "Código não confere") + ". Confira o e-mail e tente de novo.",
+          "erro");
+  } finally {
+    ct.confirmar.disabled = false;
+    ct.confirmar.textContent = "Confirmar";
+  }
+}
+
+ct.botao.onclick = () => abrirConta(false);
+ct.bvVoltar.onclick = () => { fecharBoasVindas(); abrirConta(true); };
+ct.fechar.onclick = () => ct.tela.classList.add("escondido");
+ct.enviar.onclick = enviarCodigo;
+ct.confirmar.onclick = confirmarCodigo;
+ct.voltar.onclick = () => {
+  ct.passo2.classList.add("passo-oculto");
+  ct.passo1.classList.remove("passo-oculto");
+};
+ct.sair.onclick = async () => {
+  if (!confirm("Sair da conta neste celular? Seus documentos continuam "
+             + "guardados e voltam quando você entrar de novo.")) return;
+  await sb.auth.signOut();
+  location.reload();
+};
+
+// Quem toca no link do e-mail em vez de digitar o código volta para cá com a
+// sessão já trocada.
+sb.auth.onAuthStateChange((evento, sessao) => {
+  if (sessao?.user) {
+    const mudou = usuario && usuario.id !== sessao.user.id;
+    usuario = sessao.user;
+    if (!ct.tela.classList.contains("escondido")) {
+      ct.tela.classList.add("escondido");
+      aviso("Pronto! Seu acesso está guardado.", "ok");
+    }
+    if (mudou) carregar();
+  }
+});
 
 /* ── Ligações ─────────────────────────────────────────────────────────── */
 el.fotografar.onclick = () => el.camera.click();
