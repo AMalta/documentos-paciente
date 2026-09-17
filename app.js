@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.8";
+const VERSAO_APP = "2026-09-18.10";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -23,6 +23,7 @@ const el = {
   filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   lista: $("lista"), sub: $("cabecalho-sub"),
   busca: $("busca"), buscaCaixa: $("busca-caixa"), buscaLimpar: $("busca-limpar"),
+  corpoBloco: $("corpo-bloco"), corpo: $("corpo"), folhinhas: $("folhinhas"),
   telaRecorte: $("tela-recorte"), recorteArea: $("recorte-area"),
   recorteImg: $("recorte-img"), marca: $("marca"),
   recorteOk: $("recorte-ok"), recorteCancelar: $("recorte-cancelar"),
@@ -890,6 +891,151 @@ function termosDaBusca() {
   return semAcento(el.busca.value).split(/\s+/).filter(Boolean);
 }
 
+/* ── Corpo e folhinhas ─────────────────────────────────────────────────
+   Achar sem ler e sem digitar: toca-se a parte do corpo. Existe porque a
+   busca por texto, por melhor que esteja, cobra duas coisas do paciente —
+   saber escrever o nome do exame e enxergar o teclado. O piloto pede
+   explicitamente uma pessoa com dificuldade real com celular, e para ela
+   isto e a diferenca entre usar e desistir.
+
+   POR QUE UM DOCUMENTO PODE ESTAR EM VARIAS REGIOES. Foi o que matou a
+   ideia anterior de `especialidade`: la o campo tinha de escolher UMA
+   gaveta, e o colesterol era sangue OU coracao, nunca os dois — quem
+   procurasse pelo lado errado nao achava. Aqui e filtro, e filtro aceita
+   pertencer a varios lugares. O TSH responde a "sangue" e a "pescoco"; o
+   colesterol, a "sangue" e a "peito". Ninguem fica sem.
+
+   POR QUE SANGUE E OSSO SAO FOLHINHA E NAO PARTE DO BONECO. Exame de
+   laboratorio e a MAIOR parte de qualquer acervo e nao mora em canto nenhum
+   da anatomia. Force-lo no braco ("foi de onde tiraram") explicaria a
+   COLETA, nao o exame. Densitometria e o mesmo caso: coluna, quadril ou
+   punho, conforme o aparelho. Folhinha com a palavra escrita resolve sem
+   metafora torta — e a palavra escrita e justamente o que um icone sozinho
+   nao entrega.
+
+   O COMBUSTIVEL E O NOME do documento. Se o paciente nao digitar nada, o
+   app grava o rotulo generico ("Exame") e nenhuma regiao acende. Isso e
+   informacao sobre o piloto, nao defeito — e e um motivo a mais para a fase
+   2: IA que preenche o nome acende o boneco sem ninguem digitar.
+
+   Para estender: acrescente a palavra na lista da regiao. Nada mais muda. */
+const REGIOES = [
+  // no boneco
+  { id: "cabeca", corpo: true, rotulo: "Cabeça",
+    chaves: ["cranio", "encefalo", "cerebro", "eeg", "enxaqueca", "hipofise",
+             "sela turcica", "seios da face", "olho", "oftalm", "retina",
+             "oculos", "visao", "acuidade", "fundo de olho", "ouvido",
+             "audiometria", "otorrino", "nasal", "sinusite"] },
+  { id: "pescoco", corpo: true, rotulo: "Pescoço",
+    chaves: ["tireoide", "tireoid", "tsh", "t3", "t4", "trab", "carotida",
+             "cervical", "paratireoide", "tiroglobulina"] },
+  { id: "peito", corpo: true, rotulo: "Peito",
+    // "ecocardio", nao "eco": "eco" casa dentro de "ecografia", e mandaria
+    // todo ultrassom — de abdome, de tireoide, obstetrico — para o peito.
+    chaves: ["coracao", "cardiac", "cardio", "ecocardio", "ecg", "eletrocardio",
+             "holter", "mapa", "ergometr", "troponina", "ck-mb", "bnp",
+             // O perfil lipidico e exame de sangue E assunto do coracao: e o
+             // caso que a regiao unica nao resolvia, e aqui ele entra nos dois.
+             "colesterol", "hdl", "ldl", "triglicer", "lipidograma",
+             "pressao arterial", "pulmao", "pulmonar", "torax", "espirometr",
+             "polissonograf", "respirat", "mama", "mamograf", "mamaria"] },
+  { id: "barriga", corpo: true, rotulo: "Barriga",
+    chaves: ["abdome", "abdominal", "figado", "hepat", "tgo", "tgp",
+             "transaminase", "gama gt", "glutamil", "bilirrubina", "amilase",
+             "lipase", "pancrea", "vesicula", "biliar", "estomago", "gastr",
+             "endoscopia", "colonoscopia", "intestin", "colon", "reto",
+             "fezes", "parasit", "helicobacter"] },
+  { id: "quadril", corpo: true, rotulo: "Quadril",
+    chaves: ["rim", "rins", "renal", "urina", "urinar", "eas", "elementos anormais",
+             "creatinina", "ureia", "clearance", "bexiga", "prostata", "psa",
+             "utero", "uterin", "ovario", "transvaginal", "papanicolau",
+             "preventivo", "ginecolog", "pelvic"] },
+
+  // folhinhas — o que nao tem lugar no corpo
+  { id: "sangue", corpo: false, rotulo: "Sangue", icone: "🩸",
+    chaves: ["hemograma", "sangue", "hematocrito", "hemoglobina", "plaqueta",
+             "leucocit", "glicose", "glicemia", "glicada", "hba1c",
+             "colesterol", "hdl", "ldl", "triglicer", "lipidograma",
+             "creatinina", "ureia", "acido urico", "tsh", "t3", "t4",
+             "vitamina", "ferritina", "ferro", "albumina", "proteina",
+             "sorologia", "anticorpo", "pcr", "vhs", "coagulograma", "tap",
+             "protrombina", "fosfatase", "gama gt", "tgo", "tgp",
+             "bilirrubina", "eletroforese", "tipagem", "dosagem"] },
+  { id: "ossos", corpo: false, rotulo: "Ossos", icone: "🦴",
+    chaves: ["osso", "ossea", "densitometr", "coluna", "lombar", "vertebr",
+             "joelho", "ombro", "quadril", "punho", "tornozelo", "fratura",
+             "artro", "reumat", "calcio", "fator reumatoide", "ortoped"] },
+  { id: "receitas", corpo: false, rotulo: "Receitas", icone: "💊",
+    tipos: ["receita"], chaves: ["receita", "receitu", "prescric", "medicament"] },
+  { id: "papeis", corpo: false, rotulo: "Outros papéis", icone: "📄",
+    tipos: ["relatorio", "outro"], chaves: ["atestado", "declarac", "encaminh",
+             "relatorio", "guia", "autorizac", "vacina"] },
+];
+
+/* Em quais regioes este documento entra. Conjunto, nao valor unico — ver o
+   comentario acima. Documento que nao casa com nada nao entra em nenhuma,
+   e continua alcancavel pela lista e pela busca: o boneco ACRESCENTA um
+   caminho, nunca e o unico. */
+function regioesDoDocumento(d) {
+  const texto = semAcento((d.nome || "") + " " + (ROTULOS[d.tipo] || ""));
+  const achadas = new Set();
+  for (const r of REGIOES) {
+    if (r.tipos && r.tipos.includes(d.tipo)) { achadas.add(r.id); continue; }
+    if (r.chaves.some((c) => texto.includes(c))) achadas.add(r.id);
+  }
+  return achadas;
+}
+
+let regiaoAtiva = null;
+
+/* Acende o que tem documento e desenha as folhinhas.
+
+   Conta sobre o acervo INTEIRO, nao sobre o que sobrou dos outros filtros:
+   senao a regiao ativa se apagaria sozinha ao filtrar, e o paciente veria o
+   proprio toque desaparecer. */
+function pintarCorpo() {
+  const todos = [...documentos, ...naFila];
+  const conta = {};
+  for (const d of todos) {
+    for (const id of regioesDoDocumento(d)) conta[id] = (conta[id] || 0) + 1;
+  }
+  const algumaAcesa = REGIOES.some((r) => conta[r.id]);
+  el.corpoBloco.classList.toggle("escondido", !algumaAcesa);
+
+  for (const r of REGIOES.filter((x) => x.corpo)) {
+    const alvo = el.corpo.querySelector(`[data-regiao="${r.id}"]`);
+    if (!alvo) continue;
+    const tem = !!conta[r.id];
+    alvo.classList.toggle("tem", tem);
+    alvo.classList.toggle("ativa", regiaoAtiva === r.id);
+    // Regiao sem documento sai do alcance do toque e do leitor de tela:
+    // botao que nao faz nada e pior que botao ausente.
+    alvo.setAttribute("aria-hidden", tem ? "false" : "true");
+    alvo.setAttribute("tabindex", tem ? "0" : "-1");
+    alvo.setAttribute("aria-pressed", regiaoAtiva === r.id ? "true" : "false");
+  }
+
+  el.folhinhas.innerHTML = "";
+  for (const r of REGIOES.filter((x) => !x.corpo && conta[x.id])) {
+    const b = document.createElement("button");
+    b.className = "folhinha" + (regiaoAtiva === r.id ? " ativa" : "");
+    b.setAttribute("aria-pressed", regiaoAtiva === r.id ? "true" : "false");
+    b.dataset.regiao = r.id;
+    b.innerHTML = `<span>${r.icone}</span><span>${r.rotulo}</span>`
+                + `<span class="n">${conta[r.id]}</span>`;
+    b.onclick = () => alternarRegiao(r.id);
+    el.folhinhas.appendChild(b);
+  }
+}
+
+/* Tocar de novo solta. Uma regiao por vez, de proposito: combinar peito com
+   sangue devolveria a intersecao vazia com frequencia, e "sumiu tudo" e a
+   forma mais rapida de o paciente concluir que o aplicativo quebrou. */
+function alternarRegiao(id) {
+  regiaoAtiva = regiaoAtiva === id ? null : id;
+  desenharLista();
+}
+
 function desenharLista() {
   const tipo = el.filtroTipo.value;
   const ordem = el.filtroOrdem.value;
@@ -902,8 +1048,11 @@ function desenharLista() {
   el.buscaCaixa.classList.toggle("escondido",
     total < MINIMO_BUSCA && !termos.length);
   el.buscaCaixa.classList.toggle("tem-texto", !!el.busca.value);
+  pintarCorpo();
 
-  let lista = documentos.filter((d) => (!tipo || d.tipo === tipo) && casaBusca(d, termos));
+  const naRegiao = (d) => !regiaoAtiva || regioesDoDocumento(d).has(regiaoAtiva);
+  let lista = documentos.filter((d) =>
+    (!tipo || d.tipo === tipo) && casaBusca(d, termos) && naRegiao(d));
 
   const quando = (d) => d.data_documento || d.criado_em;
   if (ordem === "antigo") lista.sort((a, b) => String(quando(a)).localeCompare(String(quando(b))));
@@ -911,7 +1060,8 @@ function desenharLista() {
       || String(quando(b)).localeCompare(String(quando(a))));
   else lista.sort((a, b) => String(quando(b)).localeCompare(String(quando(a))));
 
-  const pend = naFila.filter((e) => (!tipo || e.tipo === tipo) && casaBusca(e, termos));
+  const pend = naFila.filter((e) =>
+    (!tipo || e.tipo === tipo) && casaBusca(e, termos) && naRegiao(e));
 
   if (!lista.length && !pend.length) {
     // Tres situacoes diferentes, tres respostas. Dizer "nenhum documento"
@@ -1457,6 +1607,18 @@ el.buscaLimpar.onclick = () => {
 // Enter fecha o teclado do celular em vez de submeter coisa nenhuma: com a
 // lista ja filtrada, o teclado so esta tapando o resultado.
 el.busca.onkeydown = (e) => { if (e.key === "Enter") el.busca.blur(); };
+
+// Um ouvinte no SVG inteiro, e nao um por regiao: pintarCorpo() redesenha o
+// estado a cada lista, e religar handler a cada vez acumularia ouvintes.
+el.corpo.addEventListener("click", (e) => {
+  const alvo = e.target.closest(".regiao.tem");
+  if (alvo) alternarRegiao(alvo.dataset.regiao);
+});
+el.corpo.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const alvo = e.target.closest(".regiao.tem");
+  if (alvo) { e.preventDefault(); alternarRegiao(alvo.dataset.regiao); }
+});
 
 /* ── Partida ──────────────────────────────────────────────────────────── */
 (async () => {

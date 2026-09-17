@@ -100,6 +100,36 @@
   .vazio .icone{font-size:40px;margin-bottom:8px}
   .vazio p{margin:0;font-size:14.5px}
 
+  /* ── Corpo e folhinhas ── */
+  .corpo-bloco{display:flex;gap:12px;align-items:center;margin:4px 0 14px;
+               background:var(--superficie);border:1px solid var(--linha);
+               border-radius:12px;padding:10px 12px}
+  #corpo{width:76px;height:auto;flex:0 0 auto}
+  #corpo .silhueta path{fill:#eaeff3}
+  /* O contorno branco separa as regioes. Sem ele o tronco vira um bloco so
+     e nada indica que ali dentro ha tres alvos diferentes de toque. */
+  #corpo .regiao{fill:#dbe3e9;stroke:#fff;stroke-width:1.4;cursor:default;
+                 transition:fill .12s}
+  /* Azul = tem documento aqui. Nao e "habilitado": e a verdade sobre o
+     acervo, e por isso o boneco de cada pessoa acende diferente. */
+  #corpo .regiao.tem{fill:#8fb8d4;cursor:pointer}
+  #corpo .regiao.tem:hover{fill:#77a6c7}
+  #corpo .regiao.ativa{fill:var(--azul)}
+  #corpo .regiao:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+
+  .folhinhas{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  /* Folhinha: a palavra ESCRITA junto do desenho. E a diferenca entre o
+     boneco (que dispensa leitura) e uma categoria abstrata como "sangue",
+     que nenhum icone sozinho comunica sem ambiguidade. */
+  .folhinha{display:flex;align-items:center;gap:6px;background:var(--papel);
+            border:1px solid var(--linha);border-radius:9px;
+            padding:8px 8px;font-size:12.5px;color:var(--tinta);
+            text-align:left;line-height:1.15}
+  .folhinha .n{color:var(--tinta-3);font-size:11px;margin-left:auto}
+  .folhinha.ativa{background:var(--azul);border-color:var(--azul);color:#fff}
+  .folhinha.ativa .n{color:#cfe2ef}
+  @media (max-width:340px){ .folhinhas{grid-template-columns:1fr} }
+
   /* ── Telas cheias: recorte e visualização ── */
   .tela-cheia{position:fixed;inset:0;background:#0d1620;z-index:50;display:flex;
               flex-direction:column;color:#fff}
@@ -372,6 +402,55 @@
            placeholder="Procurar por nome, tipo ou data">
     <button id="busca-limpar" aria-label="Limpar busca">×</button>
   </div>
+<!-- CORPO + FOLHINHAS ---------------------------------------------------- -->
+<!-- Achar sem ler e sem digitar. O boneco cobre o que tem lugar no corpo;
+     as folhinhas, o que nao tem — exame de sangue e a MAIOR parte de
+     qualquer acervo e nao mora em canto nenhum da anatomia, e forca-lo no
+     braco ("foi de onde tiraram") explica a coleta, nao o exame: o TSH e da
+     tireoide, o colesterol e do coracao. Folhinha com a palavra escrita
+     resolve sem metafora torta.
+
+     Regiao sem documento nao acende (ver `pintarCorpo`): tocar o peito e
+     achar lista vazia e pior do que o peito nunca ter acendido. E tem um
+     efeito de graca — o desenho passa a retratar quem usa: quem tem
+     cardiopatia ve o peito aceso; quem trata tireoide, o pescoco. -->
+<div class="corpo-bloco escondido" id="corpo-bloco">
+  <svg id="corpo" viewBox="0 0 100 222" role="group"
+       aria-label="Procurar por parte do corpo">
+    <!-- Bracos e pernas sao SO desenho: nao sao regioes e nao respondem ao
+         toque. Ficam num cinza mais apagado que as regioes de proposito —
+         e o unico sinal de que o corpo tem partes tocaveis e partes que
+         nao sao. -->
+    <g class="silhueta" aria-hidden="true">
+      <path d="M26 48 L20 57 L15 101 L13 136 L21 137 L24 102 L26 60 Z"/>
+      <path d="M74 48 L80 57 L85 101 L87 136 L79 137 L76 102 L74 60 Z"/>
+      <path d="M33 153 L31 191 L29 216 L39 217 L43 191 L50 162
+               L57 191 L61 217 L71 216 L69 191 L67 153 Z"/>
+    </g>
+
+    <!-- Cada regiao e um botao de verdade, com nome falado: para leitor de
+         tela o boneco nao pode ser um desenho mudo. O contorno branco entre
+         elas nao e enfeite — sem ele o tronco vira um bloco so, e nada
+         indica que ali dentro ha tres alvos diferentes. -->
+    <ellipse class="regiao" data-regiao="cabeca" tabindex="0" role="button"
+             aria-label="Cabeça e olhos" cx="50" cy="17" rx="14" ry="16"/>
+    <path class="regiao" data-regiao="pescoco" tabindex="0" role="button"
+          aria-label="Pescoço e tireoide"
+          d="M44 32 h12 v9 h-12 Z"/>
+    <path class="regiao" data-regiao="peito" tabindex="0" role="button"
+          aria-label="Peito, coração e pulmões"
+          d="M31 41 h38 l5 12 v40 h-48 v-40 Z"/>
+    <path class="regiao" data-regiao="barriga" tabindex="0" role="button"
+          aria-label="Barriga, fígado e intestino"
+          d="M26 93 h48 l-2 34 h-44 Z"/>
+    <path class="regiao" data-regiao="quadril" tabindex="0" role="button"
+          aria-label="Rins, bexiga e órgãos pélvicos"
+          d="M28 127 h44 l-4 26 h-36 Z"/>
+  </svg>
+
+  <div class="folhinhas" id="folhinhas"></div>
+</div>
+
   <div class="filtros">
     <select id="filtro-tipo">
       <option value="">Todos os tipos</option>
