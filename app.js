@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.7";
+const VERSAO_APP = "2026-09-18.8";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -842,9 +842,14 @@ function dataBR(iso) {
    ao mesmo tempo imagem e coracao — eixo unico sempre erra um dos dois.
    "eco" acha o ecocardiograma sem discussao de taxonomia.
 
-   Aparece so a partir de MINIMO_BUSCA documentos. Caixa de busca sobre tres
-   itens e ruido, e anuncia um problema que a pessoa ainda nao tem.          */
-const MINIMO_BUSCA = 6;
+   Aparece assim que existe UM documento. A primeira versao so mostrava a
+   caixa a partir de seis, com o argumento de que sobre tres itens ela e
+   ruido — e o primeiro a usar o aplicativo perguntou onde ficava a busca.
+   Esse e o teste que importa: controle escondido atras de limiar invisivel
+   nao e discreto, e inexistente para quem nao sabe que ele vai nascer. O
+   pouco de excesso com tres documentos custa menos que a funcao que ninguem
+   descobre.                                                                 */
+const MINIMO_BUSCA = 1;
 
 /* Compara conteudo, nao grafia. Quem procura digita "colesterol" no celular,
    sem acento e em minusculas, e o documento se chama "COLESTEROL TOTAL E
