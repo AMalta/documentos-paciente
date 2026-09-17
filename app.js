@@ -8,7 +8,7 @@
 // são perguntas diferentes: o service worker guarda a casca e, sem internet,
 // SEMPRE serve o cache — dá para passar uma hora testando a versão errada sem
 // perceber. Aparece no rodapé da tela de conta.
-const VERSAO_APP = "2026-09-17.1";
+const VERSAO_APP = "2026-09-17.2";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
