@@ -8,7 +8,7 @@
 // são perguntas diferentes: o service worker guarda a casca e, sem internet,
 // SEMPRE serve o cache — dá para passar uma hora testando a versão errada sem
 // perceber. Aparece no rodapé da tela de conta.
-const VERSAO_APP = "2026-09-17.4";
+const VERSAO_APP = "2026-09-18.1";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -24,6 +24,8 @@ const el = {
   recorteImg: $("recorte-img"), marca: $("marca"),
   recorteOk: $("recorte-ok"), recorteCancelar: $("recorte-cancelar"),
   recorteTudo: $("recorte-tudo"), recorteTitulo: $("recorte-titulo"),
+  recortePalco: $("recorte-palco"), recorteGirar: $("recorte-girar"),
+  recorteDicaGirar: $("recorte-dica-girar"),
   telaVisu: $("tela-visu"), visuImg: $("visu-img"), visuTitulo: $("visu-titulo"),
   visuConta: $("visu-conta"), visuAntes: $("visu-antes"),
   visuDepois: $("visu-depois"), visuFechar: $("visu-fechar"),
@@ -280,23 +282,66 @@ async function carregarPerfil() {
    ela vale igual no celular pequeno e no tablet.                            */
 let rectAtual = null;
 let resolverRecorte = null;
+let giro = 0;                 // 0, 90, 180 ou 270 — graus no sentido horário
+let natural = { l: 0, a: 0 }; // tamanho do JPEG de trabalho, sem girar
 
-function abrirRecorte(urlPreview, titulo) {
+/* Recalcula a área, a imagem e a moldura para o giro atual.
+
+   Tudo o que a tela mede — inclusive as frações que vão para o worker —
+   passa a ser do quadro GIRADO. Assim o usuário marca o que vê, e nada no
+   caminho precisa converter coordenadas de volta. */
+function ajustarTela(preservarMarca) {
+  const palco = el.recortePalco.getBoundingClientRect();
+  const trocado = giro % 180 !== 0;
+  const visL = trocado ? natural.a : natural.l;
+  const visA = trocado ? natural.l : natural.a;
+  if (!visL || !visA || !palco.width || !palco.height) return;
+
+  const escala = Math.min(palco.width / visL, palco.height / visA);
+  const areaL = Math.round(visL * escala), areaA = Math.round(visA * escala);
+  el.recorteArea.style.width = areaL + "px";
+  el.recorteArea.style.height = areaA + "px";
+  // A imagem mantém o tamanho SEM giro; a rotação é que a encaixa na área.
+  el.recorteImg.style.width = Math.round(natural.l * escala) + "px";
+  el.recorteImg.style.height = Math.round(natural.a * escala) + "px";
+  el.recorteImg.style.transform = `translate(-50%,-50%) rotate(${giro}deg)`;
+
+  // Quadro deitado quase sempre é documento em pé fotografado de lado —
+  // o caso que a medição mostrou custar a leitura da data.
+  el.recorteDicaGirar.classList.toggle("escondido", visL <= visA);
+
+  // Margem de 6%: sugere o corte sem esconder nada, e deixa claro que a
+  // moldura se mexe. Num giro ela reinicia, porque o quadro mudou de
+  // sentido; num redimensionamento ela é preservada.
+  const r = preservarMarca && rectAtual
+    ? rectAtual : { x: 0.06, y: 0.06, l: 0.88, a: 0.88 };
+  posicionar(areaL * r.x, areaA * r.y, areaL * r.l, areaA * r.a);
+}
+
+function abrirRecorte(urlPreview, titulo, dims) {
   return new Promise((resolve) => {
     resolverRecorte = resolve;
+    giro = 0;
+    natural = { l: dims.l, a: dims.a };
     el.recorteTitulo.textContent = titulo;
     el.recorteImg.src = urlPreview;
     el.telaRecorte.classList.remove("escondido");
-    el.recorteImg.onload = () => {
-      const l = el.recorteImg.clientWidth, a = el.recorteImg.clientHeight;
-      el.recorteArea.style.width = l + "px";
-      el.recorteArea.style.height = a + "px";
-      // Começa com uma margem de 6%: sugere o corte sem esconder nada do
-      // documento, e deixa claro que a marca se mexe.
-      posicionar(l * 0.06, a * 0.06, l * 0.88, a * 0.88);
-    };
+    // O palco só tem altura depois de a tela sair de `escondido`; por isso
+    // o ajuste vem aqui, e não antes.
+    el.recorteImg.onload = () => ajustarTela(false);
   });
 }
+
+el.recorteGirar.onclick = () => {
+  giro = (giro + 90) % 360;
+  ajustarTela(false);
+};
+
+// Virar o celular com a tela de recorte aberta muda o palco. Sem isto a
+// moldura fica descolada da imagem — e ela é a única referência do corte.
+window.addEventListener("resize", () => {
+  if (!el.telaRecorte.classList.contains("escondido")) ajustarTela(true);
+});
 
 function posicionar(x, y, l, a) {
   const areaL = el.recorteArea.clientWidth, areaA = el.recorteArea.clientHeight;
@@ -347,7 +392,9 @@ function fecharRecorte(rect) {
   el.telaRecorte.classList.add("escondido");
   el.recorteImg.src = "";
   const r = resolverRecorte; resolverRecorte = null;
-  r?.(rect);
+  // O giro viaja junto do rect: os dois descrevem o mesmo quadro, e separá-los
+  // abriria espaço para aplicar um sem o outro.
+  r?.(rect ? { rect, giro } : null);
 }
 el.recorteOk.onclick = () => fecharRecorte(rectAtual);
 el.recorteTudo.onclick = () => fecharRecorte({ x: 0, y: 0, l: 1, a: 1 });
@@ -713,14 +760,18 @@ el.camera.onchange = async () => {
       const prep = await pedirAoWorker({ tipo: "preparar", arquivo: arquivos[i] });
       const urlPrev = URL.createObjectURL(prep.blob);
 
-      const rect = await abrirRecorte(urlPrev, arquivos.length > 1
-        ? `Página ${rascunho.length + 1} — ajuste as margens` : "Ajuste as margens");
+      const escolha = await abrirRecorte(
+        urlPrev,
+        arquivos.length > 1
+          ? `Página ${rascunho.length + 1} — ajuste as margens`
+          : "Ajuste as margens",
+        { l: prep.largura, a: prep.altura });
 
-      if (!rect) { URL.revokeObjectURL(urlPrev); continue; }
+      if (!escolha) { URL.revokeObjectURL(urlPrev); continue; }
 
       el.fotografar.textContent = "Finalizando…";
       const fim = await pedirAoWorker({
-        tipo: "final", blob: prep.blob, rect,
+        tipo: "final", blob: prep.blob, rect: escolha.rect, giro: escolha.giro,
         lado: CONFIG.LADO_MAXIMO, qualidade: CONFIG.QUALIDADE,
       });
       URL.revokeObjectURL(urlPrev);

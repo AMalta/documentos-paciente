@@ -110,7 +110,17 @@
 
   /* Recorte: a área fora da marca escurece, os cantos se arrastam */
   #recorte-area{position:absolute}
-  #recorte-img{display:block;max-width:100%;max-height:100%}
+  /* A imagem é posicionada e dimensionada por JS: quando ela gira 90°, a
+     ÁREA (e com ela a moldura) troca largura por altura. Deixar o tamanho
+     para o CSS faria a moldura continuar no retângulo antigo. */
+  #recorte-img{position:absolute;left:50%;top:50%;transform-origin:center center;
+               transform:translate(-50%,-50%)}
+  .recorte-acoes{display:flex;gap:8px;justify-content:center;margin-top:8px}
+  .recorte-acoes button{background:rgba(255,255,255,.12);border-radius:8px;
+                        color:#fff;padding:8px 14px;font-size:13px}
+  #recorte-girar{background:rgba(255,255,255,.22);font-weight:600}
+  .dica-girar{background:#8a5a12;color:#fff;border-radius:8px;padding:8px 12px;
+              margin-bottom:8px;font-size:13px}
   .marca{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.55);
          cursor:move;touch-action:none}
   .canto{position:absolute;width:34px;height:34px;touch-action:none}
@@ -465,7 +475,7 @@
     <span class="titulo" id="recorte-titulo">Ajuste as margens</span>
     <button class="confirmar" id="recorte-ok">Usar</button>
   </div>
-  <div class="palco">
+  <div class="palco" id="recorte-palco">
     <div id="recorte-area">
       <img id="recorte-img" alt="">
       <div class="marca" id="marca">
@@ -477,11 +487,19 @@
     </div>
   </div>
   <div class="dica">
+    <!-- Só aparece quando o quadro está deitado. Sugere, não gira sozinho:
+         há documento que É deitado (tira de ECG, planilha larga), e girar
+         à revelia obrigaria o usuário a desfazer. -->
+    <div class="dica-girar escondido" id="recorte-dica-girar">
+      Documento em pé numa foto deitada? Toque em <b>Girar</b> — a letra
+      fica bem maior.
+    </div>
     Arraste os cantos até sobrar só o documento. Cortar a mesa em volta deixa
     a letra maior e o arquivo menor.
-    <div style="margin-top:6px"><button id="recorte-tudo"
-      style="background:rgba(255,255,255,.12);border-radius:8px;color:#fff;
-             padding:8px 14px;font-size:13px">Usar a foto inteira</button></div>
+    <div class="recorte-acoes">
+      <button id="recorte-girar">↻ Girar</button>
+      <button id="recorte-tudo">Usar a foto inteira</button>
+    </div>
   </div>
 </div>
 
