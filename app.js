@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.12";
+const VERSAO_APP = "2026-09-18.13";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -25,6 +25,8 @@ const el = {
   busca: $("busca"), buscaCaixa: $("busca-caixa"), buscaLimpar: $("busca-limpar"),
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"), folhinhas: $("folhinhas"),
   corpoDica: $("corpo-dica"),
+  agenda: $("agenda"), agendaItens: $("agenda-itens"), agendaMais: $("agenda-mais"),
+  telaCompromisso: $("tela-compromisso"),
   telaRecorte: $("tela-recorte"), recorteArea: $("recorte-area"),
   recorteImg: $("recorte-img"), marca: $("marca"),
   recorteOk: $("recorte-ok"), recorteCancelar: $("recorte-cancelar"),
@@ -42,6 +44,13 @@ let documentos = [];
 let naFila = [];     // guardados no celular, ainda sem subir
 
 const ICONES = { exame: "🧪", laudo: "📄", receita: "💊", relatorio: "📋", outro: "📎" };
+const cp = {
+  tituloTela: $("comp-titulo-tela"), cancelar: $("comp-cancelar"),
+  salvar: $("comp-salvar"), tipo: $("comp-tipo"), nome: $("comp-nome"),
+  data: $("comp-data"), hora: $("comp-hora"), onde: $("comp-onde"),
+  repetir: $("comp-repetir"), apagar: $("comp-apagar"),
+};
+
 const ROTULOS = { exame: "Exame", laudo: "Laudo", receita: "Receita",
                   relatorio: "Relatório", outro: "Documento" };
 
@@ -483,6 +492,32 @@ async function guardar() {
   await carregar();
   await enviarFila();
   convidarAProteger();
+  convidarAMarcar(entrada);
+}
+
+/* A pergunta do retorno, logo depois de guardar.
+
+   Nunca como tarefa separada. "Cadastre seus compromissos" numa tela vazia
+   e o caminho mais curto para a agenda ficar vazia para sempre: exige que a
+   pessoa lembre de fazer, num momento em que ela nao esta pensando nisso.
+   Aqui ela ACABOU de guardar um exame, ja esta no assunto, e e o unico
+   instante em que sabe a resposta — o papel do retorno costuma estar na
+   mesma mao.
+
+   Uma vez por documento guardado, e um "nao" basta. Perguntar de novo
+   depois de recusado transforma ajuda em cobranca.                        */
+function convidarAMarcar(entrada) {
+  if (!entrada || !usuario) return;
+  // Nao atropela o convite para proteger a conta, que e mais importante:
+  // sem e-mail, perder o celular perde o acervo inteiro.
+  if (!ct.tela.classList.contains("escondido")) return;
+  setTimeout(() => {
+    if (!confirm("Tem retorno ou próximo exame marcado?"
+                 + LINHA + LINHA
+                 + "O aplicativo avisa quando a data chegar.")) return;
+    abrirCompromisso(null, { tipo: "retorno",
+                             titulo: entrada.nome ? "Retorno — " + entrada.nome : "" });
+  }, 700);
 }
 
 /* ═══ Envio da fila ═══════════════════════════════════════════════════════
@@ -550,8 +585,8 @@ async function enviarFila() {
 
 // Três gatilhos, porque são três realidades: a conexão que volta, o app que
 // é reaberto, e a espera longa com o app na tela.
-window.addEventListener("online", () => enviarFila());
-setInterval(() => { if (navigator.onLine) enviarFila(); }, 60000);
+window.addEventListener("online", () => { enviarFila(); sincronizarAgenda(); });
+setInterval(() => { if (navigator.onLine) { enviarFila(); sincronizarAgenda(); } }, 60000);
 
 /* Convite para guardar o acesso, no único momento em que ele faz sentido:
    logo depois do primeiro documento salvo. Aparece uma vez por sessão e
@@ -570,6 +605,197 @@ function convidarAProteger() {
     "info", "Seu primeiro documento está guardado");
   d.querySelector("#convite-proteger").onclick = () => { d.remove(); abrirConta(false); };
 }
+
+/* ═══ Agenda ══════════════════════════════════════════════════════════════
+   Local-first: a tela lê SEMPRE de `compromissos`, que vem do celular. A
+   rede só mexe nisso em segundo plano.                                     */
+let compromissos = [];
+let compEditando = null;
+
+const ROTULO_TIPO = { consulta: "Consulta", retorno: "Retorno",
+                      exame: "Exame", outro: "Compromisso" };
+
+/* SOBE ANTES DE DESCER, sempre. Descer primeiro sobrescreveria com a versão
+   do servidor aquilo que a pessoa acabou de escrever offline — e ela não
+   teria como saber que perdeu. Mesmo princípio do sync do Indiclin.        */
+async function sincronizarAgenda() {
+  if (!usuario) return;
+  let locais = [];
+  try { locais = await AgendaDB.todos(); } catch (e) { return; }
+  const meus = locais.filter((c) => c.paciente_id === usuario.id);
+
+  if (navigator.onLine) {
+    for (const c of meus.filter((x) => x.pendente || x.apagado)) {
+      try {
+        if (c.apagado) {
+          const { error } = await sb.from("compromissos").delete().eq("id", c.id);
+          if (error) throw error;
+          // Só agora a lápide some: enquanto o servidor não confirmar, ela
+          // precisa continuar aqui para a linha não ressuscitar na descida.
+          await AgendaDB.remover(c.id);
+        } else {
+          const { pendente, apagado, ...linha } = c;
+          const { error } = await sb.from("compromissos").upsert(linha);
+          if (error) throw error;
+          await AgendaDB.guardar({ ...c, pendente: false });
+        }
+      } catch (e) {
+        console.warn("[agenda] pendente", c.id, e?.message || e);
+        break;   // falhou um, para a rodada: os próximos falhariam igual
+      }
+    }
+
+    try {
+      const { data, error } = await sb.from("compromissos").select("*");
+      if (!error && data) {
+        const agora = await AgendaDB.todos();
+        const local = new Map(agora.map((c) => [c.id, c]));
+        for (const linha of data) {
+          const meu = local.get(linha.id);
+          // Trabalho local ainda não confirmado VENCE o servidor: ele é mais
+          // novo por definição, e o servidor ainda não o viu.
+          if (meu && (meu.pendente || meu.apagado)) continue;
+          await AgendaDB.guardar({ ...linha, pendente: false });
+        }
+        // Some daqui o que sumiu de lá (apagado noutro aparelho).
+        const doServidor = new Set(data.map((l) => l.id));
+        for (const c of agora) {
+          if (c.paciente_id === usuario.id && !c.pendente && !c.apagado
+              && !doServidor.has(c.id)) await AgendaDB.remover(c.id);
+        }
+      }
+    } catch (e) { console.warn("[agenda] descida", e?.message || e); }
+  }
+
+  try { compromissos = await AgendaDB.listar(usuario.id); } catch (e) { /* vazio */ }
+  desenharAgenda();
+}
+
+function desenharAgenda() {
+  const prox = proximosCompromissos(compromissos);
+  el.agenda.classList.toggle("escondido", !usuario);
+  el.agendaItens.innerHTML = "";
+  if (!prox.length) {
+    el.agendaMais.textContent = compromissos.length
+      ? "+ Marcar consulta ou exame"
+      : "+ Marcar uma consulta ou exame";
+    return;
+  }
+  el.agendaMais.textContent = "+ Marcar outro";
+
+  for (const c of prox) {
+    const f = comoFalta(diasAte(c.quando));
+    const div = document.createElement("div");
+    div.className = "comp " + f.urgencia;
+    const detalhes = [dataBR(c.quando), c.hora || "", c.onde || ""]
+      .filter(Boolean).join(" · ");
+    div.innerHTML = `
+      <div class="txt">
+        <div class="quando">${f.texto}</div>
+        <div class="nome">${c.titulo}</div>
+        <div class="det">${ROTULO_TIPO[c.tipo] || ""}${detalhes ? " · " + detalhes : ""}</div>
+      </div>`;
+    // Só o que já passou ganha "Já foi": perguntar antes da data convidaria
+    // a marcar como feito o que ainda não aconteceu.
+    if (f.urgencia === "passou" || f.urgencia === "hoje") {
+      const b = document.createElement("button");
+      b.className = "feito";
+      b.textContent = "Já foi";
+      b.onclick = (e) => { e.stopPropagation(); marcarFeito(c); };
+      div.appendChild(b);
+    }
+    div.onclick = () => abrirCompromisso(c);
+    el.agendaItens.appendChild(div);
+  }
+}
+
+/* Marcar como feito, e — se a pessoa pediu repetição — oferecer o próximo.
+   OFERECER, não criar sozinho: a periodicidade é a decisão dela, e o médico
+   pode ter mudado o intervalo na consulta que ela acabou de sair.          */
+async function marcarFeito(c) {
+  await salvarCompromisso({ ...c, feito_em: new Date().toISOString() });
+  if (!c.repetir_meses) return aviso("Marcado como feito.", "ok");
+  const proxima = somarMeses(c.quando, c.repetir_meses);
+  if (confirm(`Marcar o próximo "${c.titulo}" para ${dataBR(proxima)}?`
+              + LINHA + LINHA + "Você pode mudar a data depois.")) {
+    await salvarCompromisso({
+      id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
+      paciente_id: usuario.id, tipo: c.tipo, titulo: c.titulo,
+      quando: proxima, hora: c.hora || null, onde: c.onde || null,
+      repetir_meses: c.repetir_meses, feito_em: null,
+      criado_em: new Date().toISOString(),
+    });
+    aviso(`Próximo marcado para ${dataBR(proxima)}.`, "ok");
+  }
+}
+
+/* Grava LOCAL e sobe em paralelo. Não é "grava e envia quando reconectar":
+   envia agora, e a marca `pendente` existe só para a falha.                */
+async function salvarCompromisso(c) {
+  const linha = { ...c, atualizado_em: new Date().toISOString(), pendente: true };
+  await AgendaDB.guardar(linha);
+  compromissos = await AgendaDB.listar(usuario.id);
+  desenharAgenda();
+  sincronizarAgenda();
+}
+
+async function apagarCompromisso(id) {
+  const c = compromissos.find((x) => x.id === id);
+  if (!c) return;
+  // Lápide, não remoção: apagar só aqui faria a linha ressuscitar na próxima
+  // descida do servidor.
+  await AgendaDB.guardar({ ...c, apagado: true, pendente: true });
+  compromissos = await AgendaDB.listar(usuario.id);
+  desenharAgenda();
+  sincronizarAgenda();
+}
+
+/* ── A tela de marcar ─────────────────────────────────────────────────── */
+function abrirCompromisso(c, sugestao) {
+  compEditando = c || null;
+  cp.tituloTela.textContent = c ? "Compromisso" : "Marcar";
+  cp.tipo.value = (c && c.tipo) || (sugestao && sugestao.tipo) || "consulta";
+  cp.nome.value = (c && c.titulo) || (sugestao && sugestao.titulo) || "";
+  cp.data.value = (c && c.quando) || "";
+  cp.hora.value = (c && c.hora) || "";
+  cp.onde.value = (c && c.onde) || "";
+  cp.repetir.value = (c && c.repetir_meses) ? String(c.repetir_meses) : "";
+  cp.apagar.classList.toggle("escondido", !c);
+  el.telaCompromisso.classList.remove("escondido");
+  if (!c) setTimeout(() => cp.nome.focus(), 120);
+}
+
+function fecharCompromisso() {
+  el.telaCompromisso.classList.add("escondido");
+  compEditando = null;
+}
+
+cp.cancelar.onclick = fecharCompromisso;
+cp.salvar.onclick = async () => {
+  const titulo = (cp.nome.value || "").trim() || ROTULO_TIPO[cp.tipo.value];
+  if (!cp.data.value) {
+    return aviso("Escolha a data.", "erro", "Falta a data");
+  }
+  const base = compEditando || {
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
+    paciente_id: usuario.id, feito_em: null,
+    criado_em: new Date().toISOString(),
+  };
+  await salvarCompromisso({
+    ...base, tipo: cp.tipo.value, titulo, quando: cp.data.value,
+    hora: cp.hora.value || null, onde: (cp.onde.value || "").trim() || null,
+    repetir_meses: cp.repetir.value ? Number(cp.repetir.value) : null,
+  });
+  fecharCompromisso();
+  aviso("Compromisso guardado.", "ok");
+};
+cp.apagar.onclick = async () => {
+  if (!compEditando) return;
+  if (!confirm(`Apagar "${compEditando.titulo}"?`)) return;
+  await apagarCompromisso(compEditando.id);
+  fecharCompromisso();
+};
+el.agendaMais.onclick = () => abrirCompromisso(null);
 
 /* ═══ Visualizador ════════════════════════════════════════════════════════
    Sem esta tela, tocar na miniatura não fazia nada e o toque longo abria o
@@ -824,6 +1050,10 @@ async function carregar() {
 
   await lerConsumo();
   desenharLista();
+  // A agenda anda junto da lista, e nao numa chamada propria: sao os mesmos
+  // tres momentos (abrir, voltar a conexao, o minuto) e um so lugar para
+  // lembrar deles.
+  sincronizarAgenda();
   const total = documentos.length + naFila.length;
   el.sub.textContent = total
     ? `${total} documento${total > 1 ? "s" : ""} guardado${total > 1 ? "s" : ""}`

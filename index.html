@@ -138,6 +138,37 @@
   .folhinha.ativa .n{color:#cfe2ef}
   @media (max-width:340px){ .folhinhas{grid-template-columns:1fr} }
 
+  /* ── Agenda ── */
+  .agenda{margin-bottom:12px}
+  .agenda-itens{display:flex;flex-direction:column;gap:8px}
+  .comp{display:flex;align-items:center;gap:10px;background:var(--superficie);
+        border:1px solid var(--linha);border-left-width:4px;border-radius:11px;
+        padding:11px 12px;text-align:left;width:100%}
+  .comp .quando{font-size:12px;font-weight:700;text-transform:uppercase;
+                letter-spacing:.03em}
+  .comp .txt{flex:1;min-width:0}
+  .comp .nome{font-weight:600;font-size:14.5px;overflow:hidden;
+              text-overflow:ellipsis;white-space:nowrap}
+  .comp .det{font-size:12.5px;color:var(--tinta-2);margin-top:1px}
+  /* A cor diz o que fazer, e por isso nao e enfeite: vermelho = passou e
+     ninguem respondeu; ambar = e agora; azul = esta chegando. */
+  .comp.passou{border-left-color:var(--vermelho)}
+  .comp.passou .quando{color:var(--vermelho)}
+  .comp.hoje{border-left-color:var(--ambar);background:var(--ambar-fundo)}
+  .comp.hoje .quando{color:var(--ambar)}
+  .comp.perto{border-left-color:var(--azul)}
+  .comp.perto .quando{color:var(--azul)}
+  .comp.longe{border-left-color:var(--linha)}
+  .comp.longe .quando{color:var(--tinta-3)}
+  .comp .feito{background:var(--verde-fundo);color:var(--verde);
+               border-radius:8px;padding:8px 11px;font-size:13px;font-weight:600;
+               flex:0 0 auto}
+  .agenda-mais{width:100%;margin-top:8px;background:none;color:var(--azul);
+               font-size:13.5px;padding:8px;font-weight:600}
+  .comp-corpo{flex:1;overflow-y:auto;padding:16px 18px 30px;
+              background:var(--papel);color:var(--tinta)}
+  .comp-corpo label{color:var(--tinta-2)}
+
   /* ── Telas cheias: recorte e visualização ── */
   .tela-cheia{position:fixed;inset:0;background:#0d1620;z-index:50;display:flex;
               flex-direction:column;color:#fff}
@@ -362,6 +393,16 @@
   </div>
 
   <div id="avisos"></div>
+
+  <!-- AGENDA ------------------------------------------------------------ -->
+  <!-- Fica ACIMA do botao de fotografar de proposito. O lembrete so existe
+       dentro do aplicativo, entao ele tem de aparecer para quem abriu por
+       QUALQUER motivo — nao para quem abriu para ver a agenda. Depender de
+       a pessoa procurar a agenda e o mesmo que nao ter lembrete. -->
+  <div class="agenda escondido" id="agenda">
+    <div class="agenda-itens" id="agenda-itens"></div>
+    <button class="agenda-mais" id="agenda-mais">+ Marcar consulta ou exame</button>
+  </div>
 
   <!-- CAPTURA ------------------------------------------------------------ -->
   <button class="btn-grande" id="btn-fotografar">📷 Fotografar documento</button>
@@ -652,9 +693,58 @@
   </div>
 </div>
 
+<!-- COMPROMISSO: marcar e editar ------------------------------------------ -->
+<div class="tela-cheia escondido" id="tela-compromisso">
+  <div class="barra">
+    <button id="comp-cancelar">Cancelar</button>
+    <span class="titulo" id="comp-titulo-tela">Marcar</span>
+    <button class="confirmar" id="comp-salvar">Salvar</button>
+  </div>
+  <div class="comp-corpo">
+    <label for="comp-tipo">O que é</label>
+    <select id="comp-tipo">
+      <option value="consulta">Consulta</option>
+      <option value="retorno">Retorno</option>
+      <option value="exame">Exame</option>
+      <option value="outro">Outro</option>
+    </select>
+
+    <label for="comp-nome">Com quem, ou qual exame</label>
+    <input id="comp-nome" type="text" autocomplete="off"
+           placeholder="Dr. Carlos — cardiologista">
+
+    <label for="comp-data">Quando</label>
+    <input id="comp-data" type="date">
+
+    <!-- Hora separada e OPCIONAL: muita gente sabe o dia e nao o horario, e
+         exigir hora faria inventar uma — que depois vira aviso errado. -->
+    <label for="comp-hora">Hora (se souber)</label>
+    <input id="comp-hora" type="time">
+
+    <label for="comp-onde">Onde (opcional)</label>
+    <input id="comp-onde" type="text" autocomplete="off"
+           placeholder="Clínica, endereço, sala">
+
+    <!-- Quem define a periodicidade e o PACIENTE. O aplicativo nao decide
+         que alguem "precisa" repetir exame nenhum: guarda a decisao dele. -->
+    <label for="comp-repetir">Repetir</label>
+    <select id="comp-repetir">
+      <option value="">Não repetir</option>
+      <option value="3">A cada 3 meses</option>
+      <option value="6">A cada 6 meses</option>
+      <option value="12">Todo ano</option>
+      <option value="24">A cada 2 anos</option>
+    </select>
+
+    <button class="btn-linha perigo-txt escondido" id="comp-apagar"
+            style="width:100%;margin-top:20px">Apagar este compromisso</button>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="fila.js"></script>
+<script src="agenda.js"></script>
 <script src="termo.js"></script>
 <script src="app.js"></script>
 </body>

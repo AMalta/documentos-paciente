@@ -17,26 +17,43 @@
    duplicado com metade das folhas.
    ═══════════════════════════════════════════════════════════════════════ */
 
-const FilaDB = (() => {
-  const NOME = "exames-externos";
-  const LOJA = "fila";
-  let bancoPromise = null;
+/* Este arquivo e o DONO do banco local. A agenda (agenda.js) guarda dados
+   no mesmo IndexedDB, e duas partes do codigo nao podem abrir o mesmo banco
+   pedindo versoes diferentes: a segunda a chamar recebe erro e fica sem
+   banco nenhum. Entao a versao e as lojas sao declaradas AQUI, num lugar
+   so, e quem precisa pede `BancoLocal.abrir()`. */
+const VERSAO_BANCO = 2;   // 1: fila.  2: + compromissos (agenda)
 
-  function abrir() {
-    if (bancoPromise) return bancoPromise;
-    bancoPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(NOME, 1);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(LOJA)) {
-          db.createObjectStore(LOJA, { keyPath: "id" });
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-    return bancoPromise;
-  }
+const BancoLocal = (() => {
+  const NOME = "exames-externos";
+  let bancoPromise = null;
+  return {
+    abrir() {
+      if (bancoPromise) return bancoPromise;
+      bancoPromise = new Promise((resolve, reject) => {
+        const req = indexedDB.open(NOME, VERSAO_BANCO);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          // Sem `else`: quem vem da versao 1 ja tem "fila" e so ganha
+          // "compromissos"; instalacao nova ganha as duas.
+          if (!db.objectStoreNames.contains("fila")) {
+            db.createObjectStore("fila", { keyPath: "id" });
+          }
+          if (!db.objectStoreNames.contains("compromissos")) {
+            db.createObjectStore("compromissos", { keyPath: "id" });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      return bancoPromise;
+    },
+  };
+})();
+
+const FilaDB = (() => {
+  const LOJA = "fila";
+  const abrir = BancoLocal.abrir;
 
   async function transacao(modo, fn) {
     const db = await abrir();
