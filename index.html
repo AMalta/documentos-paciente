@@ -170,8 +170,10 @@
   .comp-corpo label{color:var(--tinta-2)}
 
   /* Ver o comentario em #avisos-cheia, no fim do documento. */
-  #avisos-cheia{position:fixed;left:0;right:0;z-index:60;
-                top:calc(10px + env(safe-area-inset-top));
+  /* `top` e definido por JS, medindo a barra da tela que esta na frente:
+     cravar um valor esconderia o botao Salvar em alguma tela. O valor aqui
+     e so o ponto de partida, para o primeiro quadro nao pular. */
+  #avisos-cheia{position:fixed;left:0;right:0;z-index:60;top:64px;
                 padding:0 14px;pointer-events:none}
   #avisos-cheia .aviso{pointer-events:auto;box-shadow:0 6px 24px rgba(0,0,0,.35)}
 

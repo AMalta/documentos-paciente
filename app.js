@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.14";
+const VERSAO_APP = "2026-09-18.15";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -99,9 +99,25 @@ function aviso(texto, tipo = "info", titulo = "") {
   const alvo = contaAberta ? document.getElementById("avisos-conta")
     : outraCheia ? document.getElementById("avisos-cheia")
     : el.avisos;
+  // Abaixo da BARRA da tela que esta na frente, nunca por cima dela. A
+  // barra guarda Cancelar e Salvar: uma mensagem pousada ali esconde
+  // justamente o botao que a pessoa precisa tocar depois de ler o que
+  // faltava — foi o que aconteceu com "Falta a data" cobrindo o Salvar.
+  // Medido, e nao cravado: cada tela tem a sua altura de barra, e o recorte
+  // da tela (safe-area) muda de aparelho para aparelho.
+  if (alvo.id === "avisos-cheia") {
+    const cheia = [...document.querySelectorAll(".tela-cheia")]
+      .find((t) => t.id !== "tela-conta" && !t.classList.contains("escondido"));
+    const barra = cheia && cheia.querySelector(".barra");
+    const y = barra ? barra.getBoundingClientRect().bottom : 10;
+    alvo.style.top = Math.round(y + 8) + "px";
+  }
   const d = document.createElement("div");
   d.className = "aviso " + tipo;
   d.innerHTML = (titulo ? `<b>${titulo}</b>` : "") + texto;
+  // Flutuante sai no toque: ela esta por cima do conteudo, e quem ja leu
+  // precisa de um jeito obvio de tirar do caminho.
+  if (alvo.id === "avisos-cheia") d.onclick = () => d.remove();
   alvo.appendChild(d);
   if (tipo === "ok") setTimeout(() => d.remove(), 4000);
   return d;
