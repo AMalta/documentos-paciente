@@ -122,7 +122,12 @@
              border:1px solid var(--verde-borda);color:var(--verde);
              border-radius:8px;padding:7px;font-size:12.5px;font-weight:600}
 
-  .busca-caixa{position:relative}
+  .busca-caixa{display:flex;flex-direction:column;gap:7px}
+  .busca-caixa select{width:100%;padding:9px 10px;border:1.5px solid var(--linha);
+                      border-radius:9px;background:var(--branco);color:var(--tinta);
+                      font-size:13.5px}
+  .busca-caixa select:focus{outline:2px solid var(--verde);outline-offset:1px;
+                            border-color:transparent}
   #busca{width:100%;padding:11px 12px;border:1.5px solid var(--linha);
          border-radius:10px;background:var(--branco);color:var(--tinta);font-size:14.5px}
   #busca:focus{outline:2px solid var(--verde);outline-offset:1px;border-color:transparent}
@@ -216,9 +221,24 @@
 
   <div class="palco">
     <div class="rail">
+      <!-- Busca, tipo e ordem na MESMA caixa: sao os tres jeitos de mexer na
+           mesma lista, e espalha-los pela trilha faria procurar por eles. -->
       <div class="caixa busca-caixa">
         <input id="busca" type="search" autocomplete="off"
                placeholder="Procurar por nome, tipo ou data">
+        <select id="filtro-tipo">
+          <option value="">Todos os tipos</option>
+          <option value="exame">Exames</option>
+          <option value="laudo">Laudos</option>
+          <option value="receita">Receitas</option>
+          <option value="relatorio">Relatórios</option>
+          <option value="outro">Outros</option>
+        </select>
+        <select id="filtro-ordem">
+          <option value="recente">Mais recentes primeiro</option>
+          <option value="antigo">Mais antigos primeiro</option>
+          <option value="tipo">Agrupados por tipo</option>
+        </select>
       </div>
 
       <div class="caixa escondido" id="corpo-bloco">

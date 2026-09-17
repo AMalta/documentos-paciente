@@ -45,7 +45,8 @@ const el = {
   codigo: $("codigo"), nome: $("nome"), crm: $("crm"),
   abrir: $("abrir"), erroEntrada: $("erro-entrada"),
   topoMedico: $("topo-medico"), prazo: $("prazo"), sair: $("sair"),
-  busca: $("busca"), corpoBloco: $("corpo-bloco"), corpo: $("corpo"),
+  busca: $("busca"), filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
+  corpoBloco: $("corpo-bloco"), corpo: $("corpo"),
   corpoDica: $("corpo-dica"), folhinhas: $("folhinhas"), verTodos: $("ver-todos"),
   contaDocs: $("conta-docs"), grade: $("grade"),
   telaVisu: $("tela-visu"), visuImg: $("visu-img"), visuTitulo: $("visu-titulo"),
@@ -174,15 +175,30 @@ function casaBusca(d, termos) {
 
 function desenhar() {
   const termos = termosDaBusca();
+  const tipo = el.filtroTipo.value;
+  const ordem = el.filtroOrdem.value;
   pintarCorpo();
   const lista = documentos.filter((d) =>
-    casaBusca(d, termos)
+    (!tipo || d.tipo === tipo)
+    && casaBusca(d, termos)
     && (!regiaoAtiva || regioesDoDocumento(d).has(regiaoAtiva)));
+
+  // A data do DOCUMENTO manda, e a de guardado e so o desempate: o medico
+  // pensa em "o exame de fevereiro", nao em "o que ela fotografou terca".
+  const quando = (d) => d.data_documento || d.criado_em;
+  if (ordem === "antigo") {
+    lista.sort((a, b) => String(quando(a)).localeCompare(String(quando(b))));
+  } else if (ordem === "tipo") {
+    lista.sort((a, b) => a.tipo.localeCompare(b.tipo)
+      || String(quando(b)).localeCompare(String(quando(a))));
+  } else {
+    lista.sort((a, b) => String(quando(b)).localeCompare(String(quando(a))));
+  }
 
   el.contaDocs.innerHTML = documentos.length
     ? `<b>${lista.length}</b> de ${documentos.length} documento`
       + `${documentos.length > 1 ? "s" : ""}`
-      + (regiaoAtiva || termos.length ? " · filtrando" : "")
+      + (regiaoAtiva || tipo || termos.length ? " · filtrando" : "")
     : "";
 
   if (!lista.length) {
@@ -271,6 +287,8 @@ el.corpo.addEventListener("keydown", (e) => {
 });
 el.verTodos.onclick = () => { regiaoAtiva = null; desenhar(); };
 el.busca.oninput = desenhar;
+el.filtroTipo.onchange = desenhar;
+el.filtroOrdem.onchange = desenhar;
 
 /* ── Ver o documento ──────────────────────────────────────────────────── */
 let visuPaginas = [], visuIndice = 0;
