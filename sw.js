@@ -3,7 +3,7 @@
    elas vêm por URL assinada que expira, e cache de dado de saúde no disco do
    navegador é risco sem ganho — quem precisa do acervo offline é o dono, e
    isso é assunto da fila de envio, não deste arquivo. */
-const VERSAO = "casca-v33";
+const VERSAO = "casca-v34";
 const CASCA = ["./", "./index.html", "./app.js", "./config.js",
                 "./manifest.webmanifest", "./worker.js", "./comum.js", "./fila.js", "./agenda.js", "./termo.js",
                 "./icone-192.png", "./icone-512.png", "./favicon.png"];

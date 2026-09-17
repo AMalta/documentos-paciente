@@ -134,7 +134,16 @@ const REGIOES = [
              "utero", "uterin", "ovario", "transvaginal", "papanicolau",
              "preventivo", "ginecolog", "pelvic"] },
 
-  // folhinhas — o que nao tem lugar no corpo
+  // folhinhas — o que nao tem lugar no corpo NEM no seletor de tipo
+  //
+  // Havia tambem "Receitas" e "Outros papeis", e sairam: as duas filtravam
+  // por `tipo`, que e exatamente o que o seletor de tipo ja faz. Dois
+  // controles para a mesma coisa nao sao enfase, sao a duvida de qual dos
+  // dois e o certo — a mesma razao pela qual a faixa do convite da agenda
+  // tambem saiu.
+  //
+  // Sangue e osso ficam porque nenhum seletor os alcanca: sao exames
+  // (tipo "exame") como qualquer outro, e o que os distingue e o assunto.
   { id: "sangue", corpo: false, rotulo: "Sangue", icone: "🩸",
     chaves: ["hemograma", "sangue", "hematocrito", "hemoglobina", "plaqueta",
              "leucocit", "glicose", "glicemia", "glicada", "hba1c",
@@ -148,11 +157,6 @@ const REGIOES = [
     chaves: ["osso", "ossea", "densitometr", "coluna", "lombar", "vertebr",
              "joelho", "ombro", "quadril", "punho", "tornozelo", "fratura",
              "artro", "reumat", "calcio", "fator reumatoide", "ortoped"] },
-  { id: "receitas", corpo: false, rotulo: "Receitas", icone: "💊",
-    tipos: ["receita"], chaves: ["receita", "receitu", "prescric", "medicament"] },
-  { id: "papeis", corpo: false, rotulo: "Outros papéis", icone: "📄",
-    tipos: ["relatorio", "outro"], chaves: ["atestado", "declarac", "encaminh",
-             "relatorio", "guia", "autorizac", "vacina"] },
 ];
 
 /* Em quais regioes este documento entra. Conjunto, nao valor unico — ver o
