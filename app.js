@@ -8,7 +8,9 @@
 // são perguntas diferentes: o service worker guarda a casca e, sem internet,
 // SEMPRE serve o cache — dá para passar uma hora testando a versão errada sem
 // perceber. Aparece no rodapé da tela de conta.
-const VERSAO_APP = "2026-09-18.3";
+// Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
+const LINHA = String.fromCharCode(10);
+const VERSAO_APP = "2026-09-18.5";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -28,7 +30,7 @@ const el = {
   recorteDicaGirar: $("recorte-dica-girar"),
   telaVisu: $("tela-visu"), visuImg: $("visu-img"), visuTitulo: $("visu-titulo"),
   visuConta: $("visu-conta"), visuAntes: $("visu-antes"),
-  visuDepois: $("visu-depois"), visuGirar: $("visu-girar"), visuFechar: $("visu-fechar"),
+  visuDepois: $("visu-depois"), visuGirar: $("visu-girar"), visuApagar: $("visu-apagar"), visuFechar: $("visu-fechar"),
 };
 
 let usuario = null;
@@ -577,6 +579,7 @@ let visuPaginas = [], visuIndice = 0;
 let visuOrigem = null;      // "documento" | "pendente"
 let visuCaminhos = [];      // storage_path de cada pagina (so em documento)
 let visuEntrada = null;     // a entrada da fila (so em pendente)
+let visuDoc = null;         // o documento aberto (so em documento)
 // O blob como estava quando o visualizador abriu. Girar SEMPRE parte daqui,
 // nunca do resultado do giro anterior: cada toque seria uma recodificacao
 // JPEG em cima da outra, e quatro toques (que voltam a orientacao original)
@@ -605,6 +608,7 @@ async function abrirDocumento(doc) {
   visuPaginas = (data || []).map((d) => d.signedUrl).filter(Boolean);
   visuOrigem = "documento";
   visuCaminhos = paginas.map((p) => p.storage_path);
+  visuDoc = doc;
   visuEntrada = null;
   visuOriginal.clear();
   if (!visuPaginas.length) {
@@ -641,7 +645,7 @@ el.visuFechar.onclick = () => {
   el.telaVisu.classList.add("escondido");
   el.visuImg.removeAttribute("src");
   visuPaginas = [];
-  visuOrigem = null; visuCaminhos = []; visuEntrada = null;
+  visuOrigem = null; visuCaminhos = []; visuEntrada = null; visuDoc = null;
   visuOriginal.clear();
 };
 /* ── Girar uma página já guardada ──────────────────────────────────────
@@ -718,6 +722,64 @@ async function girarPaginaAberta() {
 }
 el.visuGirar.onclick = girarPaginaAberta;
 
+/* ── Apagar o documento aberto ─────────────────────────────────────────
+   O termo de consentimento promete, com estas palavras: "Você apaga quando
+   quiser. Qualquer documento, ou a conta inteira. Apagou, sai do servidor."
+   Promessa escrita em termo de LGPD que o aplicativo não cumpre é pior que
+   promessa não feita.
+
+   ORDEM: as IMAGENS primeiro, a linha depois. Apagar a linha antes deixaria
+   os JPEG no servidor sem ninguém que saiba o caminho deles — `meu_consumo`
+   soma `bytes` das linhas, então eles nem apareceriam no contador, e
+   "apagou, sai do servidor" seria falso sem ninguém notar. Na ordem certa,
+   uma falha no meio deixa as imagens fora e a linha de pé: o documento
+   continua na lista e apagar de novo termina o serviço — `remove` sobre
+   arquivo que já não existe não reclama.                                  */
+async function apagarDocumentoAberto() {
+  if (!visuOrigem) return;
+  const nome = el.visuTitulo.textContent || "este documento";
+  const quantas = visuPaginas.length;
+
+  // A quebra de linha vem de LINHA, nunca de escapada dentro de aspas:
+  // uma quebra solta no meio de uma string e erro de sintaxe.
+  const aviso1 = `Apagar "${nome}"${quantas > 1 ? ` e suas ${quantas} páginas` : ""}?`;
+  const aviso2 = `Isto não pode ser desfeito. Se você tem o papel original, `
+    + `ele continua com você — some apenas a cópia guardada aqui.`;
+  if (!confirm(aviso1 + LINHA + LINHA + aviso2)) return;
+
+  el.visuApagar.disabled = true;
+  try {
+    if (visuOrigem === "pendente") {
+      // Ainda não subiu: existe só neste celular, e apagar funciona offline.
+      await FilaDB.remover(visuEntrada.id);
+    } else {
+      if (!navigator.onLine) {
+        return aviso("Apagar um documento guardado precisa de internet — ele "
+                     + "está no servidor, não no celular.", "info", "Sem conexão");
+      }
+      const { error: e1 } = await sb.storage.from("documentos").remove(visuCaminhos);
+      if (e1) throw e1;
+      // A linha some com as páginas junto (on delete cascade).
+      const { error: e2 } = await sb.from("documentos").delete().eq("id", visuDoc.id);
+      if (e2) throw e2;
+      for (const c of visuCaminhos) {
+        const capa = capaLocal.get(c);
+        if (capa) { URL.revokeObjectURL(capa); capaLocal.delete(c); }
+      }
+    }
+    el.visuFechar.click();
+    await carregar();
+    aviso("Documento apagado.", "ok");
+  } catch (e) {
+    console.warn("[apagar]", e?.message || e?.error || JSON.stringify(e));
+    aviso("Não consegui apagar agora. O documento continua guardado — "
+          + "tente de novo em instantes.", "erro");
+  } finally {
+    el.visuApagar.disabled = false;
+  }
+}
+el.visuApagar.onclick = apagarDocumentoAberto;
+
 // Toque longo na imagem não abre o menu do navegador.
 el.visuImg.addEventListener("contextmenu", (e) => e.preventDefault());
 
@@ -730,6 +792,7 @@ function abrirPendente(entrada) {
   visuPaginas = entrada.paginas.map((p) => URL.createObjectURL(p.blob));
   visuOrigem = "pendente";
   visuEntrada = entrada;
+  visuDoc = null;
   visuCaminhos = [];
   visuOriginal.clear();
   visuIndice = 0;

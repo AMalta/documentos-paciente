@@ -141,6 +141,10 @@
   .paginacao button:disabled{opacity:.35}
   /* Separado dos de navegar: girar MUDA o arquivo, ‹ › só andam nele. */
   #visu-girar{margin-left:18px;background:rgba(255,255,255,.22)}
+  /* Vermelho discreto: precisa ser distinguivel de Fechar sem virar o
+     elemento mais chamativo de uma tela que existe para LER o documento. */
+  .tela-cheia .barra .perigo{color:#ff9d94}
+  .tela-cheia .barra .perigo:disabled{opacity:.4}
   .paginacao button:disabled{opacity:.3}
   .paginacao .conta{font-size:14px;color:#b8c6d1;min-width:76px;text-align:center}
 
@@ -510,6 +514,11 @@
 <div class="tela-cheia escondido" id="tela-visu">
   <div class="barra">
     <span class="titulo" id="visu-titulo">Documento</span>
+    <!-- Apagar fica na barra de cima, com o titulo, e nao na linha de
+         paginacao: ‹ › ↻ agem sobre a PAGINA, apagar age sobre o DOCUMENTO
+         inteiro. Junto dos outros, alguem apagaria o laudo de seis folhas
+         achando que estava tirando uma. -->
+    <button id="visu-apagar" class="perigo">Apagar</button>
     <button id="visu-fechar">Fechar</button>
   </div>
   <div class="palco"><img id="visu-img" alt=""></div>
