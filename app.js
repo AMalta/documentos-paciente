@@ -641,8 +641,14 @@ async function enviarCodigo() {
 
 async function confirmarCodigo() {
   const email = (ct.eco.textContent || "").trim();
+  // O tamanho do código é configurável no Supabase (6 a 10 dígitos) e varia
+  // de projeto para projeto. Aceitar o que vier, em vez de cravar um número,
+  // evita que mudar uma opção no painel quebre a tela sem aviso.
   const token = (ct.codigo.value || "").replace(/\D/g, "");
-  if (token.length < 6) { aviso("O código tem 6 dígitos.", "erro"); return; }
+  if (token.length < 6) {
+    aviso("Digite o código inteiro, como veio no e-mail.", "erro");
+    return;
+  }
 
   ct.confirmar.disabled = true;
   ct.confirmar.textContent = "Confirmando…";
