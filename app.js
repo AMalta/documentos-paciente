@@ -53,14 +53,39 @@ function pedirAoWorker(mensagem) {
   });
 }
 
-/* ── Avisos ───────────────────────────────────────────────────────────── */
+/* ── Avisos ───────────────────────────────────────────────────────────────
+   O aviso vai para a tela que está NA FRENTE. A lista principal fica atrás
+   do painel de conta; erro desenhado lá some embaixo dele, e o usuário vê um
+   botão que pisca e não faz nada — que foi exatamente o que aconteceu.      */
 function aviso(texto, tipo = "info", titulo = "") {
+  const conta = document.getElementById("tela-conta");
+  const alvo = (conta && !conta.classList.contains("escondido"))
+    ? document.getElementById("avisos-conta") : el.avisos;
   const d = document.createElement("div");
   d.className = "aviso " + tipo;
   d.innerHTML = (titulo ? `<b>${titulo}</b>` : "") + texto;
-  el.avisos.appendChild(d);
+  alvo.appendChild(d);
   if (tipo === "ok") setTimeout(() => d.remove(), 4000);
   return d;
+}
+
+/* Traduz a falha para o que o paciente precisa saber. O texto cru do
+   servidor ("Error sending email change email") não diz nada a ele e
+   assusta; o detalhe técnico vai para o console, onde serve. */
+function explicar(erro) {
+  const cru = String(erro?.message || erro || "");
+  console.error("[conta]", cru);
+  if (/sending|smtp|mail/i.test(cru))
+    return "Não consegui enviar o e-mail agora. Isso é um problema do nosso "
+         + "lado — tente de novo em alguns minutos.";
+  if (/rate|limit|too many/i.test(cru))
+    return "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.";
+  if (/invalid|expired|token/i.test(cru))
+    return "Código inválido ou vencido. Peça um novo código.";
+  if (/already registered|already exists/i.test(cru))
+    return "Este e-mail já está em uso. Toque em “Já usei antes” para entrar "
+         + "com ele.";
+  return "Não consegui concluir agora. Tente de novo em alguns minutos.";
 }
 function limparAvisos() { el.avisos.innerHTML = ""; }
 
@@ -607,9 +632,7 @@ async function enviarCodigo() {
     ct.passo2.classList.remove("passo-oculto");
     ct.codigo.focus();
   } catch (e) {
-    if (e.message !== "cancelado") {
-      aviso(e.message || "Não consegui enviar o código.", "erro");
-    }
+    if (e.message !== "cancelado") aviso(explicar(e), "erro");
   } finally {
     ct.enviar.disabled = false;
     ct.enviar.textContent = "Enviar código";
@@ -638,8 +661,7 @@ async function confirmarCodigo() {
                       : "Acesso guardado. Agora dá para abrir em outro celular.", "ok");
     await carregar();
   } catch (e) {
-    aviso((e.message || "Código não confere") + ". Confira o e-mail e tente de novo.",
-          "erro");
+    aviso(explicar(e), "erro");
   } finally {
     ct.confirmar.disabled = false;
     ct.confirmar.textContent = "Confirmar";
