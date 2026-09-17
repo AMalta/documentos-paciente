@@ -53,9 +53,11 @@ const el = {
   telaVisu: $("tela-visu"), visuImg: $("visu-img"), visuTitulo: $("visu-titulo"),
   visuConta: $("visu-conta"), visuAntes: $("visu-antes"),
   visuDepois: $("visu-depois"), visuFechar: $("visu-fechar"),
+  visuImprimir: $("visu-imprimir"),
 };
 
 let documentos = [];
+let medicoNome = "";
 let regiaoAtiva = null;
 let pacienteId = null;
 /* Guardado entre pacientes, de proposito: quem prefere lista prefere sempre,
@@ -113,6 +115,7 @@ el.abrir.onclick = async () => {
     if (!lib || !lib.paciente_id) throw new Error("CODIGO_INVALIDO");
 
     pacienteId = lib.paciente_id;
+    medicoNome = nome;
     el.topoMedico.textContent = "· " + nome;
     // "ate 00:00" e literalmente correto e confunde: o prazo e a meia-noite
     // SEGUINTE, e o numero lido de relance parece dizer que ja venceu. A
@@ -341,6 +344,72 @@ el.visuAntes.onclick = () => { if (visuIndice > 0) { visuIndice--; mostrarPagina
 el.visuDepois.onclick = () => {
   if (visuIndice < visuPaginas.length - 1) { visuIndice++; mostrarPagina(); }
 };
+/* ── Imprimir ─────────────────────────────────────────────────────────
+   Permitir, e nao fingir que da para impedir: quem esta com a tela aberta
+   tira uma captura em dois segundos. E guardar o exame no prontuario e
+   pratica clinica normal — as vezes obrigacao: o que informou a decisao
+   precisa estar registrado.
+
+   O que a impressao NAO pode ser e uma folha anonima. Um exame solto num
+   prontuario, sem dizer de onde veio, e pior que nenhum: ninguem sabe se
+   foi conferido, quem autorizou, nem quando. Dai o rodape — ele e a razao
+   deste codigo existir em vez de um simples Ctrl+P, que sairia com a
+   interface inteira e sem procedencia. */
+/* O que sai na folha, separado de quem manda imprimir. A separacao existe
+   para poder VERIFICAR o resultado sem abrir a caixa de impressao — e o
+   rodape e justamente a parte que precisa ser verificada. */
+function montarImpressao(titulo, urls, medico, hoje) {
+  const paginas = urls.map((u) => `<div class="folha">`
+    + `<img src="${u}" alt="">`
+    + `<div class="rodape">${titulo} · impresso em ${hoje}`
+    + `<br>Acervo pessoal do paciente · acesso autorizado por código`
+    + `${medico ? " a " + medico : ""}</div></div>`).join("");
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title>
+    <style>
+      @page { size: A4; margin: 10mm; }
+      body { margin:0; font:12px/1.4 Arial, sans-serif; color:#111 }
+      .folha { page-break-after: always; display:flex; flex-direction:column;
+               height:277mm; }
+      .folha:last-child { page-break-after: auto }
+      /* A imagem ocupa a folha inteira menos o rodape, sem distorcer: o
+         medico vai LER o exame nesta folha, e letra esticada nao se le. */
+      img { flex:1; min-height:0; object-fit:contain; width:100% }
+      .rodape { margin-top:6mm; padding-top:2mm; border-top:1px solid #bbb;
+                font-size:10px; color:#555; line-height:1.5 }
+    </style></head><body>${paginas}</body></html>`;
+}
+
+function imprimirDocumento() {
+  if (!visuPaginas.length) return;
+  const html = montarImpressao(el.visuTitulo.textContent || "Documento",
+    visuPaginas, medicoNome, new Date().toLocaleDateString("pt-BR"));
+
+  const quadro = document.createElement("iframe");
+  quadro.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  document.body.appendChild(quadro);
+  const d = quadro.contentWindow.document;
+  d.open();
+  d.write(html);
+  d.close();
+
+  // Esperar as imagens: mandar imprimir antes faz sair folha em branco, e
+  // quem descobre e o medico na frente da impressora.
+  const imgs = [...d.images];
+  let faltam = imgs.length;
+  const vai = () => {
+    quadro.contentWindow.focus();
+    quadro.contentWindow.print();
+    setTimeout(() => quadro.remove(), 1500);
+  };
+  if (!faltam) return vai();
+  imgs.forEach((i) => {
+    const conta = () => { if (--faltam === 0) vai(); };
+    if (i.complete) conta();
+    else { i.onload = conta; i.onerror = conta; }
+  });
+}
+el.visuImprimir.onclick = imprimirDocumento;
+
 el.visuFechar.onclick = () => {
   el.telaVisu.classList.add("escondido");
   el.visuImg.removeAttribute("src");
@@ -353,6 +422,12 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft") el.visuAntes.click();
   if (e.key === "ArrowRight") el.visuDepois.click();
   if (e.key === "Escape") el.visuFechar.click();
+  // Ctrl+P com o visualizador aberto imprime O DOCUMENTO, nao a pagina: a
+  // pagina sairia com trilha, boneco e botoes, e sem o rodape que diz de
+  // onde veio.
+  if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+    e.preventDefault(); imprimirDocumento();
+  }
 });
 
 el.codigo.focus();
