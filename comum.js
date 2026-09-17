@@ -161,7 +161,19 @@ const REGIOES = [
   // Nada de "eas" solto na lista: ele casa dentro de PANCREAS. Palavra curta
   // em busca por pedaco e armadilha — a mesma que fez "eco" mandar toda
   // ecografia para o peito.
-  { id: "urina", corpo: false, rotulo: "Urina", icone: "💧",
+  // Gota AMARELA, desenhada, e nao a 💧 do teclado: aquela e azul em todo
+  // sistema, e azul ao lado da gota vermelha do sangue le-se como agua. E o
+  // par sangue/urina que a pessoa reconhece de relance na trilha, entao a
+  // cor aqui carrega significado, nao enfeite. Como o icone entra por
+  // innerHTML, um SVG curto serve tao bem quanto um emoji.
+  { id: "urina", corpo: false, rotulo: "Urina",
+    icone: '<svg viewBox="0 0 16 16" width="1.05em" height="1.05em" '
+         + 'style="vertical-align:-2px" aria-hidden="true">'
+         + '<path d="M8 1.2C8 1.2 2.8 7.2 2.8 10.1a5.2 5.2 0 0 0 10.4 0'
+         + 'C13.2 7.2 8 1.2 8 1.2Z" fill="#e3a91b"/>'
+         + '<path d="M6.2 9.6a2.6 2.6 0 0 0 1.6 2.4" stroke="#fff" '
+         + 'stroke-width="1.1" stroke-linecap="round" fill="none" opacity=".75"/>'
+         + '</svg>',
     chaves: ["urina", "urinar", "urinari", "urocultura", "elementos anormais",
              "sedimentoscopia", "proteinuria", "microalbumin", "urina de 24",
              "clearance"] },
