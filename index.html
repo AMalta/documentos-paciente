@@ -179,6 +179,30 @@
   #faixa-instalar .fechar{background:none;color:var(--tinta-3);font-size:20px;
                           padding:4px 6px}
 
+  /* ── Consentimento ── */
+  #termo{position:fixed;inset:0;z-index:65;background:var(--papel);
+         overflow-y:auto;display:flex;flex-direction:column}
+  .termo-caixa{max-width:460px;margin:0 auto;width:100%;padding:0 20px 28px;
+               padding-top:calc(26px + env(safe-area-inset-top))}
+  .termo-titulo{font-size:22px;font-weight:700;line-height:1.25;margin:0 0 6px;
+                letter-spacing:-.015em}
+  .termo-sub{font-size:15px;color:var(--tinta-2);margin:0 0 20px;line-height:1.45}
+  .termo-item{display:flex;gap:12px;align-items:flex-start;margin-bottom:15px}
+  .termo-item .ic{font-size:20px;flex:0 0 auto;width:34px;height:34px;
+                  background:var(--azul-claro);border-radius:10px;display:flex;
+                  align-items:center;justify-content:center}
+  .termo-item b{display:block;font-size:15px;margin-bottom:1px}
+  .termo-item span{font-size:14px;color:var(--tinta-2);line-height:1.45}
+  #termo-completo{display:none;white-space:pre-wrap;font-size:13.5px;
+                  line-height:1.6;color:var(--tinta-2);background:var(--superficie);
+                  border:1px solid var(--linha);border-radius:12px;padding:16px;
+                  margin-top:6px;max-height:50vh;overflow-y:auto}
+  .termo-acoes{position:sticky;bottom:0;background:var(--papel);
+               padding:14px 0 calc(8px + env(safe-area-inset-bottom));
+               border-top:1px solid var(--linha);margin-top:18px}
+  .termo-recusar{background:none;color:var(--tinta-2);padding:12px;font-size:14.5px;
+                 width:100%}
+
   /* ── Conta ── */
   .btn-conta{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;
              background:rgba(255,255,255,.16);color:#fff;width:40px;height:40px;
@@ -338,6 +362,30 @@
   </div>
 </main>
 
+<!-- CONSENTIMENTO -------------------------------------------------------- -->
+<!-- Ato afirmativo antes da primeira foto: foto de exame traz nome, CPF e
+     resultado, e isso e dado sensivel. Seis frases respondem o que a lei
+     exige; o texto completo fica a um toque para quem quiser. -->
+<div id="termo" class="escondido">
+  <div class="termo-caixa">
+    <h2 class="termo-titulo">Antes de começar</h2>
+    <p class="termo-sub">Em seis frases, como seus documentos são guardados.
+      Leva meio minuto.</p>
+
+    <div id="termo-itens"></div>
+
+    <button class="btn-texto" id="termo-ver"
+            style="width:100%;text-align:left;font-weight:600">
+      Ler o texto completo ▾</button>
+    <div id="termo-completo"></div>
+
+    <div class="termo-acoes">
+      <button class="btn-salvar" id="termo-aceitar">Aceito e quero começar</button>
+      <button class="termo-recusar" id="termo-recusar">Não aceito</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONTA ----------------------------------------------------------------- -->
 <!-- Duas coisas na mesma tela, porque são a mesma pergunta vista de dois
      lados: como não perder o acervo, e como trazê-lo de volta. -->
@@ -398,6 +446,9 @@
         <button class="btn-linha" id="conta-sair" style="width:100%">Sair desta conta</button>
       </div>
 
+      <button class="btn-linha" id="conta-ver-termo"
+              style="width:100%;margin-top:4px">Ver o que eu aceitei</button>
+
       <div style="color:#cfe2ef;font-size:12.5px;line-height:1.6;margin-top:18px;
                   text-align:center">
         Usamos o e-mail só para você voltar ao seu acervo.<br>
@@ -451,6 +502,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="fila.js"></script>
+<script src="termo.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

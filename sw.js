@@ -3,9 +3,9 @@
    elas vêm por URL assinada que expira, e cache de dado de saúde no disco do
    navegador é risco sem ganho — quem precisa do acervo offline é o dono, e
    isso é assunto da fila de envio, não deste arquivo. */
-const VERSAO = "casca-v4";
+const VERSAO = "casca-v5";
 const CASCA = ["./", "./index.html", "./app.js", "./config.js",
-                "./manifest.webmanifest", "./worker.js", "./fila.js",
+                "./manifest.webmanifest", "./worker.js", "./fila.js", "./termo.js",
                 "./icone-192.png", "./icone-512.png", "./favicon.png"];
 
 self.addEventListener("install", (e) => {

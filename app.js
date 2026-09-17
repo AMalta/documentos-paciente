@@ -8,7 +8,7 @@
 // são perguntas diferentes: o service worker guarda a casca e, sem internet,
 // SEMPRE serve o cache — dá para passar uma hora testando a versão errada sem
 // perceber. Aparece no rodapé da tela de conta.
-const VERSAO_APP = "2026-09-17.2";
+const VERSAO_APP = "2026-09-17.4";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -107,6 +107,91 @@ function explicar(erro) {
 }
 function limparAvisos() { el.avisos.innerHTML = ""; }
 
+/* ═══ Consentimento ═══════════════════════════════════════════════════════
+   Ato afirmativo ANTES da primeira foto. A tela de boas-vindas explica o
+   valor; esta pede permissão — são coisas diferentes e não podem virar o
+   mesmo botão.
+
+   Data E versão vão para o banco. "O usuário aceitou" não demonstra nada
+   seis meses depois, quando o texto já mudou.                              */
+const tm = {
+  tela: $("termo"), itens: $("termo-itens"), ver: $("termo-ver"),
+  completo: $("termo-completo"), aceitar: $("termo-aceitar"),
+  recusar: $("termo-recusar"), verNaConta: $("conta-ver-termo"),
+};
+
+function pintarTermo() {
+  if (tm.itens.childElementCount) return;
+  tm.itens.innerHTML = TERMO.resumo.map(([ic, titulo, texto]) => `
+    <div class="termo-item">
+      <div class="ic">${ic}</div>
+      <div><b>${titulo}</b><span>${texto}</span></div>
+    </div>`).join("");
+  tm.completo.textContent = TERMO.completo;
+}
+
+const jaAceitou = () => !!usuario?.termo_aceito_em;
+
+function abrirTermo(somenteLeitura = false) {
+  pintarTermo();
+  tm.aceitar.classList.toggle("escondido", somenteLeitura);
+  tm.recusar.textContent = somenteLeitura ? "Fechar" : "Não aceito";
+  tm.tela.classList.remove("escondido");
+}
+
+async function registrarAceite() {
+  tm.aceitar.disabled = true;
+  tm.aceitar.textContent = "Guardando…";
+  try {
+    // upsert e não update: update sem linha correspondente não é erro para o
+    // Postgres — afeta zero linhas e volta em silêncio. Foi assim que um
+    // aceite "deu certo" sem nada ter sido gravado.
+    const { data, error } = await sb.from("pacientes_app").upsert({
+      id: usuario.id,
+      termo_aceito_em: new Date().toISOString(),
+      termo_versao: TERMO.versao,
+    }, { onConflict: "id" }).select("termo_aceito_em").single();
+    if (error) throw error;
+    if (!data?.termo_aceito_em) throw new Error("o aceite não foi gravado");
+    usuario.termo_aceito_em = data.termo_aceito_em;
+    tm.tela.classList.add("escondido");
+  } catch (e) {
+    aviso(explicar(e), "erro");
+  } finally {
+    tm.aceitar.disabled = false;
+    tm.aceitar.textContent = "Aceito e quero começar";
+  }
+}
+
+tm.ver.onclick = () => {
+  const aberto = tm.completo.style.display === "block";
+  tm.completo.style.display = aberto ? "none" : "block";
+  tm.ver.textContent = aberto ? "Ler o texto completo ▾" : "Esconder o texto ▴";
+};
+tm.aceitar.onclick = registrarAceite;
+tm.recusar.onclick = () => {
+  if (tm.aceitar.classList.contains("escondido")) {
+    tm.tela.classList.add("escondido");   // era só leitura
+    return;
+  }
+  // Recusar é legítimo e precisa ter saída digna — não um beco sem botão.
+  tm.itens.innerHTML = `<div class="termo-item">
+    <div class="ic">🤝</div>
+    <div><b>Tudo bem</b><span>Sem o seu aceite não dá para guardar documentos,
+      porque eles são dados de saúde e a lei exige a sua autorização.
+      Mudando de ideia, é só voltar aqui.</span></div></div>`;
+  tm.completo.style.display = "none";
+  tm.ver.classList.add("escondido");
+  tm.aceitar.textContent = "Reconsiderar e aceitar";
+  tm.aceitar.onclick = () => { tm.itens.innerHTML = ""; tm.ver.classList.remove("escondido");
+                               tm.aceitar.onclick = registrarAceite;
+                               tm.aceitar.textContent = "Aceito e quero começar";
+                               pintarTermo(); };
+  tm.recusar.textContent = "Fechar";
+  tm.recusar.onclick = () => tm.tela.classList.add("escondido");
+};
+tm.verNaConta.onclick = () => { ct.tela.classList.add("escondido"); abrirTermo(true); };
+
 /* ── CAPTCHA ──────────────────────────────────────────────────────────────
    Existe por um motivo só: a chave anônima é pública, e sem barreira
    qualquer um cria contas e enche o armazenamento. Não protege dado nenhum
@@ -152,28 +237,38 @@ async function tokenCaptcha() {
    morre. O e-mail entra depois, quando a pessoa já tem o que perder.        */
 async function entrar() {
   const { data: { session } } = await sb.auth.getSession();
-  if (session) { usuario = session.user; return true; }
-
-  // Com CAPTCHA configurado, a sessão anônima só nasce com o token. Sem
-  // chave, nada muda — o app segue entrando direto, como sempre.
-  const captcha = await tokenCaptcha();
-  const { data, error } = await sb.auth.signInAnonymously(
-    captcha ? { options: { captchaToken: captcha } } : undefined);
-  if (error) {
-    aviso("Ligue <b>Anonymous Sign-ins</b> em Authentication → Providers no "
-        + "painel do Supabase e recarregue a página.", "erro",
-        "Não consegui abrir sua conta");
-    return false;
+  if (session) {
+    usuario = session.user;
+  } else {
+    // Com CAPTCHA configurado, a sessão anônima só nasce com o token. Sem
+    // chave, nada muda — o app segue entrando direto, como sempre.
+    const captcha = await tokenCaptcha();
+    const { data, error } = await sb.auth.signInAnonymously(
+      captcha ? { options: { captchaToken: captcha } } : undefined);
+    if (error) {
+      aviso("Ligue <b>Anonymous Sign-ins</b> em Authentication → Providers no "
+          + "painel do Supabase e recarregue a página.", "erro",
+          "Não consegui abrir sua conta");
+      return false;
+    }
+    usuario = data.user;
   }
-  usuario = data.user;
-
-  // A linha do paciente é criada na primeira entrada. Sem ela, todo insert de
-  // documento cai por chave estrangeira — e o erro apareceria lá na frente,
-  // depois de a pessoa já ter tirado a foto.
-  const { error: e2 } = await sb.from("pacientes_app")
-    .upsert({ id: usuario.id }, { onConflict: "id" });
-  if (e2) console.warn("[perfil]", e2.message);
+  // SEMPRE, e não só na sessão nova. Saindo daqui cedo por já haver sessão,
+  // o aceite do termo nunca era lido de volta — e o paciente veria a tela de
+  // consentimento a cada abertura, como se nunca tivesse aceitado. Pior: uma
+  // sessão criada por fora fica sem linha em pacientes_app, e aí todo insert
+  // de documento cai por chave estrangeira depois da foto tirada.
+  await carregarPerfil();
   return true;
+}
+
+async function carregarPerfil() {
+  const { data, error } = await sb.from("pacientes_app")
+    .upsert({ id: usuario.id }, { onConflict: "id" })
+    .select("termo_aceito_em, termo_versao").single();
+  if (error) { console.warn("[perfil]", error.message); return; }
+  usuario.termo_aceito_em = data?.termo_aceito_em || null;
+  usuario.termo_versao = data?.termo_versao || null;
 }
 
 /* ═══ Recorte de margens ══════════════════════════════════════════════════
@@ -714,6 +809,9 @@ function fecharBoasVindas() {
   bv.tela.classList.add("escondido");
   try { localStorage.setItem("bemvindo-visto", "1"); } catch (e) {}
   mostrarFaixa();
+  // Boas-vindas explica o valor; o termo pede permissão. Nessa ordem, e
+  // nunca no mesmo botão.
+  if (usuario && !jaAceitou()) abrirTermo();
 }
 
 bv.instalar.onclick = pedirInstalacao;
@@ -956,6 +1054,9 @@ sb.auth.onAuthStateChange((evento, sessao) => {
 
 /* ── Ligações ─────────────────────────────────────────────────────────── */
 el.fotografar.onclick = () => {
+  // Sem aceite não se coleta dado de saúde — e a hora de perguntar é antes
+  // da câmera, não depois de seis fotos tiradas.
+  if (!jaAceitou()) { abrirTermo(); return; }
   // Bloqueia ANTES da câmera. Deixar fotografar e recusar no fim faria a
   // pessoa perder o trabalho inteiro para descobrir o teto.
   if (noLimite()) { limparAvisos(); avisarSeApertando(); return; }
