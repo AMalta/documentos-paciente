@@ -567,7 +567,11 @@ const ct = {
 // celular novo. O código do Supabase é diferente em cada caso.
 let recuperando = false;
 
-const contaAnonima = () => !usuario?.email;
+// Ter e-mail não basta: entre o pedido e a confirmação, o Supabase já
+// devolve o endereço como PENDENTE. Tratar isso como conta protegida
+// mostraria "✅ acesso guardado" para quem ainda não confirmou nada.
+const confirmado = (u) => !!(u?.email && (u.email_confirmed_at || u.confirmed_at));
+const contaAnonima = () => !confirmado(usuario);
 
 function pintarConta() {
   const protegida = !contaAnonima();
@@ -692,16 +696,22 @@ ct.sair.onclick = async () => {
 
 // Quem toca no link do e-mail em vez de digitar o código volta para cá com a
 // sessão já trocada.
+//
+// A condição é estreita de propósito. `updateUser` dispara USER_UPDATED no
+// INSTANTE em que o código é pedido, ainda sem confirmação — e a versão
+// anterior fechava o painel nesse evento, engolindo a tela de digitar o
+// código. Só fecha quando o e-mail está confirmado E a tela está esperando.
 sb.auth.onAuthStateChange((evento, sessao) => {
-  if (sessao?.user) {
-    const mudou = usuario && usuario.id !== sessao.user.id;
-    usuario = sessao.user;
-    if (!ct.tela.classList.contains("escondido")) {
-      ct.tela.classList.add("escondido");
-      aviso("Pronto! Seu acesso está guardado.", "ok");
-    }
-    if (mudou) carregar();
+  const u = sessao?.user;
+  if (!u) return;
+  const trocouDeConta = usuario && usuario.id !== u.id;
+  usuario = u;
+  const esperando = !ct.passo2.classList.contains("passo-oculto");
+  if (confirmado(u) && esperando) {
+    ct.tela.classList.add("escondido");
+    aviso("Pronto! Seu acesso está guardado.", "ok");
   }
+  if (trocouDeConta) carregar();
 });
 
 /* ── Ligações ─────────────────────────────────────────────────────────── */
