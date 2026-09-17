@@ -109,7 +109,10 @@
   .corpo-dica b{color:var(--tinta)}
   .ver-todos{background:var(--azul);color:#fff;border-radius:7px;
              padding:4px 9px;font-size:12px;font-weight:600;margin-left:2px}
-  #corpo{width:76px;height:auto;flex:0 0 auto}
+  /* 108px, e nao 76: medido no aparelho, a 76 as regioes ficavam com
+     21x24px e 36x30px de alvo, longe dos 44x44 que o polegar acerta
+     sem tentar duas vezes. */
+  #corpo{width:108px;height:auto;flex:0 0 auto}
   #corpo .silhueta path{fill:#eaeff3}
   /* O contorno branco separa as regioes. Sem ele o tronco vira um bloco so
      e nada indica que ali dentro ha tres alvos diferentes de toque. */
@@ -524,31 +527,25 @@
          toque. Ficam num cinza mais apagado que as regioes de proposito —
          e o unico sinal de que o corpo tem partes tocaveis e partes que
          nao sao. -->
-    <g class="silhueta" aria-hidden="true">
-      <path d="M26 48 L20 57 L15 96 L13 130 L21 131 L24 97 L26 58 Z"/>
-      <path d="M74 48 L80 57 L85 96 L87 130 L79 131 L76 97 L74 58 Z"/>
-      <path d="M32 145 L30 186 L28 214 L38 215 L42 186 L50 156
-               L58 186 L62 215 L72 214 L70 186 L68 145 Z"/>
-    </g>
-
-    <!-- Cada regiao e um botao de verdade, com nome falado: para leitor de
-         tela o boneco nao pode ser um desenho mudo. O contorno branco entre
-         elas nao e enfeite — sem ele o tronco vira um bloco so, e nada
-         indica que ali dentro ha tres alvos diferentes. -->
-    <ellipse class="regiao" data-regiao="cabeca" tabindex="0" role="button"
-             aria-label="Cabeça e olhos" cx="50" cy="17" rx="14" ry="16"/>
-    <path class="regiao" data-regiao="pescoco" tabindex="0" role="button"
-          aria-label="Pescoço e tireoide"
-          d="M44 32 h12 v9 h-12 Z"/>
-    <path class="regiao" data-regiao="peito" tabindex="0" role="button"
-          aria-label="Peito, coração e pulmões"
-          d="M31 41 h38 l5 12 v28 h-48 v-28 Z"/>
-    <path class="regiao" data-regiao="barriga" tabindex="0" role="button"
-          aria-label="Barriga, fígado e intestino"
-          d="M26 81 h48 l-2 36 h-44 Z"/>
-    <path class="regiao" data-regiao="quadril" tabindex="0" role="button"
-          aria-label="Rins, bexiga e órgãos pélvicos"
-          d="M28 117 h44 l-4 28 h-36 Z"/>
+          <g class="silhueta" aria-hidden="true">
+            <path d="M26 48 L20 57 L15 96 L13 130 L21 131 L24 97 L26 58 Z"/>
+            <path d="M74 48 L80 57 L85 96 L87 130 L79 131 L76 97 L74 58 Z"/>
+            <path d="M32 150 L30 188 L28 214 L38 215 L42 188 L50 158
+                     L58 188 L62 215 L72 214 L70 188 L68 150 Z"/>
+          </g>
+          <!-- Cabeca e pescoco sao UM alvo so: dois subcaminhos no mesmo
+               elemento. O pescoco sozinho tinha 9x7px — medido no
+               aparelho, nao estimado. -->
+          <path class="regiao" data-regiao="cabeca" tabindex="0" role="button"
+                aria-label="Cabeça, olhos, ouvidos e tireoide"
+                d="M50 1 A16 17 0 0 1 50 35 A16 17 0 0 1 50 1 Z
+                   M43 33 h14 v9 h-14 Z"/>
+          <path class="regiao" data-regiao="peito" tabindex="0" role="button"
+                aria-label="Peito, coração, pulmões e mamas"
+                d="M31 41 h38 l5 12 v37 h-48 v-37 Z"/>
+          <path class="regiao" data-regiao="barriga" tabindex="0" role="button"
+                aria-label="Barriga, fígado, intestino, rins e bexiga"
+                d="M26 90 h48 l-6 60 h-36 Z"/>
   </svg>
 
     <div class="folhinhas" id="folhinhas"></div>

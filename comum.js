@@ -81,14 +81,24 @@ function termosDaBusca() {
    Para estender: acrescente a palavra na lista da regiao. Nada mais muda. */
 const REGIOES = [
   // no boneco
-  { id: "cabeca", corpo: true, rotulo: "Cabeça",
+  // Cabeca e pescoco eram DUAS e viraram uma, por ideia do medico e por
+  // medicao: o pescoco tinha 9x7 PIXELS de area tocavel no celular — nao era
+  // um botao, era um enfeite. E nenhum tamanho de boneco razoavel conserta
+  // isso, porque pescoco e estreito por ser pescoco.
+  //
+  // Juntar tambem deixa a regra do desenho inteira: o BONECO guarda o que
+  // tem lugar no corpo, as FOLHINHAS o que nao tem. A tireoide tem lugar —
+  // manda-la para um cartao resolveria o alvo quebrando a regra.
+  // "Cabeca e pescoco" ainda por cima e agrupamento clinico de verdade.
+  { id: "cabeca", corpo: true, rotulo: "Cabeça e pescoço",
     chaves: ["cranio", "encefalo", "cerebro", "eeg", "enxaqueca", "hipofise",
              "sela turcica", "seios da face", "olho", "oftalm", "retina",
              "oculos", "visao", "acuidade", "fundo de olho", "ouvido",
-             "audiometria", "otorrino", "nasal", "sinusite"] },
-  { id: "pescoco", corpo: true, rotulo: "Pescoço",
-    chaves: ["tireoide", "tireoid", "tsh", "t3", "t4", "trab", "carotida",
+             "audiometria", "otorrino", "nasal", "sinusite",
+             // vindas do antigo "pescoco"
+             "tireoide", "tireoid", "tsh", "t3", "t4", "trab", "carotida",
              "cervical", "paratireoide", "tiroglobulina"] },
+
   { id: "peito", corpo: true, rotulo: "Peito",
     // "ecocardio", nao "eco": "eco" casa dentro de "ecografia", e mandaria
     // todo ultrassom — de abdome, de tireoide, obstetrico — para o peito.
@@ -99,14 +109,19 @@ const REGIOES = [
              "colesterol", "hdl", "ldl", "triglicer", "lipidograma",
              "pressao arterial", "pulmao", "pulmonar", "torax", "espirometr",
              "polissonograf", "respirat", "mama", "mamograf", "mamaria"] },
+  // Barriga e quadril eram DUAS regioes e viraram uma. Medido no aparelho,
+  // o quadril tinha 33x21px de alvo — e 44x44 e o minimo para o polegar
+  // acertar sem tentar duas vezes. Alem disso a fronteira entre "barriga" e
+  // "quadril" numa silhueta e arbitraria: exige adivinhar onde uma acaba, o
+  // que e um tipo de leitura — justamente o que o boneco existe para evitar.
   { id: "barriga", corpo: true, rotulo: "Barriga",
     chaves: ["abdome", "abdominal", "figado", "hepat", "tgo", "tgp",
              "transaminase", "gama gt", "glutamil", "bilirrubina", "amilase",
              "lipase", "pancrea", "vesicula", "biliar", "estomago", "gastr",
              "endoscopia", "colonoscopia", "intestin", "colon", "reto",
-             "fezes", "parasit", "helicobacter"] },
-  { id: "quadril", corpo: true, rotulo: "Quadril",
-    chaves: ["rim", "rins", "renal", "urina", "urinar", "eas", "elementos anormais",
+             "fezes", "parasit", "helicobacter",
+             // vindas do antigo "quadril"
+             "rim", "rins", "renal", "urina", "urinar", "eas", "elementos anormais",
              "creatinina", "ureia", "clearance", "bexiga", "prostata", "psa",
              "utero", "uterin", "ovario", "transvaginal", "papanicolau",
              "preventivo", "ginecolog", "pelvic"] },
