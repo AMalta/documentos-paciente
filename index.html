@@ -145,6 +145,7 @@
      elemento mais chamativo de uma tela que existe para LER o documento. */
   .tela-cheia .barra .perigo{color:#ff9d94}
   .tela-cheia .barra .perigo:disabled{opacity:.4}
+  .perigo-txt{color:#ff9d94;font-size:13px}
   .paginacao button:disabled{opacity:.3}
   .paginacao .conta{font-size:14px;color:#b8c6d1;min-width:76px;text-align:center}
 
@@ -465,6 +466,14 @@
 
       <button class="btn-linha" id="conta-ver-termo"
               style="width:100%;margin-top:4px">Ver o que eu aceitei</button>
+
+      <!-- Encerrar fica no fim, separado e discreto. É o que o termo promete
+           ("ou a conta inteira"), e tem de estar alcançável sem ajuda de
+           ninguém — mas não disputando espaço com o que a pessoa faz todo
+           dia. Perto de "Sair desta conta" seria pior: as duas palavras se
+           parecem e as consequências não. -->
+      <button class="btn-texto perigo-txt" id="conta-encerrar"
+              style="width:100%;margin-top:22px">Encerrar conta e apagar tudo</button>
 
       <div style="color:#cfe2ef;font-size:12.5px;line-height:1.6;margin-top:18px;
                   text-align:center">

@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.5";
+const VERSAO_APP = "2026-09-18.6";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1098,6 +1098,7 @@ const ct = {
   email: $("conta-email"), enviar: $("conta-enviar"), eco: $("conta-email-eco"),
   codigo: $("conta-codigo"), confirmar: $("conta-confirmar"), voltar: $("conta-voltar"),
   emailAtual: $("conta-email-atual"), sair: $("conta-sair"),
+  encerrar: $("conta-encerrar"),
   bvVoltar: $("bv-voltar"),
 };
 
@@ -1251,6 +1252,86 @@ ct.sair.onclick = async () => {
   await sb.auth.signOut();
   location.reload();
 };
+
+/* ── Encerrar a conta ──────────────────────────────────────────────────
+   A outra metade de "você apaga quando quiser: qualquer documento, ou a
+   conta inteira". Sem isto, o termo prometia uma saída que não existia.
+
+   DUAS perguntas, e a segunda diz o número. "Apagar tudo?" é abstrato;
+   "apagar seus 23 documentos?" é o que a pessoa de fato vai perder, e é a
+   diferença entre confirmar por reflexo e confirmar por decisão. A palavra
+   "sair" não aparece em lugar nenhum daqui: ela é o botão de cima, que não
+   apaga nada, e confundir os dois é o erro caro desta tela.
+
+   ORDEM, a mesma de apagar um documento e pela mesma razão: as IMAGENS
+   primeiro, pelo cliente, e a conta por último. Apagar a conta antes
+   deixaria os arquivos no servidor sem nenhuma sessão capaz de alcançá-los
+   — ninguém mais poderia apagá-los, nem a própria pessoa. Por isso o RPC
+   se RECUSA a encerrar enquanto sobrar arquivo: com a conta de pé, dá para
+   tentar de novo.                                                         */
+async function encerrarConta() {
+  if (!usuario) return;
+  if (!navigator.onLine) {
+    return aviso("Encerrar a conta precisa de internet: seus documentos estão "
+                 + "no servidor.", "info", "Sem conexão");
+  }
+  if (!confirm("Encerrar sua conta e apagar tudo o que está guardado?"
+               + LINHA + LINHA
+               + "Isto NÃO é o mesmo que sair do aplicativo. Não dá para "
+               + "desfazer, e os documentos não voltam em nenhum celular.")) return;
+
+  // Conta de verdade, do servidor e da fila: a segunda pergunta precisa
+  // dizer o que se perde, não "tudo".
+  let quantos = documentos.length + naFila.length;
+  const aviso2 = quantos
+    ? `Confirmar: apagar ${quantos} documento(s) e encerrar a conta?`
+    : "Confirmar: encerrar a conta?";
+  if (!confirm(aviso2 + LINHA + LINHA
+               + "Se você tem os papéis originais, eles continuam com você.")) return;
+
+  ct.encerrar.disabled = true;
+  ct.encerrar.textContent = "Encerrando…";
+  try {
+    // 1. As imagens. Lista as pastas do próprio dono e remove em lote.
+    const caminhos = [];
+    const { data: pastas } = await sb.storage.from("documentos").list(usuario.id);
+    for (const pasta of (pastas || [])) {
+      const { data: arquivos } = await sb.storage.from("documentos")
+        .list(`${usuario.id}/${pasta.name}`);
+      for (const a of (arquivos || [])) caminhos.push(`${usuario.id}/${pasta.name}/${a.name}`);
+    }
+    if (caminhos.length) {
+      const { error } = await sb.storage.from("documentos").remove(caminhos);
+      if (error) throw error;
+    }
+
+    // 2. A conta. Derruba pacientes_app, documentos, páginas e liberações
+    //    em cascata, e leva junto o e-mail guardado em auth.users.
+    const { error: e2 } = await sb.rpc("encerrar_minha_conta");
+    if (e2) throw e2;
+
+    // 3. O que ficou neste celular. A fila é IndexedDB: sem limpá-la, o
+    //    app tentaria subir para uma conta que não existe mais.
+    try {
+      for (const e of await FilaDB.listar(usuario.id)) await FilaDB.remover(e.id);
+    } catch (e) { console.warn("[encerrar] fila", e?.message || e); }
+    try { localStorage.clear(); } catch (e) { /* janela anônima */ }
+
+    await sb.auth.signOut();
+    location.reload();
+  } catch (e) {
+    const msg = e?.message || e?.error || JSON.stringify(e);
+    console.warn("[encerrar]", msg);
+    ct.encerrar.disabled = false;
+    ct.encerrar.textContent = "Encerrar conta e apagar tudo";
+    aviso(String(msg).includes("IMAGENS_PENDENTES")
+      ? "Algumas imagens não puderam ser apagadas agora, então a conta "
+        + "continua de pé — assim você pode tentar de novo. Nada foi perdido."
+      : "Não consegui encerrar a conta agora. Nada foi apagado. Tente de "
+        + "novo em instantes.", "erro");
+  }
+}
+ct.encerrar.onclick = encerrarConta;
 
 // Quem toca no link do e-mail em vez de digitar o código volta para cá com a
 // sessão já trocada.
