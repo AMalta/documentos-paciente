@@ -26,6 +26,7 @@ const el = {
 let usuario = null;
 let rascunho = [];        // páginas já preparadas, esperando o "Guardar"
 let documentos = [];
+let naFila = [];     // guardados no celular, ainda sem subir
 
 const ICONES = { exame: "🧪", laudo: "📄", receita: "💊", relatorio: "📋", outro: "📎" };
 const ROTULOS = { exame: "Exame", laudo: "Laudo", receita: "Receita",
@@ -243,88 +244,107 @@ async function guardar() {
   el.salvar.textContent = "Guardando…";
   limparAvisos();
 
+  // Grava na fila ANTES de tentar subir. Para o paciente, tocar em Guardar
+  // guarda — o envio é problema do app a partir daqui.
+  const entrada = {
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
+    paciente_id: usuario.id,
+    tipo: el.tipo.value,
+    nome: (el.nome.value || "").trim() || ROTULOS[el.tipo.value],
+    data_documento: el.data.value || null,
+    criado_em: new Date().toISOString(),
+    documento_id: null,
+    paginas: rascunho.map((p) => ({
+      blob: p.blob, largura: p.largura, altura: p.altura, enviada: false,
+    })),
+  };
+
   try {
-    const { data: doc, error: e1 } = await sb.from("documentos").insert({
-      paciente_id: usuario.id,
-      tipo: el.tipo.value,
-      nome: (el.nome.value || "").trim() || ROTULOS[el.tipo.value],
-      data_documento: el.data.value || null,
-    }).select("id").single();
-    if (e1) throw e1;
-
-    for (let i = 0; i < rascunho.length; i++) {
-      const p = rascunho[i];
-      const caminho = `${usuario.id}/${doc.id}/${i + 1}.jpg`;
-      const { error: e2 } = await sb.storage.from("documentos")
-        .upload(caminho, p.blob, { contentType: "image/jpeg", upsert: true });
-      if (e2) throw e2;
-
-      const { error: e3 } = await sb.from("documento_paginas").insert({
-        documento_id: doc.id, ordem: i + 1, storage_path: caminho,
-        bytes: p.blob.size, largura: p.largura, altura: p.altura,
-      });
-      if (e3) throw e3;
-    }
-
-    cancelar();
-    aviso("Documento guardado.", "ok");
-    await carregar();
-    convidarAProteger();
-  } catch (erro) {
-    console.error(erro);
-    aviso("Nada foi perdido: as fotos continuam aqui. Confira a internet e "
-        + "toque em Guardar de novo.<br><small>" + (erro.message || erro) + "</small>",
-        "erro", "Não consegui guardar agora");
-  } finally {
+    await FilaDB.guardar(entrada);
+  } catch (e) {
+    console.error(e);
+    aviso("Não consegui guardar no celular. Se o armazenamento estiver cheio, "
+        + "libere espaço e tente de novo.", "erro", "Documento não guardado");
     el.salvar.disabled = false;
     el.salvar.textContent = "Guardar documento";
+    return;
   }
+
+  cancelar();
+  el.salvar.disabled = false;
+  el.salvar.textContent = "Guardar documento";
+  await carregar();
+  await enviarFila();
+  convidarAProteger();
 }
 
-/* ═══ Visualizador ════════════════════════════════════════════════════════
-   Sem esta tela, tocar na miniatura não fazia nada e o toque longo abria o
-   menu do Chrome — "abrir imagem", "baixar", "compartilhar". O documento é
-   do paciente, e quem manda nele deve ser o app, não o navegador.           */
-let visuPaginas = [], visuIndice = 0;
+/* ═══ Envio da fila ═══════════════════════════════════════════════════════
+   Retoma de onde parou. `documento_id` é gravado assim que o documento nasce
+   no servidor, e cada página é marcada ao subir — sem isso, uma queda no meio
+   faria a próxima tentativa criar um documento duplicado com metade das
+   folhas.
 
-async function abrirDocumento(doc) {
-  const paginas = (doc.documento_paginas || []).slice().sort((a, b) => a.ordem - b.ordem);
-  if (!paginas.length) return;
-  visuTitulo(doc);
-  el.telaVisu.classList.remove("escondido");
-  el.visuImg.removeAttribute("src");
+   O upsert por `storage_path` fecha a última brecha: se a linha da página
+   subiu mas o app caiu antes de marcar, a repetição não estoura em chave
+   duplicada.                                                               */
+let enviando = false;
 
-  // Uma hora de validade: tempo de sobra para olhar, e o link morre depois.
-  const { data } = await sb.storage.from("documentos")
-    .createSignedUrls(paginas.map((p) => p.storage_path), 3600);
-  visuPaginas = (data || []).map((d) => d.signedUrl).filter(Boolean);
-  visuIndice = 0;
-  mostrarPagina();
+async function enviarFila() {
+  if (enviando || !usuario) return;
+  enviando = true;
+  try {
+    const pendentes = await FilaDB.listar(usuario.id);
+    for (const entrada of pendentes) {
+      try {
+        if (!entrada.documento_id) {
+          const { data, error } = await sb.from("documentos").insert({
+            paciente_id: usuario.id,
+            tipo: entrada.tipo,
+            nome: entrada.nome,
+            data_documento: entrada.data_documento,
+          }).select("id").single();
+          if (error) throw error;
+          entrada.documento_id = data.id;
+          await FilaDB.guardar(entrada);
+        }
+
+        for (let i = 0; i < entrada.paginas.length; i++) {
+          const pag = entrada.paginas[i];
+          if (pag.enviada) continue;
+          const caminho = `${usuario.id}/${entrada.documento_id}/${i + 1}.jpg`;
+
+          const { error: e2 } = await sb.storage.from("documentos")
+            .upload(caminho, pag.blob, { contentType: "image/jpeg", upsert: true });
+          if (e2) throw e2;
+
+          const { error: e3 } = await sb.from("documento_paginas").upsert({
+            documento_id: entrada.documento_id, ordem: i + 1, storage_path: caminho,
+            bytes: pag.blob.size, largura: pag.largura, altura: pag.altura,
+          }, { onConflict: "storage_path" });
+          if (e3) throw e3;
+
+          pag.enviada = true;
+          await FilaDB.guardar(entrada);
+        }
+
+        await FilaDB.remover(entrada.id);
+      } catch (e) {
+        // Falhou este: para a rodada. Tentar os próximos com a internet caída
+        // só gasta bateria e enche o console.
+        console.warn("[fila] pendente", entrada.id, e.message || e);
+        break;
+      }
+    }
+  } finally {
+    enviando = false;
+  }
+  await carregar();
 }
 
-function visuTitulo(doc) {
-  el.visuTitulo.textContent = doc.nome || ROTULOS[doc.tipo];
-}
-
-function mostrarPagina() {
-  if (!visuPaginas.length) return;
-  el.visuImg.src = visuPaginas[visuIndice];
-  el.visuConta.textContent = `${visuIndice + 1} / ${visuPaginas.length}`;
-  el.visuAntes.disabled = visuIndice === 0;
-  el.visuDepois.disabled = visuIndice === visuPaginas.length - 1;
-}
-
-el.visuAntes.onclick = () => { if (visuIndice > 0) { visuIndice--; mostrarPagina(); } };
-el.visuDepois.onclick = () => {
-  if (visuIndice < visuPaginas.length - 1) { visuIndice++; mostrarPagina(); }
-};
-el.visuFechar.onclick = () => {
-  el.telaVisu.classList.add("escondido");
-  el.visuImg.removeAttribute("src");
-  visuPaginas = [];
-};
-// Toque longo na imagem não abre o menu do navegador.
-el.visuImg.addEventListener("contextmenu", (e) => e.preventDefault());
+// Três gatilhos, porque são três realidades: a conexão que volta, o app que
+// é reaberto, e a espera longa com o app na tela.
+window.addEventListener("online", () => enviarFila());
+setInterval(() => { if (navigator.onLine) enviarFila(); }, 60000);
 
 /* Convite para guardar o acesso, no único momento em que ele faz sentido:
    logo depois do primeiro documento salvo. Aparece uma vez por sessão e
@@ -344,6 +364,17 @@ function convidarAProteger() {
   d.querySelector("#convite-proteger").onclick = () => { d.remove(); abrirConta(false); };
 }
 
+/* O pendente também abre: ele está guardado, e só não subiu ainda. Impedir
+   de ver o que se acabou de fotografar faria o "aguardando envio" parecer
+   perda. */
+function abrirPendente(entrada) {
+  el.visuTitulo.textContent = entrada.nome || ROTULOS[entrada.tipo];
+  el.telaVisu.classList.remove("escondido");
+  visuPaginas = entrada.paginas.map((p) => URL.createObjectURL(p.blob));
+  visuIndice = 0;
+  mostrarPagina();
+}
+
 /* ── Lista ────────────────────────────────────────────────────────────── */
 async function carregar() {
   const { data, error } = await sb.from("documentos")
@@ -351,9 +382,19 @@ async function carregar() {
     .order("criado_em", { ascending: false });
   if (error) { console.warn(error); return; }
   documentos = data || [];
+  // A fila entra na MESMA lista, no topo. Documento guardado que não aparece
+  // em lugar nenhum é indistinguível de documento perdido — e a pessoa
+  // fotografa tudo de novo.
+  try {
+    naFila = await FilaDB.listar(usuario?.id);
+  } catch (e) {
+    naFila = [];
+  }
   desenharLista();
-  el.sub.textContent = documentos.length
-    ? `${documentos.length} documento${documentos.length > 1 ? "s" : ""} guardado${documentos.length > 1 ? "s" : ""}`
+  const total = documentos.length + naFila.length;
+  el.sub.textContent = total
+    ? `${total} documento${total > 1 ? "s" : ""} guardado${total > 1 ? "s" : ""}`
+      + (naFila.length ? ` · ${naFila.length} aguardando envio` : "")
     : "exames, laudos e receitas num lugar só";
 }
 
@@ -374,14 +415,36 @@ function desenharLista() {
       || String(quando(b)).localeCompare(String(quando(a))));
   else lista.sort((a, b) => String(quando(b)).localeCompare(String(quando(a))));
 
-  if (!lista.length) {
+  const pend = naFila.filter((e) => !tipo || e.tipo === tipo);
+
+  if (!lista.length && !pend.length) {
     el.lista.innerHTML = `<div class="vazio"><div class="icone">🗂️</div>
-      <p>${documentos.length ? "Nenhum documento com esse filtro."
+      <p>${documentos.length || naFila.length ? "Nenhum documento com esse filtro."
         : "Ainda não há nada guardado.<br>Comece fotografando um exame."}</p></div>`;
     return;
   }
 
   el.lista.innerHTML = "";
+
+  // Os que ainda não subiram vêm primeiro e dizem em que pé estão. O aviso é
+  // tranquilizador de propósito: não há nada para o paciente fazer, e pedir
+  // ação a quem não pode agir só gera ansiedade.
+  for (const e of pend) {
+    const div = document.createElement("div");
+    div.className = "doc";
+    const url = e.paginas[0] ? URL.createObjectURL(e.paginas[0].blob) : "";
+    div.innerHTML = `
+      <div class="capa">${url ? `<img src="${url}" alt="">` : (ICONES[e.tipo] || "📎")}</div>
+      <div class="txt">
+        <div class="nome">${e.nome || ROTULOS[e.tipo]}</div>
+        <div class="meta">${ROTULOS[e.tipo]} · ${dataBR(e.data_documento || e.criado_em)}
+          ${e.paginas.length > 1 ? " · " + e.paginas.length + " páginas" : ""}</div>
+        <div class="fila">${navigator.onLine ? "⏳ enviando…"
+          : "⏳ guardado no celular · envia quando a internet voltar"}</div>
+      </div>`;
+    div.onclick = () => abrirPendente(e);
+    el.lista.appendChild(div);
+  }
   for (const d of lista) {
     const paginas = (d.documento_paginas || []).slice().sort((a, b) => a.ordem - b.ordem);
     const div = document.createElement("div");
@@ -735,7 +798,11 @@ el.filtroOrdem.onchange = desenharLista;
   try { visto = localStorage.getItem("bemvindo-visto"); } catch (e) {}
   if (!visto && !jaInstalado()) abrirBoasVindas();
 
-  if (await entrar()) await carregar();
+  if (await entrar()) {
+    await carregar();
+    // O que ficou da sessão anterior sobe agora, sem o usuário pedir.
+    if (navigator.onLine) enviarFila();
+  }
 
   // Atalho do ícone: segurar o app na tela inicial oferece "Fotografar
   // documento" e cai aqui já com a câmera aberta. Promessa feita no
