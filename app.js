@@ -377,19 +377,24 @@ function abrirPendente(entrada) {
 
 /* ── Lista ────────────────────────────────────────────────────────────── */
 async function carregar() {
-  const { data, error } = await sb.from("documentos")
-    .select("id, tipo, nome, data_documento, criado_em, documento_paginas(storage_path, ordem)")
-    .order("criado_em", { ascending: false });
-  if (error) { console.warn(error); return; }
-  documentos = data || [];
-  // A fila entra na MESMA lista, no topo. Documento guardado que não aparece
-  // em lugar nenhum é indistinguível de documento perdido — e a pessoa
-  // fotografa tudo de novo.
+  // A FILA PRIMEIRO, e sem depender da rede. Lendo o servidor antes e
+  // desistindo no erro, era exatamente sem internet — quando a fila importa —
+  // que ela deixava de ser desenhada: a tela congelava no estado anterior e o
+  // documento recém-guardado sumia de vista.
   try {
     naFila = await FilaDB.listar(usuario?.id);
   } catch (e) {
     naFila = [];
   }
+
+  const { data, error } = await sb.from("documentos")
+    .select("id, tipo, nome, data_documento, criado_em, documento_paginas(storage_path, ordem)")
+    .order("criado_em", { ascending: false });
+  // Falhou a leitura: mantém o que já estava carregado em vez de esvaziar a
+  // lista. Sumir com o acervo por causa de um sinal ruim assusta sem motivo.
+  if (error) console.warn("[lista]", error.message || error);
+  else documentos = data || [];
+
   desenharLista();
   const total = documentos.length + naFila.length;
   el.sub.textContent = total
