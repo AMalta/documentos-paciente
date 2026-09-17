@@ -89,12 +89,57 @@ function explicar(erro) {
     return "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.";
   if (/invalid|expired|token/i.test(cru))
     return "Código inválido ou vencido. Peça um novo código.";
+  if (/LIMITE_DOCUMENTOS/.test(cru))
+    return "Você chegou ao limite de documentos guardados. Para guardar mais, "
+         + "apague algum que não precise mais.";
+  if (/LIMITE_PAGINAS/.test(cru))
+    return "Este documento já tem páginas demais. Guarde o restante como um "
+         + "segundo documento.";
   if (/already registered|already exists/i.test(cru))
     return "Este e-mail já está em uso. Toque em “Já usei antes” para entrar "
          + "com ele.";
   return "Não consegui concluir agora. Tente de novo em alguns minutos.";
 }
 function limparAvisos() { el.avisos.innerHTML = ""; }
+
+/* ── CAPTCHA ──────────────────────────────────────────────────────────────
+   Existe por um motivo só: a chave anônima é pública, e sem barreira
+   qualquer um cria contas e enche o armazenamento. Não protege dado nenhum
+   — disso cuida o RLS.
+
+   Fica DESLIGADO enquanto `TURNSTILE_SITE_KEY` estiver vazio, e por isso
+   ligar é uma decisão em dois lugares: a chave aqui e a proteção no painel
+   do Supabase. Um sem o outro derruba o login — com a chave aqui e sem o
+   painel, o token é ignorado; com o painel e sem a chave, toda sessão nova
+   é recusada.                                                               */
+async function tokenCaptcha() {
+  const chave = (CONFIG.TURNSTILE_SITE_KEY || "").trim();
+  if (!chave) return null;
+  try {
+    await new Promise((ok, falha) => {
+      if (window.turnstile) return ok();
+      const s = document.createElement("script");
+      s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      s.onload = ok; s.onerror = falha;
+      document.head.appendChild(s);
+    });
+    const caixa = document.createElement("div");
+    caixa.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:70";
+    document.body.appendChild(caixa);
+    const token = await new Promise((ok) => {
+      window.turnstile.render(caixa, { sitekey: chave, callback: ok,
+                                       "error-callback": () => ok(null) });
+    });
+    caixa.remove();
+    return token;
+  } catch (e) {
+    // Falhando o carregamento, deixa passar: barrar o paciente por causa de
+    // um script de terceiro que não abriu seria trocar abuso por exclusão.
+    // Quem recusa de verdade é o Supabase, do outro lado.
+    console.warn("[captcha]", e.message || e);
+    return null;
+  }
+}
 
 /* ── Sessão ───────────────────────────────────────────────────────────────
    Sessão anônima na primeira aberta: o app deixa fotografar antes de pedir
@@ -104,7 +149,11 @@ async function entrar() {
   const { data: { session } } = await sb.auth.getSession();
   if (session) { usuario = session.user; return true; }
 
-  const { data, error } = await sb.auth.signInAnonymously();
+  // Com CAPTCHA configurado, a sessão anônima só nasce com o token. Sem
+  // chave, nada muda — o app segue entrando direto, como sempre.
+  const captcha = await tokenCaptcha();
+  const { data, error } = await sb.auth.signInAnonymously(
+    captcha ? { options: { captchaToken: captcha } } : undefined);
   if (error) {
     aviso("Ligue <b>Anonymous Sign-ins</b> em Authentication → Providers no "
         + "painel do Supabase e recarregue a página.", "erro",
@@ -459,6 +508,7 @@ async function carregar() {
   if (error) console.warn("[lista]", error.message || error);
   else documentos = data || [];
 
+  await lerConsumo();
   desenharLista();
   const total = documentos.length + naFila.length;
   el.sub.textContent = total
@@ -669,6 +719,40 @@ bv.faixaFechar.onclick = () => {
   try { localStorage.setItem("faixa-instalar-nao", "1"); } catch (e) {}
 };
 
+/* ═══ Consumo ═════════════════════════════════════════════════════════════
+   O teto é conferido no BANCO (sql/002_limites.sql) — no aplicativo ele seria
+   contornável por quem tem a chave anônima. Aqui o número serve para avisar
+   a tempo: descobrir o limite depois de fotografar seis folhas é a pior hora
+   possível.                                                                 */
+let consumo = { documentos: 0, teto: 100 };
+
+async function lerConsumo() {
+  try {
+    const { data, error } = await sb.rpc("meu_consumo");
+    if (error) throw error;
+    const l = Array.isArray(data) ? data[0] : data;
+    if (l) consumo = { documentos: l.documentos, teto: l.teto, bytes: l.bytes };
+  } catch (e) {
+    console.warn("[consumo]", e.message || e);
+  }
+}
+
+function noLimite() {
+  return consumo.teto && consumo.documentos + naFila.length >= consumo.teto;
+}
+
+function avisarSeApertando() {
+  if (!consumo.teto) return;
+  const usados = consumo.documentos + naFila.length;
+  const restam = consumo.teto - usados;
+  if (restam > 5 || restam < 0) return;
+  aviso(restam <= 0
+    ? "Você chegou ao limite de documentos guardados. Para guardar mais, apague "
+      + "algum que não precise mais."
+    : `Restam ${restam} documento(s) dentro do seu limite de ${consumo.teto}.`,
+    restam <= 0 ? "erro" : "info");
+}
+
 /* ═══ Conta ═══════════════════════════════════════════════════════════════
    A sessão anônima resolve o começo — fotografar sem cadastro — e cria um
    problema que só aparece depois: limpar o navegador ou trocar de celular
@@ -722,6 +806,13 @@ function pintarConta() {
     : "<b>Seu acesso ainda não está guardado</b>Se este celular for limpo ou trocado, "
       + "você perde o caminho de volta aos documentos.";
   if (protegida) ct.emailAtual.textContent = usuario.email;
+
+  const uso = ct.tela.querySelector("#conta-uso");
+  if (uso && consumo.teto) {
+    const usados = consumo.documentos + naFila.length;
+    uso.innerHTML = `<b>${usados} de ${consumo.teto} documentos</b>`
+      + (consumo.bytes ? ` · ${(consumo.bytes / 1048576).toFixed(1)} MB` : "");
+  }
 }
 
 function abrirConta(paraRecuperar = false) {
@@ -853,7 +944,12 @@ sb.auth.onAuthStateChange((evento, sessao) => {
 });
 
 /* ── Ligações ─────────────────────────────────────────────────────────── */
-el.fotografar.onclick = () => el.camera.click();
+el.fotografar.onclick = () => {
+  // Bloqueia ANTES da câmera. Deixar fotografar e recusar no fim faria a
+  // pessoa perder o trabalho inteiro para descobrir o teto.
+  if (noLimite()) { limparAvisos(); avisarSeApertando(); return; }
+  el.camera.click();
+};
 el.salvar.onclick = guardar;
 el.cancelar.onclick = cancelar;
 el.filtroTipo.onchange = desenharLista;
