@@ -109,18 +109,26 @@ const REGIOES = [
              "colesterol", "hdl", "ldl", "triglicer", "lipidograma",
              "pressao arterial", "pulmao", "pulmonar", "torax", "espirometr",
              "polissonograf", "respirat", "mama", "mamograf", "mamaria"] },
-  // Barriga e quadril eram DUAS regioes e viraram uma. Medido no aparelho,
-  // o quadril tinha 33x21px de alvo — e 44x44 e o minimo para o polegar
-  // acertar sem tentar duas vezes. Alem disso a fronteira entre "barriga" e
-  // "quadril" numa silhueta e arbitraria: exige adivinhar onde uma acaba, o
-  // que e um tipo de leitura — justamente o que o boneco existe para evitar.
-  { id: "barriga", corpo: true, rotulo: "Barriga",
+  // Barriga e pelve eram DUAS regioes e viraram uma. Medido no aparelho, a
+  // de baixo tinha 33x21px de alvo — e 44x44 e o minimo para o polegar
+  // acertar sem tentar duas vezes. Alem disso a fronteira entre as duas
+  // numa silhueta e arbitraria: exige adivinhar onde uma acaba, que e um
+  // tipo de leitura — justamente o que o boneco existe para evitar.
+  //
+  // O ROTULO diz as duas, e isso importa: anatomicamente abdome e pelve sao
+  // cavidades distintas — figado, estomago, intestino e rins de um lado;
+  // bexiga, prostata, utero e ovarios do outro. Na fala comum "barriga"
+  // cobre as duas, mas quem procura o exame de prostata nao pode ter de
+  // adivinhar se cobre. "Baixo-ventre" e a palavra leiga que nomeia a
+  // pelve sem ser "quadril", que o paciente ouve como o OSSO — e osso e
+  // outra gaveta aqui.
+  { id: "barriga", corpo: true, rotulo: "Barriga e baixo-ventre",
     chaves: ["abdome", "abdominal", "figado", "hepat", "tgo", "tgp",
              "transaminase", "gama gt", "glutamil", "bilirrubina", "amilase",
              "lipase", "pancrea", "vesicula", "biliar", "estomago", "gastr",
              "endoscopia", "colonoscopia", "intestin", "colon", "reto",
              "fezes", "parasit", "helicobacter",
-             // vindas do antigo "quadril"
+             // pelvicas
              "rim", "rins", "renal", "urina", "urinar", "eas", "elementos anormais",
              "creatinina", "ureia", "clearance", "bexiga", "prostata", "psa",
              "utero", "uterin", "ovario", "transvaginal", "papanicolau",
