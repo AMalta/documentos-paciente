@@ -140,36 +140,52 @@ const REGIOES = [
              // sala, que e o que ja tiramos tres vezes neste modulo.
              // A regra que sobra e limpa: no corpo, o ORGAO; nas folhinhas,
              // o MATERIAL colhido.
-             "rim", "rins", "renal",
-             "creatinina", "ureia", "bexiga", "prostata", "psa",
-             "utero", "uterin", "ovario", "transvaginal", "papanicolau",
-             "preventivo", "ginecolog", "pelvic"] },
+             // Rim e retroperitoneal: fica no abdome. Creatinina e ureia sao
+             // de sangue e falam da funcao renal — ficam aqui tambem.
+             "rim", "rins", "renal", "creatinina", "ureia"] },
 
-  // Bracos e pernas. A lacuna que fechou: Doppler venoso e arterial de
-  // membros inferiores nao caia em lugar NENHUM — e varizes e trombose nao
-  // sao exames raros, menos ainda numa clinica de cardiologia. Osso e
-  // articulacao ja tinham casa em Ossos, mas quem fez ressonancia de joelho
-  // pensa "meu joelho" e aponta a perna, nao deduz que joelho e osso.
+  // A regiao que faltava, e que fecha uma pendencia: estas palavras estavam
+  // no ABDOME, cuja area desenhada nao chegava ate elas. Quem procurava o
+  // exame de prostata tocava a barriga e encontrava — por sorte da lista,
+  // nao por desenho. Agora o nome, o desenho e as palavras dizem a mesma
+  // coisa.
+  { id: "pelve", corpo: true, rotulo: "Pelve",
+    chaves: ["pelvic", "pelve", "bexiga", "vesical", "prostata", "psa",
+             "utero", "uterin", "endometri", "ovario", "anexos uterinos",
+             "transvaginal", "papanicolau", "preventivo", "colpocitolog",
+             "ginecolog", "testiculo", "escrotal", "bolsa testicular",
+             "vesicula seminal", "uretra", "colo do utero"] },
+
+  // Bracos e pernas, SEPARADOS. A lacuna que fecharam: Doppler venoso e
+  // arterial de membros inferiores nao caia em lugar NENHUM, nem
+  // eletroneuromiografia — e varizes e trombose nao sao exames raros, menos
+  // ainda numa clinica de cardiologia. Osso e articulacao ja tinham casa em
+  // Ossos, mas quem fez ressonancia de joelho pensa "meu joelho" e aponta a
+  // perna, nao deduz que joelho e osso.
   //
-  // NADA de "umero" na lista, embora seja o osso do braco: casa dentro de
-  // NUMERO. Nem "radio", que casa dentro de RADIOGRAFIA. Nem "pe", que casa
-  // em peito, pescoco e pele. Quarta, quinta e sexta armadilha de palavra
-  // curta neste arquivo — a regra ja esta escrita acima, so foi aplicada
-  // antes de morder desta vez.
-  { id: "membros", corpo: true, rotulo: "Braços e pernas",
-    chaves: ["joelho", "tornozelo", "punho", "carpo", "ombro", "cotovelo",
-             "coxa", "perna", "panturrilha", "braco", "antebraco", "femur",
-             "tibia", "fibula", "patela", "calcanhar", "dedo",
-             // Palavra inteira: "=pe" nao casa em peito/pescoco/pele, "=mao"
-             // nao casa em nada, e "=radio"/"=umero" nao casam em
-             // radiografia/numero. Sao os ossos e as partes que so tem nome
-             // curto — nao ha sinonimo longo para "pe".
-             "=pe", "=pes", "=mao", "=maos", "=radio", "=umero",
-             "pe diabetico", "pe em risco", "metatarso", "falange",
-             "quirodactil", "pododactil", "plantar",
-             "membros inferiores", "membros superiores", "mmii", "mmss",
-             "doppler venoso", "doppler arterial", "varizes", "trombose",
-             "insuficiencia venosa", "eletroneuromiografia", "eletromiografia"] },
+  // O que e AMBIGUO aparece nos DOIS: "doppler venoso" sem dizer onde,
+  // "trombose", "eletroneuromiografia", "dedo", "falange". Um exame que
+  // pode ser de braco ou de perna deve acender os dois — quem procura
+  // encontra pelo lado que pensou, e o outro lado nao atrapalha.
+  { id: "bracos", corpo: true, rotulo: "Braços",
+    exceto: ["membros inferiores", "mmii"],
+    chaves: ["ombro", "cotovelo", "punho", "carpo", "braco", "antebraco",
+             "=mao", "=maos", "=radio", "=umero", "ulna", "escapula",
+             "quirodactil", "sindrome do tunel", "membros superiores", "mmss",
+             // ambiguos, tambem nas pernas
+             "dedo", "falange", "doppler venoso", "doppler arterial",
+             "trombose", "insuficiencia venosa", "eletroneuromiografia",
+             "eletromiografia"] },
+  { id: "pernas", corpo: true, rotulo: "Pernas",
+    exceto: ["membros superiores", "mmss"],
+    chaves: ["joelho", "tornozelo", "coxa", "perna", "panturrilha", "femur",
+             "tibia", "fibula", "patela", "calcanhar", "=pe", "=pes",
+             "metatarso", "pododactil", "plantar", "varizes",
+             "membros inferiores", "mmii",
+             // ambiguos, tambem nos bracos
+             "dedo", "falange", "doppler venoso", "doppler arterial",
+             "trombose", "insuficiencia venosa", "eletroneuromiografia",
+             "eletromiografia"] },
 
   // folhinhas — o que nao tem lugar no corpo NEM no seletor de tipo
   //
@@ -191,6 +207,7 @@ const REGIOES = [
              // Sem estas, o cortisol e a maioria dos hormonios nao caiam em
              // sangue — e sao todos exames de sangue.
              "serico", "serica", "no soro", "plasma", "plasmatic",
+             "=psa", "antigeno prostatico",   // PSA e dosagem no sangue
              "sorologia", "anticorpo", "pcr", "vhs", "coagulograma", "tap",
              "protrombina", "fosfatase", "gama gt", "tgo", "tgp",
              "bilirrubina", "eletroforese", "tipagem", "dosagem"] },
@@ -306,6 +323,11 @@ function regioesDoDocumento(d) {
   const achadas = new Set();
   for (const r of REGIOES) {
     if (r.tipos && r.tipos.includes(d.tipo)) { achadas.add(r.id); continue; }
+    // `exceto` desempata o ambiguo. "doppler venoso" sozinho pode ser de
+    // braco ou de perna, entao esta nas duas listas — mas quando o laudo
+    // DIZ "membros inferiores", acender os bracos junto e ruido. A palavra
+    // especifica vence a ambigua.
+    if (r.exceto && r.exceto.some((c) => casaChave(texto, c))) continue;
     if (r.chaves.some((c) => casaChave(texto, c))) achadas.add(r.id);
   }
   return achadas;

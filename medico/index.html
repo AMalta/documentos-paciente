@@ -97,10 +97,10 @@
      e um alvo de 70px pede pontaria que ninguem tem vontade de ter.
      No CELULAR a trilha e larga e baixa: ali os dois cabem lado a lado. */
   .corpo-linha{display:flex;flex-direction:column;align-items:center;gap:12px}
-  #corpo{width:132px;height:auto;flex:0 0 auto}
+  #corpo{width:150px;height:auto;flex:0 0 auto}
   @media (max-width:820px){
     .corpo-linha{flex-direction:row;align-items:center;gap:11px}
-    #corpo{width:120px}
+    #corpo{width:136px}
   }
   #corpo .silhueta path{fill:#eceeea}
   #corpo .regiao{fill:#dde2de;stroke:#fff;stroke-width:1.4;cursor:default;
@@ -108,6 +108,8 @@
   #corpo .regiao.tem{fill:#8fbfae;cursor:pointer}
   #corpo .regiao.tem:hover{fill:#74ab97}
   #corpo .regiao.ativa{fill:var(--verde)}
+  /* Recebe o toque e nao se ve: o desenho do braco continua fino. */
+  #corpo .regiao.alcance{fill:transparent;stroke:none}
   #corpo .regiao:focus{outline:none}
   #corpo .regiao:focus-visible{outline:2px solid var(--verde);outline-offset:2px}
   .folhinhas{width:100%;display:grid;grid-template-columns:1fr;gap:5px}
@@ -271,7 +273,6 @@
                    vestido — antes o tronco descia largo ate onde as pernas
                    comecavam, sem cintura nem quadril no meio. -->
               <path d="M43 33 h14 v8 h-14 Z"/>
-            <path d="M28 124 h44 l-3 24 h-38 Z"/>
             </g>
             <path class="regiao" data-regiao="cabeca" tabindex="0" role="button"
                   aria-label="Cabeça: crânio, olhos e ouvidos"
@@ -281,23 +282,32 @@
                   d="M30 41 h40 l4 11 v30 h-48 v-30 Z"/>
             <path class="regiao" data-regiao="barriga" tabindex="0" role="button"
                   aria-label="Abdome: fígado, estômago, intestino e rins"
-                  d="M26 82 h48 l-2 42 h-44 Z"/>
-            <!-- Bracos e pernas sao UMA regiao em TRES elementos. Um elemento
-                 so, com tres subcaminhos, daria uma caixa envolvente
-                 gigante — e a medicao do alvo passaria a mentir, dizendo
-                 87x196 onde o dedo so acerta o desenho. Separados, cada um
-                 e medido pelo que de fato ocupa.
-                 As PERNAS sao o alvo de verdade; os bracos, auxiliares:
-                 braco em pictograma tem 13 unidades de largura, e nenhum
-                 tamanho razoavel de boneco conserta isso. -->
-            <path class="regiao" data-regiao="membros" tabindex="0" role="button"
-                  aria-label="Braços e pernas: joelhos, ombros, punhos e circulação"
-                  d="M31 148 L29 187 L27 213 L37 214 L41 187 L50 156
-                     L59 187 L63 214 L73 213 L71 187 L69 148 Z"/>
-            <path class="regiao" data-regiao="membros" tabindex="-1" aria-hidden="true"
+                  d="M26 82 h48 l-2 35 h-44 Z"/>
+            <path class="regiao" data-regiao="pelve" tabindex="0" role="button"
+                  aria-label="Pelve: bexiga, próstata, útero e ovários"
+                  d="M28 117 h44 l-3 34 h-38 Z"/>
+            <!-- Bracos e pernas sao regioes SEPARADAS, e os bracos trazem um
+                 problema que as pernas nao tem: 13 unidades de largura, uns
+                 15px. Nenhum tamanho razoavel de boneco conserta — braco e
+                 fino porque braco e fino.
+                 A saida e desacoplar o DESENHO da AREA QUE RESPONDE: o braco
+                 continua fino, e um retangulo transparente ao lado dele
+                 recebe o toque. Ele se estende para FORA (ate a borda do
+                 quadro), nunca para dentro: invadir o tronco roubaria toques
+                 do torax e do abdome. -->
+            <path class="regiao" data-regiao="pernas" tabindex="0" role="button"
+                  aria-label="Pernas: joelhos, tornozelos, pés e circulação"
+                  d="M31 151 L29 188 L27 213 L37 214 L41 188 L50 159
+                     L59 188 L63 214 L73 213 L71 188 L69 151 Z"/>
+            <path class="regiao" data-regiao="bracos" tabindex="0" role="button"
+                  aria-label="Braços: ombros, cotovelos, punhos e mãos"
                   d="M26 48 L20 57 L15 95 L13 126 L21 127 L24 96 L26 58 Z"/>
-            <path class="regiao" data-regiao="membros" tabindex="-1" aria-hidden="true"
+            <path class="regiao" data-regiao="bracos" tabindex="-1" aria-hidden="true"
                   d="M74 48 L80 57 L85 95 L87 126 L79 127 L76 96 L74 58 Z"/>
+            <rect class="regiao alcance" data-regiao="bracos" aria-hidden="true"
+                  x="2" y="46" width="24" height="84"/>
+            <rect class="regiao alcance" data-regiao="bracos" aria-hidden="true"
+                  x="74" y="46" width="24" height="84"/>
           </svg>
           <div class="folhinhas" id="folhinhas"></div>
         </div>
