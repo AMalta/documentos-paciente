@@ -237,29 +237,133 @@ function desenhar() {
   }
 
   el.grade.innerHTML = "";
+  if (ordem === "exame") return desenharAgrupado(lista);
+  for (const d of lista) el.grade.appendChild(cartaoDocumento(d));
+}
+
+/* Um documento na tela. Extraído para ser usado duas vezes: solto na lista
+   e dentro de um grupo. */
+function cartaoDocumento(d) {
+  const paginas = (d.documento_paginas || []).slice().sort((a, b) => a.ordem - b.ordem);
+  const b = document.createElement("button");
+  b.className = "doc";
+  b.innerHTML = `
+    <div class="capa">${ICONES[d.tipo] || "📎"}</div>
+    <div class="txt">
+      <div class="nome">${d.nome || ROTULOS[d.tipo]}</div>
+      <div class="meta">${ROTULOS[d.tipo]} · ${dataBR(d.data_documento || d.criado_em)}</div>
+      ${paginas.length > 1 ? `<div class="paginas">${paginas.length} páginas</div>` : ""}
+    </div>`;
+  b.onclick = () => abrirDocumento(d, paginas);
+  // A miniatura vem por URL assinada, uma por documento: o bucket é
+  // privado, e a política só deixa passar enquanto a liberação vive.
+  if (paginas[0]) {
+    sb.storage.from("documentos").createSignedUrl(paginas[0].storage_path, 3600)
+      .then(({ data }) => {
+        if (data?.signedUrl) {
+          b.querySelector(".capa").innerHTML = `<img src="${data.signedUrl}" alt="">`;
+        }
+      });
+  }
+  return b;
+}
+
+/* ── Agrupados por exame ──────────────────────────────────────────────────
+   Uma linha por exame, não por data. Existe porque a pergunta do médico
+   quase nunca é "o que ele fez em agosto" — é "como está a hemoglobina
+   dele ao longo do tempo". Comparar o mesmo exame no tempo é o que nenhum
+   aparelho faz, porque cada um enxerga um exame só.
+
+   Ordenado por DATA, os cinco hemogramas de um paciente caem nas posições
+   1, 4, 6, 7 e 8, intercalados com TSH e ecocardiograma, e nada na tela
+   diz que são o mesmo exame. Medido na página, com acervo de teste.
+
+   POR QUE O AGRUPAMENTO É POR NOME EXATO (depois de tirar acento, caixa e
+   espaço a mais) e NÃO por "um nome contido no outro", que era o plano:
+
+     "ULTRASSOM"            engoliria
+     "ULTRASSOM DE PELE"    e
+     "ULTRASSOM DE ABDOME"
+
+   Um exame de pele escondido dentro do grupo do abdome é pior do que dois
+   grupos parecidos lado a lado: o médico não vê o que não sabe que existe.
+   O mesmo vale para "RAIO-X" e "TOMOGRAFIA", que são famílias, não exames.
+
+   O custo desta escolha: quem escreveu "HEMOGRAMA" numa vez e "HEMOGRAMA
+   COMPLETO" noutra fica com dois grupos. A ordenação ALFABÉTICA resolve na
+   prática — os dois ficam vizinhos, visíveis, e é o médico quem decide se
+   são a mesma coisa. Adjacência em vez de fusão.
+
+   Os grupos ficam FECHADOS. Abrir todos devolveria a lista de antes, que é
+   o que este modo existe para encurtar. */
+
+// Quais grupos o médico abriu. Fora de `desenhar` para sobreviver aos
+// redesenhos: filtrar por tipo não pode fechar o que ele acabou de abrir.
+let gruposAbertos = new Set();
+
+function chaveDoExame(d) {
+  return semAcento(d.nome || ROTULOS[d.tipo] || "").replace(/\s+/g, " ").trim();
+}
+
+function agruparPorExame(lista) {
+  const mapa = new Map();
   for (const d of lista) {
-    const paginas = (d.documento_paginas || []).slice().sort((a, b) => a.ordem - b.ordem);
-    const b = document.createElement("button");
-    b.className = "doc";
-    b.innerHTML = `
-      <div class="capa">${ICONES[d.tipo] || "📎"}</div>
-      <div class="txt">
-        <div class="nome">${d.nome || ROTULOS[d.tipo]}</div>
-        <div class="meta">${ROTULOS[d.tipo]} · ${dataBR(d.data_documento || d.criado_em)}</div>
-        ${paginas.length > 1 ? `<div class="paginas">${paginas.length} páginas</div>` : ""}
-      </div>`;
-    b.onclick = () => abrirDocumento(d, paginas);
-    el.grade.appendChild(b);
-    // A miniatura vem por URL assinada, uma por documento: o bucket é
-    // privado, e a política só deixa passar enquanto a liberação vive.
-    if (paginas[0]) {
-      sb.storage.from("documentos").createSignedUrl(paginas[0].storage_path, 3600)
-        .then(({ data }) => {
-          if (data?.signedUrl) {
-            b.querySelector(".capa").innerHTML = `<img src="${data.signedUrl}" alt="">`;
-          }
-        });
-    }
+    const k = chaveDoExame(d);
+    if (!mapa.has(k)) mapa.set(k, { chave: k, nome: d.nome || ROTULOS[d.tipo], docs: [] });
+    mapa.get(k).docs.push(d);
+  }
+  const grupos = [...mapa.values()];
+  for (const g of grupos) {
+    // Dentro do grupo, o mais recente em cima: é o que o médico abre
+    // primeiro, e é o que responde "como está agora".
+    g.docs.sort((a, b) => String(b.data_documento || b.criado_em)
+      .localeCompare(String(a.data_documento || a.criado_em)));
+  }
+  return grupos.sort((a, b) => a.chave.localeCompare(b.chave, "pt-BR"));
+}
+
+function anoDe(d) {
+  return String(d.data_documento || d.criado_em || "").slice(0, 4);
+}
+
+function desenharAgrupado(lista) {
+  for (const g of agruparPorExame(lista)) {
+    // Grupo de um não é grupo: vira o cartão de sempre, sem seta para
+    // abrir e sem "1 exame", que só somariam ruído.
+    if (g.docs.length === 1) { el.grade.appendChild(cartaoDocumento(g.docs[0])); continue; }
+
+    const primeiro = anoDe(g.docs[g.docs.length - 1]);
+    const ultimo = anoDe(g.docs[0]);
+    const periodo = primeiro && ultimo && primeiro !== ultimo
+      ? primeiro + " – " + ultimo : (ultimo || "");
+    const aberto = gruposAbertos.has(g.chave);
+
+    const cab = document.createElement("button");
+    cab.className = "grupo" + (aberto ? " aberto" : "");
+    cab.setAttribute("aria-expanded", aberto ? "true" : "false");
+    cab.innerHTML = `
+      <span class="grupo-seta" aria-hidden="true">▸</span>
+      <span class="capa">${ICONES[g.docs[0].tipo] || "📎"}</span>
+      <span class="txt">
+        <span class="nome">${g.nome}</span>
+        <span class="meta">${g.docs.length} exames${periodo ? " · " + periodo : ""}</span>
+      </span>`;
+    el.grade.appendChild(cab);
+
+    const caixa = document.createElement("div");
+    // A classe é o modo escolhido: dentro do grupo o médico continua
+    // podendo ver em grade ou em lista, como no resto da página.
+    caixa.className = "grupo-docs " + modo + (aberto ? "" : " escondido");
+    for (const d of g.docs) caixa.appendChild(cartaoDocumento(d));
+    el.grade.appendChild(caixa);
+
+    cab.onclick = () => {
+      const agora = !gruposAbertos.has(g.chave);
+      if (agora) gruposAbertos.add(g.chave); else gruposAbertos.delete(g.chave);
+      cab.classList.toggle("aberto", agora);
+      cab.setAttribute("aria-expanded", agora ? "true" : "false");
+      caixa.classList.toggle("escondido", !agora);
+    };
   }
 }
 

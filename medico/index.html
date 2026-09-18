@@ -166,6 +166,29 @@
   .conta-docs b{color:var(--tinta)}
 
   .grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:13px}
+  /* Grupos. A linha do grupo e sempre larga, em qualquer modo: ela e um
+     titulo, e titulo em coluna de 168px quebra em tres linhas. Os
+     documentos DENTRO dela seguem o modo escolhido — grade ou lista. */
+  #grade:has(.grupo){display:block}
+  .grupo{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+         background:var(--papel);border:1px solid var(--linha);
+         border-radius:11px;padding:10px 12px;margin:0 0 7px;cursor:pointer}
+  .grupo:hover{border-color:var(--verde)}
+  .grupo .capa{width:30px;height:30px;display:flex;align-items:center;
+               justify-content:center;font-size:17px;flex:0 0 auto}
+  .grupo .txt{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .grupo .nome{font-weight:600;font-size:14px}
+  .grupo .meta{font-size:12px;color:var(--tinta-2)}
+  .grupo-seta{flex:0 0 auto;color:var(--tinta-3);font-size:13px;
+              transition:transform .15s}
+  .grupo.aberto .grupo-seta{transform:rotate(90deg)}
+  .grupo-docs{margin:0 0 13px 18px;padding-left:12px;
+              border-left:2px solid var(--linha)}
+  .grupo-docs.grade{display:grid;
+                    grid-template-columns:repeat(auto-fill,minmax(168px,1fr));
+                    gap:13px}
+  .grupo-docs.lista{display:flex;flex-direction:column;gap:7px}
+  @media (prefers-reduced-motion:reduce){ .grupo-seta{transition:none} }
   .cabeca-lista{display:flex;align-items:center;gap:12px;margin:0 2px 11px}
   .conta-docs{font-size:13px;color:var(--suave);flex:1}
   .modos{display:flex;gap:2px;background:var(--branco);border:1px solid var(--linha);
@@ -288,6 +311,9 @@
           <option value="recente">Mais recentes primeiro</option>
           <option value="antigo">Mais antigos primeiro</option>
           <option value="tipo">Agrupados por tipo</option>
+          <!-- Por EXAME, nao por data: uma linha por hemograma, com quantos
+               e de quando. Ver `desenharAgrupado` em medico.js. -->
+          <option value="exame">Agrupados por exame</option>
         </select>
       </div>
 
