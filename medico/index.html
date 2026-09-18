@@ -169,7 +169,20 @@
   /* Grupos. A linha do grupo e sempre larga, em qualquer modo: ela e um
      titulo, e titulo em coluna de 168px quebra em tres linhas. Os
      documentos DENTRO dela seguem o modo escolhido — grade ou lista. */
-  #grade:has(.grupo){display:block}
+  #grade:has(.grupo),#grade:has(.secao){display:block}
+  /* Faixa de titulo por tipo. SEM seta e sem fundo de cartao, de proposito:
+     ela nao abre nada, e um controle com cara de botao que nao responde ao
+     toque e pior que a ordenacao muda que existia antes. */
+  .secao{display:flex;align-items:baseline;gap:8px;margin:18px 2px 9px;
+         padding-bottom:6px;border-bottom:1px solid var(--linha)}
+  .secao:first-child{margin-top:2px}
+  .secao-nome{font-weight:700;font-size:12px;letter-spacing:.09em;
+              text-transform:uppercase;color:var(--tinta-2)}
+  .secao-n{font-size:12px;color:var(--tinta-3)}
+  .secao-docs.grade{display:grid;
+                    grid-template-columns:repeat(auto-fill,minmax(168px,1fr));
+                    gap:13px}
+  .secao-docs.lista{display:flex;flex-direction:column;gap:7px}
   .grupo{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
          background:var(--papel);border:1px solid var(--linha);
          border-radius:11px;padding:10px 12px;margin:0 0 7px;cursor:pointer}

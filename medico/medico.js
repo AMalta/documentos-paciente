@@ -222,6 +222,9 @@ function desenhar() {
   if (ordem === "antigo") {
     lista.sort((a, b) => String(quando(a)).localeCompare(String(quando(b))));
   } else if (ordem === "tipo") {
+    // Esta ordenacao sobrevive para o caso de a lista nao ser agrupada;
+    // quem desenha o modo "tipo" e `desenharPorTipo`, que reordena dentro
+    // de cada faixa.
     lista.sort((a, b) => a.tipo.localeCompare(b.tipo)
       || String(quando(b)).localeCompare(String(quando(a))));
   } else {
@@ -245,6 +248,7 @@ function desenhar() {
 
   el.grade.innerHTML = "";
   if (ordem === "exame") return desenharAgrupado(lista);
+  if (ordem === "tipo") return desenharPorTipo(lista);
   for (const d of lista) el.grade.appendChild(cartaoDocumento(d));
 }
 
@@ -273,6 +277,65 @@ function cartaoDocumento(d) {
       });
   }
   return b;
+}
+
+/* ── Agrupados por tipo ───────────────────────────────────────────────────
+   Este modo dizia "agrupados" e só ORDENAVA: um `sort` por tipo, sem
+   cabeçalho, sem contagem, sem separação nenhuma. O rótulo prometia uma
+   coisa e entregava outra — e ficou mais visível depois que "Agrupados por
+   exame" passou a agrupar de verdade logo ao lado.
+
+   POR QUE FAIXA E NÃO GRUPO QUE ABRE E FECHA. São duas coisas diferentes e
+   a aparência tem de dizer isso:
+
+     por exame   dezenas de grupos pequenos → cartão com seta, fechado, o
+                 médico abre o que interessa
+     por tipo    quatro ou cinco grupos grandes → faixa de título, sempre
+                 aberta; fechar todos esconderia o acervo inteiro atrás de
+                 cinco linhas
+
+   Uma seta que não abre nada seria pior que a ordenação muda de antes.
+
+   A ORDEM É A DO SELETOR DE TIPO, não alfabética: exame, laudo, receita,
+   relatório, outro. Os dois controles falam dos mesmos cinco nomes, e
+   apresentá-los em ordens diferentes faria o médico procurar duas vezes.
+
+   ISTO NÃO DUPLICA O FILTRO DE TIPO. O filtro mostra UM tipo e esconde o
+   resto; aqui aparecem TODOS, organizados e contados. É a diferença entre
+   "só os laudos" e "o que este paciente tem, por espécie de papel". */
+function desenharPorTipo(lista) {
+  const ORDEM_TIPOS = ["exame", "laudo", "receita", "relatorio", "outro"];
+  const porTipo = new Map();
+  for (const d of lista) {
+    if (!porTipo.has(d.tipo)) porTipo.set(d.tipo, []);
+    porTipo.get(d.tipo).push(d);
+  }
+  // Tipo que o banco tenha e a lista não conheça entra no fim, em vez de
+  // sumir: documento invisível é pior que documento fora de ordem.
+  const tipos = [...porTipo.keys()].sort((a, b) => {
+    const ia = ORDEM_TIPOS.indexOf(a), ib = ORDEM_TIPOS.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+
+  for (const t of tipos) {
+    const docs = porTipo.get(t).sort((a, b) =>
+      String(b.data_documento || b.criado_em)
+        .localeCompare(String(a.data_documento || a.criado_em)));
+    const faixa = document.createElement("div");
+    faixa.className = "secao";
+    const rotulo = ROTULOS[t] || t;
+    faixa.innerHTML = `<span class="secao-nome">${rotulo}${docs.length > 1 ? "s" : ""}</span>`
+                    + `<span class="secao-n">${docs.length}</span>`;
+    el.grade.appendChild(faixa);
+
+    const caixa = document.createElement("div");
+    // `secao-docs`, e nao `grupo-docs`: o recuo e a barra da esquerda dizem
+    // "isto esta DENTRO daquilo", que e verdade num grupo que abre e fecha
+    // e nao numa faixa de titulo.
+    caixa.className = "secao-docs " + modo;
+    for (const d of docs) caixa.appendChild(cartaoDocumento(d));
+    el.grade.appendChild(caixa);
+  }
 }
 
 /* ── Agrupados por exame ──────────────────────────────────────────────────
