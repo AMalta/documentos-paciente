@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-19.5";
+const VERSAO_APP = "2026-09-19.6";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -186,7 +186,22 @@ function pintarTermo() {
   tm.completo.textContent = TERMO.completo;
 }
 
-const jaAceitou = () => !!usuario?.termo_aceito_em;
+/* A VERSÃO CONTA, e não só a existência do aceite.
+
+   Até aqui isto era `!!usuario?.termo_aceito_em`: a versão era gravada no
+   banco e nunca lida. Quem aceitou uma vez nunca mais veria o texto, por
+   mais que ele mudasse — e o comentário logo acima já dizia que "o usuário
+   aceitou" não demonstra nada quando o texto mudou. O código não fazia o
+   que o comentário prometia.
+
+   Descoberto ao acrescentar ao termo a leitura automática da foto, que é
+   uma mudança do QUE se permite: a imagem passa a sair do país. Sem esta
+   comparação, ninguém que já usa o aplicativo seria consultado sobre isso.
+
+   `termo_versao` nulo (aceite antigo, de antes de a coluna existir) também
+   cai aqui e pede de novo. É o lado certo para errar. */
+const jaAceitou = () =>
+  !!usuario?.termo_aceito_em && usuario?.termo_versao === TERMO.versao;
 
 function abrirTermo(somenteLeitura = false) {
   pintarTermo();
@@ -210,6 +225,9 @@ async function registrarAceite() {
     if (error) throw error;
     if (!data?.termo_aceito_em) throw new Error("o aceite não foi gravado");
     usuario.termo_aceito_em = data.termo_aceito_em;
+    // Sem esta linha o aceite acabado de dar nao "conta": jaAceitou compara
+    // a versao, e a do objeto em memoria continuaria a antiga ate recarregar.
+    usuario.termo_versao = TERMO.versao;
     tm.tela.classList.add("escondido");
   } catch (e) {
     aviso(explicar(e), "erro");
