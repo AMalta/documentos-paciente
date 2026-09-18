@@ -210,6 +210,9 @@
        text-transform:uppercase;color:var(--tinta-2)}
   #lista .secao-n{font-size:12px;color:var(--tinta-3)}
   @media (prefers-reduced-motion:reduce){ #lista .grupo-seta{transition:none} }
+  .termo-mudou{margin:10px 0 0;padding:10px 12px;border-radius:10px;
+       background:var(--ambar-fundo);color:var(--ambar);
+       font-size:13.5px;line-height:1.45}
   .leitura.lendo .leitura-icone{animation:pulsar 1.1s ease-in-out infinite}
   @keyframes pulsar{0%,100%{opacity:1}50%{opacity:.35}}
   @media (prefers-reduced-motion:reduce){
@@ -705,9 +708,13 @@
      exige; o texto completo fica a um toque para quem quiser. -->
 <div id="termo" class="escondido">
   <div class="termo-caixa">
-    <h2 class="termo-titulo">Antes de começar</h2>
-    <p class="termo-sub">Em seis frases, como seus documentos são guardados.
-      Leva meio minuto.</p>
+    <h2 class="termo-titulo" id="termo-titulo">Antes de começar</h2>
+    <p class="termo-sub" id="termo-sub">Em seis frases, como seus documentos
+      são guardados. Leva meio minuto.</p>
+    <!-- Só aparece quando o texto MUDOU e a pessoa já tinha aceitado antes.
+         Ler a mesma parede de novo sem saber o que mudou e clicar em
+         "aceito" sem ler são a mesma coisa. -->
+    <p class="termo-mudou escondido" id="termo-mudou"></p>
 
     <div id="termo-itens"></div>
 

@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-19.7";
+const VERSAO_APP = "2026-09-19.8";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -174,7 +174,16 @@ const tm = {
   tela: $("termo"), itens: $("termo-itens"), ver: $("termo-ver"),
   completo: $("termo-completo"), aceitar: $("termo-aceitar"),
   recusar: $("termo-recusar"), verNaConta: $("conta-ver-termo"),
+  titulo: $("termo-titulo"), sub: $("termo-sub"), mudou: $("termo-mudou"),
 };
+
+/* O texto MUDOU desde que esta pessoa aceitou — coisa diferente de nunca
+   ter aceitado. Quem nunca aceitou vê o termo no caminho normal (boas-vindas,
+   e de novo antes da câmera). Quem já aceitou precisa ser avisado na
+   ABERTURA: ela pode passar semanas só consultando documentos, sem tocar em
+   Fotografar, sob um texto que nunca leu. */
+const termoMudou = () => !!usuario?.termo_aceito_em
+                      && usuario?.termo_versao !== TERMO.versao;
 
 function pintarTermo() {
   if (tm.itens.childElementCount) return;
@@ -205,6 +214,22 @@ const jaAceitou = () =>
 
 function abrirTermo(somenteLeitura = false) {
   pintarTermo();
+  /* MUDOU o texto: diga O QUE mudou, em uma linha. Reapresentar a mesma
+     parede sem dizer o que mudou é o jeito mais eficiente de ensinar a
+     clicar em "aceito" sem ler — que é o contrário do que o consentimento
+     serve. A frase é escrita à mão a cada mudança de versão, de propósito:
+     gerar isso automaticamente produziria "o texto foi atualizado", que não
+     informa nada. */
+  const mudou = !somenteLeitura && termoMudou();
+  tm.mudou.classList.toggle("escondido", !mudou);
+  if (mudou) {
+    tm.titulo.textContent = "O texto mudou";
+    tm.sub.textContent = "Você já tinha aceitado uma versão anterior. "
+                       + "Leia de novo e aceite para continuar.";
+    tm.mudou.innerHTML = "<b>O que mudou:</b> ao guardar um documento, a foto "
+      + "passa a ser enviada a um serviço de leitura automática que sugere o "
+      + "nome e a data, para você não digitar. Está explicado no item 4.";
+  }
   tm.aceitar.classList.toggle("escondido", somenteLeitura);
   tm.recusar.textContent = somenteLeitura ? "Fechar" : "Não aceito";
   tm.tela.classList.remove("escondido");
@@ -2206,6 +2231,23 @@ el.corpo.addEventListener("keydown", (e) => {
     await carregar();
     // O que ficou da sessão anterior sobe agora, sem o usuário pedir.
     if (navigator.onLine) enviarFila();
+    /* O TERMO NA ABERTURA, para quem nao aceitou a versao atual.
+       Cobre DOIS casos que pareciam um so:
+
+       - o texto mudou depois de a pessoa aceitar;
+       - a pessoa NUNCA aceitou.
+
+       O segundo nao era hipotese: a conta de teste tinha `termo_aceito_em`
+       NULO no banco, com as boas-vindas ja vistas. O unico gatilho para
+       quem ja passou das boas-vindas era o botao Fotografar — entao dava
+       para consultar o acervo, usar a agenda e liberar tudo a um medico
+       sem nenhum consentimento gravado. So a camera era barrada.
+
+       Nao abre por cima das BOAS-VINDAS: la o termo ja vem em seguida
+       (`fecharBoasVindas`), e duas paredes de texto seguidas, na primeira
+       vez, e a melhor forma de a pessoa fechar as duas sem ler. */
+    const bvAberta = !bv.tela.classList.contains("escondido");
+    if (!jaAceitou() && !bvAberta) abrirTermo();
   }
 
   // Atalho do ícone: segurar o app na tela inicial oferece "Fotografar
