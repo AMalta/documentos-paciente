@@ -129,7 +129,14 @@
      no lugar onde nao ha desenho. So aparece com mouse, entao o celular
      nao acusava. */
   #corpo .regiao.tem:not(.alcance){fill:#8fb8d4;cursor:pointer}
-  #corpo .regiao.tem:not(.alcance):hover{fill:#77a6c7}
+  /* `:not(.ativa)` aqui, e nao e detalhe: `:hover` tem especificidade MAIOR
+     que `.ativa`, entao no computador o cursor ficava em cima da regiao
+     recem-clicada e pintava a cor de passagem POR CIMA da cor de
+     selecionado. So o braco escapava — ali o cursor fica sobre o retangulo
+     invisivel, que o hover nao alcanca — e por isso parecia que "so os
+     bracos ficam escuros". Era o contrario: so o braco nao estava sendo
+     sabotado. No celular nao aparece, porque nao ha cursor. */
+  #corpo .regiao.tem:not(.ativa):not(.alcance):hover{fill:#77a6c7}
   #corpo .regiao.ativa:not(.alcance){fill:var(--azul)}
   /* Recebe o toque e nao se ve: o desenho do braco continua fino. */
   #corpo .regiao.alcance{fill:transparent;stroke:none}
