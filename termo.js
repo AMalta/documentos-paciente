@@ -29,9 +29,16 @@
    médico ou a empresa da clínica. Não dá para adivinhar daqui, e chutar num
    documento legal seria pior que deixar a checagem falhando. */
 const RESPONSAVEL = {
-  nome: "",        // pessoa ou empresa que responde pelos dados
-  documento: "CNPJ 59.170.478/0001-02",   // CPF ou CNPJ
-  contato: "",     // e-mail ou telefone para pedidos e dúvidas
+  // MEI: a razão social É o nome civil. "Indiclin" é nome fantasia — e os
+  // dois aparecem de propósito, porque o paciente reconhece "Indiclin" e
+  // não reconhece o nome de registro.
+  nome: "Indiclin — nome fantasia de Carlos Alexandre Malta Oliveira",
+  documento: "CNPJ 59.170.478/0001-02",
+  // Telefone, e não e-mail, e não é provisório por preguiça: o público
+  // deste aplicativo tem 70 anos, e quem tem dificuldade com o aplicativo
+  // tem mais ainda com e-mail. Trocar isto depois NÃO sobe a `versao`:
+  // muda o contato, não o que a pessoa está permitindo.
+  contato: "(73) 99105-1624",
 };
 
 window.TERMO = {
@@ -157,7 +164,9 @@ retirar este consentimento, sem precisar justificar. Retirar o consentimento
 significa encerrar a conta e apagar os documentos guardados.
 
 12. QUEM RESPONDE POR ISTO
-${RESPONSAVEL.nome}${RESPONSAVEL.documento ? " (" + RESPONSAVEL.documento + ")" : ""}
+${RESPONSAVEL.nome}
+${RESPONSAVEL.documento}
+
 Para pedir cópia, correção ou exclusão dos seus dados, ou para tirar qualquer
 dúvida sobre este documento, fale com: ${RESPONSAVEL.contato}`,
 };
