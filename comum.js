@@ -94,7 +94,27 @@ const REGIOES = [
     chaves: ["cranio", "encefalo", "cerebro", "eeg", "enxaqueca", "hipofise",
              "sela turcica", "seios da face", "olho", "oftalm", "retina",
              "oculos", "visao", "acuidade", "fundo de olho", "ouvido",
-             "audiometria", "otorrino", "nasal", "sinusite"] },
+             "audiometria", "otorrino", "nasal", "sinusite"],
+    sub: [
+      { id: "olhos", rotulo: "Olhos",
+        chaves: ["olho", "oftalm", "retina", "oculos", "visao", "acuidade",
+                 "fundo de olho", "catarata", "glaucoma", "tonometr",
+                 "campimetr", "refra", "ocular", "cristalino", "macula"] },
+      { id: "ouvidos", rotulo: "Ouvidos",
+        chaves: ["ouvido", "audiometr", "otoscop", "timpano", "auditiv",
+                 "impedanciometr", "labirint", "otoneurolog"] },
+      { id: "nariz", rotulo: "Nariz",
+        chaves: ["nasal", "nariz", "sinusite", "seios da face", "rinoscop",
+                 "nasofibro", "septo", "rinite", "sinusopatia"] },
+      { id: "garganta", rotulo: "Boca e garganta",
+        chaves: ["otorrino", "garganta", "faringe", "laringe", "amigdal",
+                 "laringoscop", "degluticao", "boca", "bucal", "dentar",
+                 "panoramica", "odontolog"] },
+      { id: "miolo", rotulo: "Crânio e cérebro",
+        chaves: ["cranio", "encefalo", "cerebro", "=eeg", "enxaqueca",
+                 "hipofise", "sela turcica", "neurolog", "eletroencefalo",
+                 "meninge", "=avc", "isquemi"] },
+    ] },
   { id: "peito", corpo: true, rotulo: "Tórax",
     // "ecocardio", nao "eco": "eco" casa dentro de "ecografia", e mandaria
     // todo ultrassom — de abdome, de tireoide, obstetrico — para o peito.
@@ -106,7 +126,22 @@ const REGIOES = [
              // vascular: a carotida veio do pescoco, que deixou de ser regiao
              "carotida", "doppler de carotid",
              "pressao arterial", "pulmao", "pulmonar", "torax", "espirometr",
-             "polissonograf", "respirat", "mama", "mamograf", "mamaria"] },
+             "polissonograf", "respirat", "mama", "mamograf", "mamaria"],
+    sub: [
+      { id: "coracao", rotulo: "Coração",
+        chaves: ["coracao", "cardiac", "cardio", "ecocardio", "=ecg",
+                 "eletrocardio", "holter", "=mapa", "ergometr", "troponina",
+                 "ck-mb", "=bnp", "pressao arterial", "carotida", "arritmia",
+                 "valva", "valvul", "aorta"] },
+      { id: "colesterol", rotulo: "Colesterol",
+        chaves: ["colesterol", "hdl", "ldl", "triglicer", "lipidograma",
+                 "lipidico"] },
+      { id: "pulmoes", rotulo: "Pulmões",
+        chaves: ["pulmao", "pulmonar", "torax", "espirometr", "respirat",
+                 "polissonograf", "apneia", "bronqu", "asma", "pleura"] },
+      { id: "mamas", rotulo: "Mamas",
+        chaves: ["mama", "mamograf", "mamaria", "bi-rads", "birads"] },
+    ] },
   // Barriga e pelve eram DUAS regioes e viraram uma. Medido no aparelho, a
   // de baixo tinha 33x21px de alvo — e 44x44 e o minimo para o polegar
   // acertar sem tentar duas vezes. Alem disso a fronteira entre as duas
@@ -142,7 +177,22 @@ const REGIOES = [
              // o MATERIAL colhido.
              // Rim e retroperitoneal: fica no abdome. Creatinina e ureia sao
              // de sangue e falam da funcao renal — ficam aqui tambem.
-             "rim", "rins", "renal", "creatinina", "ureia"] },
+             "rim", "rins", "renal", "creatinina", "ureia"],
+    sub: [
+      { id: "figado", rotulo: "Fígado e vesícula",
+        chaves: ["figado", "hepat", "tgo", "tgp", "transaminase", "gama gt",
+                 "glutamil", "bilirrubina", "vesicula", "biliar", "esteatose",
+                 "cirrose"] },
+      { id: "digestivo", rotulo: "Estômago e intestino",
+        chaves: ["estomago", "gastr", "endoscopia", "colonoscopia", "intestin",
+                 "colon", "reto", "helicobacter", "esofag", "refluxo",
+                 "retossigmoid", "polipo", "diverticul"] },
+      { id: "rins", rotulo: "Rins",
+        chaves: ["=rim", "=rins", "renal", "creatinina", "ureia", "nefro",
+                 "calculo renal", "litiase"] },
+      { id: "pancreas", rotulo: "Pâncreas",
+        chaves: ["pancrea", "amilase", "lipase"] },
+    ] },
 
   // A regiao que faltava, e que fecha uma pendencia: estas palavras estavam
   // no ABDOME, cuja area desenhada nao chegava ate elas. Quem procurava o
@@ -154,7 +204,21 @@ const REGIOES = [
              "utero", "uterin", "endometri", "ovario", "anexos uterinos",
              "transvaginal", "papanicolau", "preventivo", "colpocitolog",
              "ginecolog", "testiculo", "escrotal", "bolsa testicular",
-             "vesicula seminal", "uretra", "colo do utero"] },
+             "vesicula seminal", "uretra", "colo do utero"],
+    sub: [
+      { id: "prostata", rotulo: "Próstata",
+        chaves: ["prostata", "=psa", "antigeno prostatico", "prostatic",
+                 "vesicula seminal", "uroflux"] },
+      { id: "utero", rotulo: "Útero e ovários",
+        chaves: ["utero", "uterin", "endometri", "ovario", "anexos uterinos",
+                 "transvaginal", "papanicolau", "preventivo", "colpocitolog",
+                 "ginecolog", "colo do utero", "histeross", "mioma"] },
+      { id: "bexiga", rotulo: "Bexiga",
+        chaves: ["bexiga", "vesical", "uretra", "urodinamic", "cistoscop"] },
+      { id: "testiculos", rotulo: "Testículos",
+        chaves: ["testiculo", "escrotal", "bolsa testicular", "varicocele",
+                 "espermograma", "epididim"] },
+    ] },
 
   // Bracos e pernas, SEPARADOS. A lacuna que fecharam: Doppler venoso e
   // arterial de membros inferiores nao caia em lugar NENHUM, nem
@@ -345,6 +409,83 @@ function regioesDoDocumento(d) {
     if (r.chaves.some((c) => casaChave(texto, c))) achadas.add(r.id);
   }
   return achadas;
+}
+
+/* ═══ Sub-assuntos ════════════════════════════════════════════════════════
+   O refino DENTRO de uma regiao. Nasceu de uma pergunta melhor do que a
+   resposta que eu quase dei: "e se clicar na cabeca abrisse a cabeca, com
+   olhos, boca, nariz e orelhas?".
+
+   Um segundo desenho custava caro e rendia pouco. Ao tamanho em que o
+   boneco vive, a cabeca tem 35px — um olho ali daria 8px, muito abaixo dos
+   44 que o polegar acerta. Para ter alvo utilizavel a cabeca teria de
+   ocupar a TELA, e ai nao e mais "aponte onde doi": e entrar, escolher e
+   aprender a voltar. E se a cabeca abre, por que o abdome nao abre? Seriam
+   seis desenhos, e o mesmo documento com tres enderecos.
+
+   As fichinhas entregam o refino sem tela nova, e valem para as QUATRO
+   regioes onde a lista cresce de verdade — nao so a cabeca.
+
+   TRES REGRAS, e cada uma existe por um jeito de errar:
+
+   1. So aparecem com DOIS ou mais sub-assuntos presentes. Cabeca com uma
+      audiometria so nao mostra nada: nao ha o que escolher, e oferecer
+      escolha de um item ensina que o controle nao serve.
+
+   2. Documento que casa a REGIAO mas nenhum sub-assunto entra em TODOS.
+      "ULTRASSOM DE ABDOME TOTAL" nao e do figado nem do rim — e dos dois,
+      e do pancreas tambem, porque o laudo fala de todos. Deixa-lo de fora
+      faria o exame sumir ao tocar em "Figado", que e onde a pessoa o
+      procura.
+
+   3. O generico nao ACENDE fichinha (conta em `soltos`, nao em `proprios`).
+      Senao um acervo com um unico ultrassom de abdome produziria quatro
+      fichinhas de "1" que devolvem sempre o mesmo documento — quatro portas
+      para a mesma sala, que e o erro que este modulo ja desfez tres vezes.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Quantos documentos por sub-assunto da regiao. Devolve [] quando a regiao
+   nao tem sub-assunto, quando o refino nao separaria nada, ou quando menos
+   de dois sub-assuntos tem documento PROPRIO. */
+function subAssuntos(idRegiao, docs) {
+  const r = REGIOES.find((x) => x.id === idRegiao);
+  if (!r || !r.sub) return [];
+
+  const proprios = {}, soltos = [];
+  for (const d of docs) {
+    if (!regioesDoDocumento(d).has(idRegiao)) continue;
+    const texto = semAcento((d.nome || "") + " " + (ROTULOS[d.tipo] || ""));
+    let caiu = false;
+    for (const sub of r.sub) {
+      if (sub.chaves.some((c) => casaChave(texto, c))) {
+        (proprios[sub.id] = proprios[sub.id] || []).push(d);
+        caiu = true;
+      }
+    }
+    if (!caiu) soltos.push(d);          // regra 2: entra em todos
+  }
+
+  const vivos = r.sub.filter((sub) => (proprios[sub.id] || []).length);
+  if (vivos.length < 2) return [];      // regra 1
+  return vivos.map((sub) => ({
+    id: sub.id, rotulo: sub.rotulo,
+    n: (proprios[sub.id] || []).length + soltos.length,
+  }));
+}
+
+/* O documento entra neste sub-assunto? Generico da regiao entra em todos. */
+function noSubAssunto(d, idRegiao, idSub) {
+  const r = REGIOES.find((x) => x.id === idRegiao);
+  if (!r || !r.sub) return true;
+  const texto = semAcento((d.nome || "") + " " + (ROTULOS[d.tipo] || ""));
+  let caiu = false, dentro = false;
+  for (const sub of r.sub) {
+    if (sub.chaves.some((c) => casaChave(texto, c))) {
+      caiu = true;
+      if (sub.id === idSub) dentro = true;
+    }
+  }
+  return caiu ? dentro : true;
 }
 
 

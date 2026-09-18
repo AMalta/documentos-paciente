@@ -48,6 +48,7 @@ const el = {
   busca: $("busca"), filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"),
   corpoDica: $("corpo-dica"), folhinhas: $("folhinhas"), verTodos: $("ver-todos"),
+  subs: $("subs"),
   contaDocs: $("conta-docs"), grade: $("grade"),
   modoGrade: $("modo-grade"), modoLista: $("modo-lista"),
   telaVisu: $("tela-visu"), visuImg: $("visu-img"), visuTitulo: $("visu-titulo"),
@@ -59,6 +60,8 @@ const el = {
 let documentos = [];
 let medicoNome = "";
 let regiaoAtiva = null;
+// O refino dentro da regiao. Apaga-se junto com ela, sempre.
+let subAtivo = null;
 let pacienteId = null;
 /* Guardado entre pacientes, de proposito: quem prefere lista prefere sempre,
    e faze-lo escolher de novo a cada codigo digitado seria cobrar duas vezes
@@ -203,7 +206,8 @@ function desenhar() {
   const lista = documentos.filter((d) =>
     (!tipo || d.tipo === tipo)
     && casaBusca(d, termos)
-    && (!regiaoAtiva || regioesDoDocumento(d).has(regiaoAtiva)));
+    && (!regiaoAtiva || regioesDoDocumento(d).has(regiaoAtiva))
+    && (!subAtivo || noSubAssunto(d, regiaoAtiva, subAtivo)));
 
   // A data do DOCUMENTO manda, e a de guardado e so o desempate: o medico
   // pensa em "o exame de fevereiro", nao em "o que ela fotografou terca".
@@ -298,10 +302,33 @@ function pintarCorpo() {
   const atual = REGIOES.find((r) => r.id === regiaoAtiva);
   el.corpoDica.textContent = atual ? "Mostrando: " + atual.rotulo : "Por parte do corpo";
   el.verTodos.classList.toggle("escondido", !regiaoAtiva);
+
+  // Conta sobre o acervo INTEIRO, como o resto do boneco.
+  const achados = regiaoAtiva ? subAssuntos(regiaoAtiva, documentos) : [];
+  el.subs.classList.toggle("escondido", !achados.length);
+  el.subs.innerHTML = "";
+  if (!achados.length) { subAtivo = null; return; }
+  if (subAtivo && !achados.some((a) => a.id === subAtivo)) subAtivo = null;
+  const rot = document.createElement("span");
+  rot.className = "subs-rot";
+  rot.textContent = "Mostrar só:";
+  el.subs.appendChild(rot);
+  for (const a of achados) {
+    const b = document.createElement("button");
+    b.className = "sub" + (subAtivo === a.id ? " ativa" : "");
+    b.setAttribute("aria-pressed", subAtivo === a.id ? "true" : "false");
+    b.innerHTML = `<span>${a.rotulo}</span><span class="n">${a.n}</span>`;
+    b.onclick = () => {
+      subAtivo = subAtivo === a.id ? null : a.id;
+      desenhar();
+    };
+    el.subs.appendChild(b);
+  }
 }
 
 function alternarRegiao(id) {
   regiaoAtiva = regiaoAtiva === id ? null : id;
+  subAtivo = null;
   desenhar();
 }
 
@@ -314,7 +341,7 @@ el.corpo.addEventListener("keydown", (e) => {
   const alvo = e.target.closest(".regiao.tem");
   if (alvo) { e.preventDefault(); alternarRegiao(alvo.dataset.regiao); }
 });
-el.verTodos.onclick = () => { regiaoAtiva = null; desenhar(); };
+el.verTodos.onclick = () => { regiaoAtiva = null; subAtivo = null; desenhar(); };
 el.busca.oninput = desenhar;
 el.filtroTipo.onchange = desenhar;
 el.filtroOrdem.onchange = desenhar;

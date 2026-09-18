@@ -159,6 +159,24 @@
   .folhinha .n{color:var(--tinta-3);font-size:11px;margin-left:auto}
   .folhinha.ativa{background:var(--azul);border-color:var(--azul);color:#fff}
   .folhinha.ativa .n{color:#cfe2ef}
+  /* Fichinhas de sub-assunto: o refino DENTRO da regiao tocada.
+     Ficam abaixo do boneco, nao ao lado, e em faixa que rola na
+     horizontal: "Estômago e intestino" nao cabe em coluna de 44px, e
+     quebrar o rotulo em duas linhas faria cada fichinha ter altura
+     diferente da vizinha. */
+  .subs{display:flex;gap:6px;overflow-x:auto;padding:9px 2px 2px;
+        margin-top:8px;border-top:1px solid var(--linha);
+        scrollbar-width:none}
+  .subs::-webkit-scrollbar{display:none}
+  .sub{flex:0 0 auto;display:flex;align-items:center;gap:5px;
+       background:var(--papel);border:1px solid var(--linha);
+       border-radius:999px;padding:6px 11px;font-size:12.5px;
+       color:var(--tinta);white-space:nowrap}
+  .sub .n{color:var(--tinta-3);font-size:11px}
+  .subs-rot{flex:0 0 auto;align-self:center;font-size:12px;
+            color:var(--tinta-2);padding-right:1px}
+  .sub.ativa{background:var(--azul);border-color:var(--azul);color:#fff}
+  .sub.ativa .n{color:#cfe2ef}
   @media (max-width:340px){ .folhinhas{grid-template-columns:1fr} }
 
   /* ── Agenda ── */
@@ -582,6 +600,13 @@
 
     <div class="folhinhas" id="folhinhas"></div>
   </div>
+
+  <!-- Fichinhas de sub-assunto. Vazias quase sempre: so aparecem quando a
+       regiao tocada tem DOIS ou mais sub-assuntos com documento proprio
+       (ver `subAssuntos` em comum.js). Ficam abaixo do boneco porque
+       refinam o que ele acabou de filtrar — acima seriam um segundo
+       controle competindo com o primeiro. -->
+  <div class="subs escondido" id="subs"></div>
 </div>
 
   <div class="filtros">

@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-19.2";
+const VERSAO_APP = "2026-09-19.3";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -24,7 +24,7 @@ const el = {
   lista: $("lista"), sub: $("cabecalho-sub"),
   busca: $("busca"), buscaCaixa: $("busca-caixa"), buscaLimpar: $("busca-limpar"),
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"), folhinhas: $("folhinhas"),
-  corpoDica: $("corpo-dica"),
+  corpoDica: $("corpo-dica"), subs: $("subs"),
   agenda: $("agenda"), agendaItens: $("agenda-itens"), agendaMais: $("agenda-mais"),
   telaCompromisso: $("tela-compromisso"),
   telaRecorte: $("tela-recorte"), recorteArea: $("recorte-area"),
@@ -495,6 +495,7 @@ async function guardar() {
   // salvo sem nome: ele vira "Exame", nao cai em regiao nenhuma do boneco,
   // e ficou invisivel atras do filtro que estava ligado.
   regiaoAtiva = null;
+  subAtivo = null;
   el.busca.value = "";
   el.filtroTipo.value = "";
   await carregar();
@@ -1216,6 +1217,10 @@ const MINIMO_BUSCA = 1;
    FRAÇÕES". Exigir que os dois coincidam mediria a paciencia de quem digita,
    nao a vontade de achar. */
 let regiaoAtiva = null;
+/* O refino dentro da regiao. SEMPRE se apaga junto com ela — um sub-assunto
+   sobrevivente de uma regiao que nao esta mais ligada filtraria sem nada na
+   tela dizendo por que. */
+let subAtivo = null;
 
 /* Acende o que tem documento e desenha as folhinhas.
 
@@ -1264,7 +1269,9 @@ function pintarCorpo() {
     el.corpoDica.innerHTML = `Mostrando <b>${(r && r.rotulo) || ""}</b> `
       + `<button class="ver-todos" id="ver-todos">✕ ver todos</button>`;
     const b = document.getElementById("ver-todos");
-    if (b) b.onclick = () => { regiaoAtiva = null; desenharLista(); };
+    if (b) b.onclick = () => {
+      regiaoAtiva = null; subAtivo = null; desenharLista();
+    };
   } else {
     // SO as regioes do corpo. A primeira versao listava as nove, folhinhas
     // inclusive, e ocupava tres linhas — mais dificil de ler que a propria
@@ -1291,6 +1298,41 @@ function pintarCorpo() {
     b.onclick = () => alternarRegiao(r.id);
     el.folhinhas.appendChild(b);
   }
+
+  pintarSubs(todos);
+}
+
+/* As fichinhas de sub-assunto. Como `pintarCorpo`, contam sobre o acervo
+   INTEIRO: contar sobre o que sobrou faria a fichinha escolhida encolher
+   para "1" no instante do toque. */
+function pintarSubs(todos) {
+  const achados = regiaoAtiva ? subAssuntos(regiaoAtiva, todos) : [];
+  el.subs.classList.toggle("escondido", !achados.length);
+  el.subs.innerHTML = "";
+  if (!achados.length) { subAtivo = null; return; }
+
+  // O sub-assunto ligado sumiu da lista (o acervo mudou): solta, em vez de
+  // filtrar por um criterio que nao esta mais escrito em lugar nenhum.
+  if (subAtivo && !achados.some((a) => a.id === subAtivo)) subAtivo = null;
+
+  const rot = document.createElement("span");
+  rot.className = "subs-rot";
+  rot.textContent = "Mostrar só:";
+  el.subs.appendChild(rot);
+
+  for (const a of achados) {
+    const b = document.createElement("button");
+    b.className = "sub" + (subAtivo === a.id ? " ativa" : "");
+    b.setAttribute("aria-pressed", subAtivo === a.id ? "true" : "false");
+    b.innerHTML = `<span>${a.rotulo}</span><span class="n">${a.n}</span>`;
+    // Tocar de novo solta, igual as regioes: e o mesmo gesto, e ensinar
+    // duas saidas diferentes para dois controles vizinhos e pior que uma.
+    b.onclick = () => {
+      subAtivo = subAtivo === a.id ? null : a.id;
+      desenharLista();
+    };
+    el.subs.appendChild(b);
+  }
 }
 
 /* Tocar de novo solta. Uma regiao por vez, de proposito: combinar peito com
@@ -1298,6 +1340,7 @@ function pintarCorpo() {
    forma mais rapida de o paciente concluir que o aplicativo quebrou. */
 function alternarRegiao(id) {
   regiaoAtiva = regiaoAtiva === id ? null : id;
+  subAtivo = null;
   desenharLista();
 }
 
@@ -1315,7 +1358,8 @@ function desenharLista() {
   el.buscaCaixa.classList.toggle("tem-texto", !!el.busca.value);
   pintarCorpo();
 
-  const naRegiao = (d) => !regiaoAtiva || regioesDoDocumento(d).has(regiaoAtiva);
+  const naRegiao = (d) => (!regiaoAtiva || regioesDoDocumento(d).has(regiaoAtiva))
+    && (!subAtivo || noSubAssunto(d, regiaoAtiva, subAtivo));
   let lista = documentos.filter((d) =>
     (!tipo || d.tipo === tipo) && casaBusca(d, termos) && naRegiao(d));
 

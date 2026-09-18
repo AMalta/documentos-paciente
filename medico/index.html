@@ -133,6 +133,19 @@
   .folhinha .n{margin-left:auto;color:var(--fraco);font-size:11px}
   .folhinha.ativa{background:var(--verde);border-color:var(--verde);color:#fff}
   .folhinha.ativa .n{color:#cfe6dc}
+  /* Fichinhas de sub-assunto — o refino dentro da regiao. Aqui a coluna e
+     estreita e fixa, entao elas QUEBRAM em varias linhas em vez de rolar
+     na horizontal como no celular: rolagem lateral escondida dentro de uma
+     barra lateral de computador nao se descobre. */
+  .subs{display:flex;flex-wrap:wrap;gap:5px;width:100%;
+        padding-top:9px;margin-top:9px;border-top:1px solid var(--linha)}
+  .sub{display:flex;align-items:center;gap:5px;background:var(--papel);
+       border:1px solid var(--linha);border-radius:999px;padding:5px 10px;
+       font-size:12.5px;color:var(--tinta);cursor:pointer}
+  .sub .n{color:var(--tinta-3);font-size:11px}
+  .subs-rot{align-self:center;font-size:12px;color:var(--tinta-2)}
+  .sub.ativa{background:var(--verde);border-color:var(--verde);color:#fff}
+  .sub.ativa .n{color:#cfe6dc}
   .ver-todos{width:100%;margin-top:9px;background:var(--verde-claro);
              border:1px solid var(--verde-borda);color:var(--verde);
              border-radius:8px;padding:7px;font-size:12.5px;font-weight:600}
@@ -316,6 +329,9 @@
           </svg>
           <div class="folhinhas" id="folhinhas"></div>
         </div>
+        <!-- Vazio quase sempre: so aparece quando a regiao tem dois ou mais
+             sub-assuntos com documento proprio (`subAssuntos`, comum.js). -->
+        <div class="subs escondido" id="subs"></div>
         <button class="ver-todos escondido" id="ver-todos">✕ ver todos</button>
       </div>
     </div>
