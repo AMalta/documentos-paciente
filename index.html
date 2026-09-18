@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1a5276">
-<title>Meus documentos de saúde</title>
+<title>indiDoc — meus documentos de saúde</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon.png">
 <link rel="apple-touch-icon" href="icone-180.png">
@@ -463,8 +463,8 @@
        lugar do aplicativo. -->
   <button class="btn-conta btn-mostrar" id="btn-mostrar"
           aria-label="Mostrar ao médico">🩺</button>
-  <h1>Meus documentos de saúde</h1>
-  <p id="cabecalho-sub">exames, laudos e receitas num lugar só</p>
+  <h1>indiDoc</h1>
+  <p id="cabecalho-sub">seus exames, laudos e receitas num lugar só</p>
   <button class="btn-conta" id="btn-conta" aria-label="Minha conta">👤</button>
 </header>
 
@@ -506,6 +506,19 @@
         <b>Para deixar na tela inicial do iPhone</b>
         toque em <span class="gesto">⬆️ Compartilhar</span> aqui embaixo e depois em
         <span class="gesto">Adicionar à Tela de Início</span>.
+      </div>
+
+      <!-- ANDROID SEM O CONVITE. O Chrome só dispara `beforeinstallprompt`
+           quando quer — depende de heurística de engajamento, e num celular
+           que abriu o link e fechou rápido ele não vem. Sem esta saída, o
+           paciente não via botão NEM instrução: ficava sem saber que dá
+           para instalar, o que é justamente o caso em que ele mais precisa
+           de ajuda. O texto é o mesmo do iPhone em espírito: o gesto exato,
+           com o nome dos itens do menu. -->
+      <div class="bv-ios escondido" id="bv-android">
+        <b>Para deixar na tela inicial</b>
+        toque em <span class="gesto">⋮</span> no canto do navegador e depois em
+        <span class="gesto">Adicionar à tela inicial</span>.
       </div>
 
       <button class="bv-comecar" id="bv-comecar">Começar agora</button>

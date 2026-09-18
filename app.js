@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-19.8";
+const VERSAO_APP = "2026-09-19.9";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1796,6 +1796,7 @@ el.camera.onchange = async () => {
 const bv = {
   tela: $("bemvindo"), instalar: $("bv-instalar"), ios: $("bv-ios"),
   comecar: $("bv-comecar"), faixa: $("faixa-instalar"),
+  android: $("bv-android"),
   faixaBtn: $("faixa-btn"), faixaFechar: $("faixa-fechar"),
 };
 
@@ -1814,8 +1815,15 @@ const ehIOS = () =>
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   convite = e;
-  if (!bv.tela.classList.contains("escondido")) bv.instalar.classList.remove("escondido");
-  else mostrarFaixa();
+  if (!bv.tela.classList.contains("escondido")) {
+    // Chegou depois de a tela abrir: troca a instrução escrita pelo botão.
+    // Um toque é melhor que seguir três passos de menu, e deixar os dois
+    // na tela faria a pessoa escolher entre caminhos que fazem o mesmo.
+    bv.android.classList.add("escondido");
+    bv.instalar.classList.remove("escondido");
+  } else {
+    mostrarFaixa();
+  }
 });
 
 window.addEventListener("appinstalled", () => {
@@ -1841,8 +1849,18 @@ function mostrarFaixa() {
 
 function abrirBoasVindas() {
   bv.tela.classList.remove("escondido");
+  /* TRÊS CAMINHOS, e o terceiro faltava.
+
+     Com o convite do navegador, o botão. No iPhone, que nunca oferece, as
+     instruções. E no Android SEM o convite — que acontece, porque o Chrome
+     decide por heurística de engajamento — não havia nada: nem botão, nem
+     instrução. A pessoa saía sem saber que dava para instalar.
+
+     O convite pode chegar DEPOIS desta tela abrir; quando chega, o ouvinte
+     de `beforeinstallprompt` troca a instrução pelo botão, que é melhor. */
   if (convite) bv.instalar.classList.remove("escondido");
   else if (ehIOS()) bv.ios.classList.remove("escondido");
+  else bv.android.classList.remove("escondido");
 }
 
 function fecharBoasVindas() {

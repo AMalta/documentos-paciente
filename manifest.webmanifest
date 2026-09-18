@@ -1,6 +1,6 @@
 {
-  "name": "Meus documentos de saúde",
-  "short_name": "Documentos",
+  "name": "indiDoc — meus documentos de saúde",
+  "short_name": "indiDoc",
   "description": "Guarde seus exames, laudos e receitas e mostre ao médico na consulta.",
   "start_url": ".",
   "scope": ".",
