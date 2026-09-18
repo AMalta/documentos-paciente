@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-19.3";
+const VERSAO_APP = "2026-09-19.4";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -19,6 +19,8 @@ const $ = (id) => document.getElementById(id);
 const el = {
   avisos: $("avisos"), fotografar: $("btn-fotografar"), camera: $("camera"),
   form: $("form"), paginas: $("paginas"), tipo: $("tipo"), nome: $("nome"),
+  leitura: $("leitura"), leituraIcone: $("leitura-icone"),
+  leituraTexto: $("leitura-texto"),
   data: $("data"), salvar: $("btn-salvar"), cancelar: $("btn-cancelar"),
   filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   lista: $("lista"), sub: $("cabecalho-sub"),
@@ -448,6 +450,114 @@ function cancelar() {
   el.fotografar.classList.remove("escondido");
   el.nome.value = "";
   el.camera.value = "";
+  leituraPedido++;          // invalida resposta em voo
+  leituraCalar();
+}
+
+/* ── Leitura automática do documento ──────────────────────────────────────
+   Manda a PRIMEIRA página para a função `sugerir` e preenche o formulário
+   com o que estiver escrito nela. Quem lê é o Groq, do outro lado; a chave
+   dele nunca entra aqui (ver supabase/functions/sugerir/index.ts).
+
+   QUATRO REGRAS, e as quatro vêm da mesma ideia — isto é um ATALHO, não um
+   requisito. O paciente sempre pôde digitar o nome, e continua podendo:
+
+   1. NÃO BLOQUEIA. O formulário abre na hora e os botões funcionam desde o
+      primeiro instante. A leitura chega depois, se chegar.
+   2. NÃO SOBRESCREVE o que a pessoa digitou. Quem começou a escrever o nome
+      decidiu qual é o nome; a sugestão que chegar em cima disso apagaria
+      trabalho feito, e é o tipo de coisa que ninguém perdoa duas vezes.
+   3. SÓ A PRIMEIRA PÁGINA. Um laudo de dez folhas tem o cabeçalho na
+      primeira; ler as dez gastaria dez vezes a cota para repetir a resposta.
+   4. FALHA EM SILÊNCIO. Sem internet, sem cota, função fora do ar: o aviso
+      some e o formulário fica como sempre foi. Erro vermelho transformaria
+      uma comodidade ausente em aplicativo quebrado.
+
+   A DATA continua sendo a de HOJE quando a leitura não vem — era assim
+   antes e continua sendo. A diferença é que agora a sugestão pode
+   substituí-la, porque "hoje" ali nunca foi uma escolha da pessoa, foi um
+   palpite do aplicativo. */
+
+// Campos que a leitura ainda pode preencher. Tocou no campo, ele sai daqui
+// e a sugestão nunca mais mexe nele — nem que chegue meio segundo depois.
+let leituraPodeEscrever = {};
+let leituraPedido = 0;   // descarta resposta de uma foto já cancelada
+
+function leituraSoltar(campo) { leituraPodeEscrever[campo] = false; }
+el.nome.addEventListener("input", () => leituraSoltar("nome"));
+el.data.addEventListener("input", () => leituraSoltar("data"));
+el.tipo.addEventListener("change", () => leituraSoltar("tipo"));
+
+function leituraDizer(texto, lendo) {
+  el.leitura.classList.remove("escondido");
+  el.leitura.classList.toggle("lendo", !!lendo);
+  el.leituraIcone.textContent = lendo ? "📖" : "✓";
+  el.leituraTexto.innerHTML = texto;
+}
+function leituraCalar() {
+  el.leitura.classList.add("escondido");
+  el.leitura.classList.remove("lendo");
+  el.leituraTexto.textContent = "";
+}
+
+async function lerDocumento(blob) {
+  if (!CONFIG.LEITURA_AUTOMATICA) return;
+  // Offline nem tenta: a fila existe para a FOTO chegar ao servidor depois,
+  // e não há como adiar uma sugestão que precisa aparecer agora, enquanto o
+  // formulário está aberto.
+  if (!navigator.onLine) return;
+
+  const meu = ++leituraPedido;
+  leituraDizer("Lendo o documento para preencher os campos…", true);
+  try {
+    const base64 = await new Promise((ok, falha) => {
+      const fr = new FileReader();
+      fr.onload = () => ok(String(fr.result).replace(/^data:[^,]+,/, ""));
+      fr.onerror = falha;
+      fr.readAsDataURL(blob);
+    });
+
+    const { data: ses } = await sb.auth.getSession();
+    const r = await fetch(CONFIG.SUPABASE_URL + "/functions/v1/sugerir", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: CONFIG.SUPABASE_ANON_KEY,
+        Authorization: "Bearer " + (ses?.session?.access_token || ""),
+      },
+      body: JSON.stringify({ imagem: base64 }),
+    });
+    const dados = await r.json();
+    if (meu !== leituraPedido) return;          // outra foto entrou no lugar
+    if (!dados || !dados.ok) {
+      console.warn("[leitura]", dados && dados.erro);
+      return leituraCalar();
+    }
+
+    const postos = [];
+    if (dados.tipo && leituraPodeEscrever.tipo) {
+      el.tipo.value = dados.tipo; postos.push("o tipo");
+    }
+    if (dados.nome && leituraPodeEscrever.nome) {
+      el.nome.value = dados.nome; postos.push("o nome");
+    }
+    if (dados.data && leituraPodeEscrever.data) {
+      el.data.value = dados.data; postos.push("a data");
+    }
+    if (!postos.length) return leituraCalar();
+
+    const lista = postos.length > 1
+      ? postos.slice(0, -1).join(", ") + " e " + postos[postos.length - 1]
+      : postos[0];
+    // "Confira" no imperativo, e não "pode conter erros". O paciente não
+    // precisa saber que existe um modelo por trás; precisa saber que aquele
+    // texto não foi ele quem escreveu e que a palavra final é dele.
+    leituraDizer("Preenchi <b>" + lista + "</b> lendo a foto. "
+               + "<b>Confira</b> antes de guardar.", false);
+  } catch (e) {
+    console.warn("[leitura]", e?.message || e);
+    if (meu === leituraPedido) leituraCalar();
+  }
 }
 
 /* ── Guardar ──────────────────────────────────────────────────────────────
@@ -1451,6 +1561,10 @@ function desenharLista() {
    porque são segundos de espera — silêncio nesse intervalo o usuário lê
    como travamento.                                                          */
 el.camera.onchange = async () => {
+  // Se o formulario JA estava aberto, esta foto e a segunda pagina de um
+  // documento em andamento — e a leitura ja rodou na primeira. Reler o
+  // verso de um laudo gastaria cota para responder pior que da primeira vez.
+  const jaAberto = !el.form.classList.contains("escondido");
   const arquivos = [...el.camera.files];
   el.camera.value = "";
   if (!arquivos.length) return;
@@ -1492,10 +1606,17 @@ el.camera.onchange = async () => {
   el.fotografar.textContent = estava;
 
   if (rascunho.length) {
+    const primeiraFoto = !jaAberto;
     el.form.classList.remove("escondido");
     el.fotografar.classList.add("escondido");
     if (!el.data.value) el.data.value = new Date().toISOString().slice(0, 10);
     desenharRascunho();
+    // SEM await: o formulario ja esta na tela e os botoes ja funcionam. A
+    // leitura chega quando chegar, ou nao chega.
+    if (primeiraFoto) {
+      leituraPodeEscrever = { nome: true, data: true, tipo: true };
+      lerDocumento(rascunho[0].blob);
+    }
   }
 };
 

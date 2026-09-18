@@ -19,6 +19,16 @@ window.CONFIG = {
   // app mais quer atender. O Turnstile resolve sozinho na maioria das vezes.
   TURNSTILE_SITE_KEY: "0x4AAAAAAE5uVOs4XBUBL367",
 
+  // LEITURA AUTOMÁTICA do documento pela foto. Liga e desliga o recurso
+  // inteiro sem publicar código novo — e isso importa porque quem paga a
+  // conta é uma cota DIÁRIA do projeto todo: 200 mil tokens, ~1.800 por
+  // foto, ~110 fotos por dia somando TODOS os pacientes. Estourou, ou a
+  // qualidade decepcionou no piloto, desliga aqui.
+  //
+  // Desligado, o aplicativo é exatamente o que era antes: o paciente digita
+  // o nome e escolhe a data, como sempre.
+  LEITURA_AUTOMATICA: true,
+
   // Compressão antes de subir. Não é ajuste fino: é o que decide o custo do
   // produto. A 250 KB por imagem, 1 GB guarda ~4.000 documentos; sem comprimir,
   // guarda 285. Mexer nestes números muda a conta do módulo inteiro.
