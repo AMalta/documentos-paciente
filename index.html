@@ -385,9 +385,15 @@
   .bv-ios{background:var(--azul-claro);border-radius:12px;padding:14px 16px;
           font-size:14.5px;line-height:1.5;color:#123c57}
   .bv-ios b{display:block;margin-bottom:5px;font-size:14px}
-  .bv-ios .gesto{display:inline-flex;align-items:center;gap:5px;background:#fff;
-                 border-radius:7px;padding:2px 8px;margin:0 2px;font-weight:600;
-                 white-space:nowrap}
+  /* O `.gesto` era um retangulo branco arredondado em negrito — identico a
+     um botao. E ele NAO e botao: e o nome de um item do menu do iPhone.
+     O medico tentou tocar nele e nada aconteceu, que e exatamente o que
+     acontece com quem tem 70 anos e le "toque em Compartilhar" dentro de
+     algo que parece um botao.
+     Agora e sublinhado pontilhado: le-se como NOME de coisa, nao como coisa
+     clicavel. */
+  .bv-ios .gesto{font-weight:700;white-space:nowrap;
+                 text-decoration:underline dotted;text-underline-offset:3px}
   .bv-rodape{margin-top:auto;padding-top:20px;text-align:center;font-size:12.5px;
              color:var(--tinta-3);line-height:1.55}
 
@@ -506,6 +512,20 @@
         <b>Para deixar na tela inicial do iPhone</b>
         toque em <span class="gesto">⬆️ Compartilhar</span> aqui embaixo e depois em
         <span class="gesto">Adicionar à Tela de Início</span>.
+      </div>
+
+      <!-- NAVEGADOR DE DENTRO DE OUTRO APLICATIVO (WhatsApp, Instagram...).
+           Aqui NAO DA para instalar, e nenhuma instrucao sobre Compartilhar
+           ou menu resolve: o item "Adicionar a Tela de Inicio" simplesmente
+           nao existe nesse navegador. Mandar o paciente procurar o que nao
+           existe e pior que nao dizer nada — ele conclui que errou.
+           E o caminho MAIS PROVAVEL do piloto: o link vai por WhatsApp. -->
+      <div class="bv-ios escondido" id="bv-appbrowser">
+        <b>Abra primeiro no navegador do celular</b>
+        Você abriu por dentro de outro aplicativo, e daqui não dá para
+        instalar. Toque em <span class="gesto">⋯</span> no canto e depois em
+        <span class="gesto" id="bv-abrir-em">Abrir no Safari</span>.
+        Lá aparece a opção de instalar.
       </div>
 
       <!-- ANDROID SEM O CONVITE. O Chrome só dispara `beforeinstallprompt`

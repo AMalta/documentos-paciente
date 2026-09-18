@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-19.11";
+const VERSAO_APP = "2026-09-19.12";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1798,7 +1798,8 @@ el.camera.onchange = async () => {
 const bv = {
   tela: $("bemvindo"), instalar: $("bv-instalar"), ios: $("bv-ios"),
   comecar: $("bv-comecar"), faixa: $("faixa-instalar"),
-  android: $("bv-android"),
+  android: $("bv-android"), appbrowser: $("bv-appbrowser"),
+  abrirEm: $("bv-abrir-em"),
   faixaBtn: $("faixa-btn"), faixaFechar: $("faixa-fechar"),
 };
 
@@ -1806,6 +1807,39 @@ let convite = null;   // o aviso de instalação guardado pelo navegador
 
 const jaInstalado = () =>
   window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+
+/* Navegador de DENTRO de outro aplicativo — WhatsApp, Instagram, Facebook.
+   Instalar ali e impossivel: o item "Adicionar a Tela de Inicio" nao existe
+   nesse navegador, em nenhum dos dois sistemas.
+
+   E o caminho mais provavel do piloto, porque o link vai por WhatsApp.
+
+   COMO SE RECONHECE, e por que assim: o Safari de verdade manda "Safari/"
+   no `userAgent`; o WebView embutido do iPhone, nao. No Android os
+   navegadores de aplicativo se anunciam com "wv". Os dois sao heuristica —
+   nao ha API para isto —, mas errar aqui e barato: o pior caso e mostrar
+   uma instrucao a mais para quem ja estava no navegador certo. Errar para o
+   outro lado deixa a pessoa procurando um menu que nao existe. */
+const ehNavegadorDeApp = () => {
+  if (jaInstalado()) return false;
+  const ua = navigator.userAgent || "";
+  // SEM BARRA INVERTIDA NENHUMA. A versao anterior desta linha tinha um
+  // contorno de palavra, e ele nao chegou como dois caracteres: chegou como
+  // o BYTE 0x08, backspace, dentro da expressao. A expressao passou a casar
+  // "wv" no meio de qualquer palavra — e o arquivo comparava sem reclamar.
+  // O modulo ja tinha registrado essa armadilha; eu cai nela de novo.
+  //
+  // O WebView do Android se anuncia com a sequencia exata "; wv)".
+  if (ua.indexOf("; wv)") >= 0) return true;
+  for (const marca of ["FBAN", "FBAV", "Instagram", "Line/", "GSA/"]) {
+    if (ua.indexOf(marca) >= 0) return true;
+  }
+  // iPhone: o WebView embutido nao traz "Safari/", e os navegadores de
+  // verdade se identificam (CriOS = Chrome, FxiOS = Firefox, EdgiOS = Edge).
+  if (!ehIOS()) return false;
+  const proprio = ["Safari/", "CriOS", "FxiOS", "EdgiOS"];
+  return !proprio.some((m) => ua.indexOf(m) >= 0);
+};
 
 const ehIOS = () =>
   /iphone|ipad|ipod/i.test(navigator.userAgent) ||
@@ -1821,6 +1855,9 @@ window.addEventListener("beforeinstallprompt", (e) => {
     // Chegou depois de a tela abrir: troca a instrução escrita pelo botão.
     // Um toque é melhor que seguir três passos de menu, e deixar os dois
     // na tela faria a pessoa escolher entre caminhos que fazem o mesmo.
+    // Nao troca nada se a pessoa esta dentro do navegador de outro
+    // aplicativo: la o atalho nasceria abrindo dentro dele de novo.
+    if (ehNavegadorDeApp()) return;
     bv.android.classList.add("escondido");
     bv.instalar.classList.remove("escondido");
   } else {
@@ -1860,9 +1897,23 @@ function abrirBoasVindas() {
 
      O convite pode chegar DEPOIS desta tela abrir; quando chega, o ouvinte
      de `beforeinstallprompt` troca a instrução pelo botão, que é melhor. */
-  if (convite) bv.instalar.classList.remove("escondido");
-  else if (ehIOS()) bv.ios.classList.remove("escondido");
-  else bv.android.classList.remove("escondido");
+  /* A ORDEM IMPORTA, e o primeiro caso e o que faltava.
+
+     Dentro do navegador de outro aplicativo nao ha instalacao possivel, e
+     nenhuma instrucao sobre Compartilhar resolve — o item nao existe la.
+     Por isso ele vem ANTES de tudo, inclusive do convite: se por acaso o
+     navegador embutido oferecer o convite, instalar dali gera um atalho
+     que abre de novo dentro do aplicativo. */
+  if (ehNavegadorDeApp()) {
+    bv.abrirEm.textContent = ehIOS() ? "Abrir no Safari" : "Abrir no Chrome";
+    bv.appbrowser.classList.remove("escondido");
+  } else if (convite) {
+    bv.instalar.classList.remove("escondido");
+  } else if (ehIOS()) {
+    bv.ios.classList.remove("escondido");
+  } else {
+    bv.android.classList.remove("escondido");
+  }
 }
 
 function fecharBoasVindas() {
