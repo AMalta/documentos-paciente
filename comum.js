@@ -276,6 +276,20 @@ const REGIOES = [
              "estradiol", "testosterona", "progesterona", "insulina",
              "hormon", "acth", "aldosterona", "dhea", "hcg", "igf",
              "somatomedina", "peptideo c"] },
+  // Pele: o caso mais limpo depois do sangue. Esta em TODA PARTE, entao nao
+  // tem lugar no corpo — e nenhum seletor a alcanca, porque biopsia de pele
+  // e tipo "exame" como qualquer outro.
+  { id: "pele", corpo: false, rotulo: "Pele",
+    icone: '<svg viewBox="0 0 16 16" width="1.05em" height="1.05em" '
+         + 'style="vertical-align:-2px" aria-hidden="true">'
+         + '<rect x="2.2" y="2.2" width="11.6" height="11.6" rx="3.4" fill="#e0b088"/>'
+         + '<circle cx="10.4" cy="6" r="2" fill="#8a5a3b"/>'
+         + '<circle cx="5.4" cy="10.4" r="1.1" fill="#c08f66"/>'
+         + '</svg>',
+    chaves: ["=pele", "dermat", "dermatoscop", "nevo", "melanoma",
+             "mapeamento corporal", "micolog", "cutane", "epiderm",
+             "onicomicose", "=unha", "=unhas", "teste de contato",
+             "alergia de contato", "lesao de pele", "ceratose"] },
   { id: "ossos", corpo: false, rotulo: "Ossos", icone: "🦴",
     chaves: ["osso", "ossea", "densitometr", "coluna", "lombar", "vertebr",
              "joelho", "ombro", "quadril", "punho", "tornozelo", "fratura",
