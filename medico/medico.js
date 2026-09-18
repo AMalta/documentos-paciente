@@ -67,8 +67,15 @@ let pacienteId = null;
    e faze-lo escolher de novo a cada codigo digitado seria cobrar duas vezes
    pela mesma decisao. Nao e sessao — e so o jeito de olhar. */
 let modo = (() => {
-  try { return localStorage.getItem("medico-modo") === "lista" ? "lista" : "grade"; }
-  catch (e) { return "grade"; }
+  // LISTA por padrao, e nao grade. A grade mostra a capa grande, que serve
+  // para RECONHECER um papel pela aparencia — util para o paciente, que
+  // fotografou aquilo. O medico procura pelo NOME do exame, e em lista cabe
+  // o dobro de linhas na mesma altura de tela. Quem preferir a grade toca
+  // uma vez e a escolha fica guardada.
+  // O `catch` cai no MESMO padrao, e nao no antigo: navegador anonimo e
+  // armazenamento bloqueado nao sao motivo para a tela abrir diferente.
+  try { return localStorage.getItem("medico-modo") === "grade" ? "grade" : "lista"; }
+  catch (e) { return "lista"; }
 })();
 
 function erro(texto) {

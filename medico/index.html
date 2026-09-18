@@ -307,13 +307,17 @@
           <option value="relatorio">Relatórios</option>
           <option value="outro">Outros</option>
         </select>
+        <!-- PRIMEIRO e selecionado: agrupar por exame e o PADRAO.
+             A pergunta que o medico traz para esta tela e "como esta este
+             exame ao longo do tempo", nao "o que ele fez em agosto" — e um
+             acervo sem repeticao nenhuma cai exatamente na lista de antes,
+             entao o padrao novo nao custa nada a quem nao precisa dele.
+             Ver `desenharAgrupado` em medico.js. -->
         <select id="filtro-ordem">
+          <option value="exame" selected>Agrupados por exame</option>
           <option value="recente">Mais recentes primeiro</option>
           <option value="antigo">Mais antigos primeiro</option>
           <option value="tipo">Agrupados por tipo</option>
-          <!-- Por EXAME, nao por data: uma linha por hemograma, com quantos
-               e de quando. Ver `desenharAgrupado` em medico.js. -->
-          <option value="exame">Agrupados por exame</option>
         </select>
       </div>
 
