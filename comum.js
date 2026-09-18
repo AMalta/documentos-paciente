@@ -81,24 +81,20 @@ function termosDaBusca() {
    Para estender: acrescente a palavra na lista da regiao. Nada mais muda. */
 const REGIOES = [
   // no boneco
-  // Cabeca e pescoco eram DUAS e viraram uma, por ideia do medico e por
-  // medicao: o pescoco tinha 9x7 PIXELS de area tocavel no celular — nao era
-  // um botao, era um enfeite. E nenhum tamanho de boneco razoavel conserta
-  // isso, porque pescoco e estreito por ser pescoco.
+  // So a CABECA. O pescoco saiu por pedido do medico, junto com a mudanca
+  // que lhe tirou o conteudo: a tireoide passou para a folhinha de
+  // hormonios, e o que sobrava no pescoco eram carotidas (vascular, foi
+  // para o torax) e "cervical", palavra ambigua demais para ficar solta —
+  // coluna cervical e osso, colo uterino e outra coisa. `coluna` ja cobre a
+  // primeira em Ossos.
   //
-  // Juntar tambem deixa a regra do desenho inteira: o BONECO guarda o que
-  // tem lugar no corpo, as FOLHINHAS o que nao tem. A tireoide tem lugar —
-  // manda-la para um cartao resolveria o alvo quebrando a regra.
-  // "Cabeca e pescoco" ainda por cima e agrupamento clinico de verdade.
-  { id: "cabeca", corpo: true, rotulo: "Cabeça e pescoço",
+  // O desenho mantem o pescoco como SILHUETA: corpo sem pescoco fica
+  // estranho, e ele nao precisa ser tocavel para existir.
+  { id: "cabeca", corpo: true, rotulo: "Cabeça",
     chaves: ["cranio", "encefalo", "cerebro", "eeg", "enxaqueca", "hipofise",
              "sela turcica", "seios da face", "olho", "oftalm", "retina",
              "oculos", "visao", "acuidade", "fundo de olho", "ouvido",
-             "audiometria", "otorrino", "nasal", "sinusite",
-             // vindas do antigo "pescoco"
-             "tireoide", "tireoid", "tsh", "t3", "t4", "trab", "carotida",
-             "cervical", "paratireoide", "tiroglobulina"] },
-
+             "audiometria", "otorrino", "nasal", "sinusite"] },
   { id: "peito", corpo: true, rotulo: "Tórax",
     // "ecocardio", nao "eco": "eco" casa dentro de "ecografia", e mandaria
     // todo ultrassom — de abdome, de tireoide, obstetrico — para o peito.
@@ -107,6 +103,8 @@ const REGIOES = [
              // O perfil lipidico e exame de sangue E assunto do coracao: e o
              // caso que a regiao unica nao resolvia, e aqui ele entra nos dois.
              "colesterol", "hdl", "ldl", "triglicer", "lipidograma",
+             // vascular: a carotida veio do pescoco, que deixou de ser regiao
+             "carotida", "doppler de carotid",
              "pressao arterial", "pulmao", "pulmonar", "torax", "espirometr",
              "polissonograf", "respirat", "mama", "mamograf", "mamaria"] },
   // Barriga e pelve eram DUAS regioes e viraram uma. Medido no aparelho, a
@@ -163,6 +161,10 @@ const REGIOES = [
              "colesterol", "hdl", "ldl", "triglicer", "lipidograma",
              "creatinina", "ureia", "acido urico", "tsh", "t3", "t4",
              "vitamina", "ferritina", "ferro", "albumina", "proteina",
+             // O laudo diz de onde saiu: "serico", "no soro", "plasmatico".
+             // Sem estas, o cortisol e a maioria dos hormonios nao caiam em
+             // sangue — e sao todos exames de sangue.
+             "serico", "serica", "no soro", "plasma", "plasmatic",
              "sorologia", "anticorpo", "pcr", "vhs", "coagulograma", "tap",
              "protrombina", "fosfatase", "gama gt", "tgo", "tgp",
              "bilirrubina", "eletroforese", "tipagem", "dosagem"] },
@@ -208,6 +210,27 @@ const REGIOES = [
          + '</svg>',
     chaves: ["fezes", "parasitolog", "coprocultura", "coproscopia",
              "sangue oculto", "oxiuro", "calprotectina", "rotavirus"] },
+  // Hormonios: nao tem lugar no corpo (a tireoide tem, mas o cortisol, o
+  // estradiol e a insulina nao) e nenhum seletor os alcanca — sao tipo
+  // "exame" como qualquer outro. Passam pela regra.
+  //
+  // NADA de "trab" na lista, embora seja o nome do anticorpo anti-receptor
+  // de TSH: "trab" casa dentro de ATESTADO DE TRABALHO. "tsh" ja pega esse
+  // exame pelo nome completo. Terceira palavra curta a morder neste modulo,
+  // depois de "eco" dentro de "ecografia" e "eas" dentro de "pancreas".
+  { id: "hormonios", corpo: false, rotulo: "Hormônios",
+    icone: '<svg viewBox="0 0 16 16" width="1.05em" height="1.05em" '
+         + 'style="vertical-align:-2px" aria-hidden="true">'
+         + '<circle cx="7" cy="8.6" r="4.4" fill="#7a52a1"/>'
+         + '<circle cx="12.6" cy="4.2" r="1.7" fill="#b08fd0"/>'
+         + '<circle cx="13.2" cy="9.6" r="1.2" fill="#b08fd0"/>'
+         + '<circle cx="9.8" cy="2.6" r="1" fill="#cbb3e4"/>'
+         + '</svg>',
+    chaves: ["tireoide", "tireoid", "tsh", "t3", "t4", "tiroglobulina",
+             "paratireoide", "pth", "cortisol", "prolactina", "fsh",
+             "estradiol", "testosterona", "progesterona", "insulina",
+             "hormon", "acth", "aldosterona", "dhea", "hcg", "igf",
+             "somatomedina", "peptideo c"] },
   { id: "ossos", corpo: false, rotulo: "Ossos", icone: "🦴",
     chaves: ["osso", "ossea", "densitometr", "coluna", "lombar", "vertebr",
              "joelho", "ombro", "quadril", "punho", "tornozelo", "fratura",
