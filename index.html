@@ -192,6 +192,15 @@
   @media (prefers-reduced-motion:reduce){
     .leitura.lendo .leitura-icone{animation:none}
   }
+  /* A segunda linha do aviso, só para a DATA. Âmbar e não vermelho: não
+     houve erro, há uma coisa para conferir — vermelho no meio de um
+     formulário que funcionou faz a pessoa procurar o que ela fez de
+     errado. */
+  .leitura-data{display:block;margin-top:5px;color:var(--ambar);font-weight:600}
+  /* O campo marcado enquanto ninguém confirmou. Sai no primeiro toque:
+     a marca quer dizer "você ainda não olhou isto", não "isto está
+     errado". */
+  #data.conferir{border-color:var(--ambar);background:var(--ambar-fundo)}
   .sub.ativa{background:var(--azul);border-color:var(--azul);color:#fff}
   .sub.ativa .n{color:#cfe2ef}
   @media (max-width:340px){ .folhinhas{grid-template-columns:1fr} }

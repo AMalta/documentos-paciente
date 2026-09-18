@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-19.4";
+const VERSAO_APP = "2026-09-19.5";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -485,7 +485,12 @@ let leituraPedido = 0;   // descarta resposta de uma foto já cancelada
 
 function leituraSoltar(campo) { leituraPodeEscrever[campo] = false; }
 el.nome.addEventListener("input", () => leituraSoltar("nome"));
-el.data.addEventListener("input", () => leituraSoltar("data"));
+el.data.addEventListener("input", () => {
+  leituraSoltar("data");
+  // Mexeu na data: a marca some. Ela quer dizer "voce ainda nao olhou
+  // isto", nao "isto esta errado" — e quem digitou por cima ja olhou.
+  el.data.classList.remove("conferir");
+});
 el.tipo.addEventListener("change", () => leituraSoltar("tipo"));
 
 function leituraDizer(texto, lendo) {
@@ -498,6 +503,7 @@ function leituraCalar() {
   el.leitura.classList.add("escondido");
   el.leitura.classList.remove("lendo");
   el.leituraTexto.textContent = "";
+  el.data.classList.remove("conferir");
 }
 
 async function lerDocumento(blob) {
@@ -549,11 +555,31 @@ async function lerDocumento(blob) {
     const lista = postos.length > 1
       ? postos.slice(0, -1).join(", ") + " e " + postos[postos.length - 1]
       : postos[0];
-    // "Confira" no imperativo, e não "pode conter erros". O paciente não
-    // precisa saber que existe um modelo por trás; precisa saber que aquele
-    // texto não foi ele quem escreveu e que a palavra final é dele.
-    leituraDizer("Preenchi <b>" + lista + "</b> lendo a foto. "
-               + "<b>Confira</b> antes de guardar.", false);
+
+    /* O aviso tem DOIS níveis, e a segunda linha é só sobre a data.
+       Não é ênfase decorativa: medindo contra gabarito, o nome saiu certo
+       em 42% das fotos e a data em 10% — e os erros de data não são
+       recusas, são datas PLAUSÍVEIS que não estão escritas no papel. Na
+       foto real que abriu o recurso, o laudo dizia 25/11 e 26/11 e a
+       leitura respondeu 23/11.
+
+       A assimetria é o que justifica tratar os dois campos diferente:
+       nome errado a pessoa vê na hora, porque acabou de ler aquele papel.
+       Data errada com cara de plausível ela confirma sem olhar — e o
+       estrago aparece anos depois, quando o exame fica na ordem errada
+       para o médico que precisa comparar. */
+    let texto = "Preenchi <b>" + lista + "</b> lendo a foto.";
+    if (dados.data && postos.includes("a data")) {
+      el.data.classList.add("conferir");
+      texto += "<span class=\"leitura-data\">⚠️ Confira a data no papel — "
+             + "é o que mais sai errado.</span>";
+    } else {
+      // "Confira" no imperativo, e não "pode conter erros". O paciente não
+      // precisa saber que existe um modelo por trás; precisa saber que
+      // aquele texto não foi ele quem escreveu e que a palavra final é dele.
+      texto += " <b>Confira</b> antes de guardar.";
+    }
+    leituraDizer(texto, false);
   } catch (e) {
     console.warn("[leitura]", e?.message || e);
     if (meu === leituraPedido) leituraCalar();
