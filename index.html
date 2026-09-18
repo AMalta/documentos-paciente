@@ -528,24 +528,26 @@
          e o unico sinal de que o corpo tem partes tocaveis e partes que
          nao sao. -->
           <g class="silhueta" aria-hidden="true">
-            <path d="M26 48 L20 57 L15 96 L13 130 L21 131 L24 97 L26 58 Z"/>
-            <path d="M74 48 L80 57 L85 96 L87 130 L79 131 L76 97 L74 58 Z"/>
-            <path d="M32 150 L30 188 L28 214 L38 215 L42 188 L50 158
-                     L58 188 L62 215 L72 214 L70 188 L68 150 Z"/>
+            <path d="M26 48 L20 57 L15 95 L13 126 L21 127 L24 96 L26 58 Z"/>
+            <path d="M74 48 L80 57 L85 95 L87 126 L79 127 L76 96 L74 58 Z"/>
+            <!-- Quadril e pernas NAO sao regiao: sao desenho. O baixo-ventre
+                 fica de fora das duas areas tocaveis, e e o que tira o ar de
+                 vestido — antes o tronco descia largo ate onde as pernas
+                 comecavam, sem cintura nem quadril no meio. -->
+            <path d="M28 124 h44 l-3 24 h-38 Z"/>
+            <path d="M31 148 L29 187 L27 213 L37 214 L41 187 L50 156
+                     L59 187 L63 214 L73 213 L71 187 L69 148 Z"/>
           </g>
-          <!-- Cabeca e pescoco sao UM alvo so: dois subcaminhos no mesmo
-               elemento. O pescoco sozinho tinha 9x7px — medido no
-               aparelho, nao estimado. -->
           <path class="regiao" data-regiao="cabeca" tabindex="0" role="button"
                 aria-label="Cabeça, olhos, ouvidos e tireoide"
                 d="M50 1 A16 17 0 0 1 50 35 A16 17 0 0 1 50 1 Z
-                   M43 33 h14 v9 h-14 Z"/>
+                   M43 33 h14 v8 h-14 Z"/>
           <path class="regiao" data-regiao="peito" tabindex="0" role="button"
-                aria-label="Peito, coração, pulmões e mamas"
-                d="M31 41 h38 l5 12 v37 h-48 v-37 Z"/>
+                aria-label="Tórax: coração, pulmões e mamas"
+                d="M30 41 h40 l4 11 v30 h-48 v-30 Z"/>
           <path class="regiao" data-regiao="barriga" tabindex="0" role="button"
-                aria-label="Barriga e baixo-ventre: fígado, intestino, rins, bexiga, próstata, útero"
-                d="M26 90 h48 l-6 60 h-36 Z"/>
+                aria-label="Abdome: fígado, estômago, intestino e rins"
+                d="M26 82 h48 l-2 42 h-44 Z"/>
   </svg>
 
     <div class="folhinhas" id="folhinhas"></div>

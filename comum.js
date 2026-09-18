@@ -99,7 +99,7 @@ const REGIOES = [
              "tireoide", "tireoid", "tsh", "t3", "t4", "trab", "carotida",
              "cervical", "paratireoide", "tiroglobulina"] },
 
-  { id: "peito", corpo: true, rotulo: "Peito",
+  { id: "peito", corpo: true, rotulo: "Tórax",
     // "ecocardio", nao "eco": "eco" casa dentro de "ecografia", e mandaria
     // todo ultrassom — de abdome, de tireoide, obstetrico — para o peito.
     chaves: ["coracao", "cardiac", "cardio", "ecocardio", "ecg", "eletrocardio",
@@ -130,7 +130,7 @@ const REGIOES = [
   // "Cabeca e pescoco" segue composto, e nao e incoerencia: o pescoco SE VE
   // como parte separada no desenho, entao o nome precisa dizer que ela
   // responde junto. O baixo-ventre nao — e a mesma faixa continua.
-  { id: "barriga", corpo: true, rotulo: "Barriga",
+  { id: "barriga", corpo: true, rotulo: "Abdome",
     chaves: ["abdome", "abdominal", "figado", "hepat", "tgo", "tgp",
              "transaminase", "gama gt", "glutamil", "bilirrubina", "amilase",
              "lipase", "pancrea", "vesicula", "biliar", "estomago", "gastr",
