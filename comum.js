@@ -411,6 +411,62 @@ function regioesDoDocumento(d) {
   return achadas;
 }
 
+/* ═══ Agrupar por exame ═══════════════════════════════════════════════════
+   Uma linha por exame, nao por data. As DUAS telas usam isto: o medico
+   quer "como esta a hemoglobina ao longo do tempo"; o paciente, cujo
+   acervo cresce para sempre e nunca e limpo, acaba com quinze hemogramas
+   numa lista onde a unica diferenca e a data.
+
+   A CHAVE E O NOME EXATO — sem acento, sem caixa, sem espaco a mais — e
+   nao "um nome contido no outro", que era o plano ate o contra-exemplo:
+
+     "ULTRASSOM"            engoliria
+     "ULTRASSOM DE PELE"    e
+     "ULTRASSOM DE ABDOME"
+
+   Exame de pele escondido dentro do grupo do abdome e pior que dois grupos
+   parecidos lado a lado: ninguem ve o que nao sabe que existe. "RAIO-X" e
+   "TOMOGRAFIA" tem o mesmo problema — sao familias, nao exames.
+
+   O custo: quem escreveu "HEMOGRAMA" numa vez e "HEMOGRAMA COMPLETO"
+   noutra fica com dois grupos. A ordem ALFABETICA resolve na pratica,
+   deixando os dois vizinhos. Adjacencia em vez de fusao.
+   ═══════════════════════════════════════════════════════════════════════ */
+function chaveDoExame(d) {
+  return semAcento(d.nome || ROTULOS[d.tipo] || "").replace(/\s+/g, " ").trim();
+}
+
+function agruparPorExame(lista) {
+  const mapa = new Map();
+  for (const d of lista) {
+    const k = chaveDoExame(d);
+    if (!mapa.has(k)) mapa.set(k, { chave: k, nome: d.nome || ROTULOS[d.tipo], docs: [] });
+    mapa.get(k).docs.push(d);
+  }
+  const grupos = [...mapa.values()];
+  for (const g of grupos) {
+    // Dentro do grupo, o mais recente em cima: e o que se abre primeiro, e
+    // e o que responde "como esta agora".
+    g.docs.sort((a, b) => String(b.data_documento || b.criado_em)
+      .localeCompare(String(a.data_documento || a.criado_em)));
+  }
+  return grupos.sort((a, b) => a.chave.localeCompare(b.chave, "pt-BR"));
+}
+
+function anoDe(d) {
+  return String(d.data_documento || d.criado_em || "").slice(0, 4);
+}
+
+/* O texto do grupo: "4 exames · 2022 – 2026", ou so o ano quando todos
+   caem no mesmo. Aqui porque as duas telas escrevem a mesma frase. */
+function resumoDoGrupo(g) {
+  const primeiro = anoDe(g.docs[g.docs.length - 1]);
+  const ultimo = anoDe(g.docs[0]);
+  const periodo = primeiro && ultimo && primeiro !== ultimo
+    ? primeiro + " – " + ultimo : (ultimo || "");
+  return g.docs.length + " exames" + (periodo ? " · " + periodo : "");
+}
+
 /* ═══ Sub-assuntos ════════════════════════════════════════════════════════
    O refino DENTRO de uma regiao. Nasceu de uma pergunta melhor do que a
    resposta que eu quase dei: "e se clicar na cabeca abrisse a cabeca, com

@@ -371,30 +371,9 @@ function desenharPorTipo(lista) {
 // redesenhos: filtrar por tipo não pode fechar o que ele acabou de abrir.
 let gruposAbertos = new Set();
 
-function chaveDoExame(d) {
-  return semAcento(d.nome || ROTULOS[d.tipo] || "").replace(/\s+/g, " ").trim();
-}
-
-function agruparPorExame(lista) {
-  const mapa = new Map();
-  for (const d of lista) {
-    const k = chaveDoExame(d);
-    if (!mapa.has(k)) mapa.set(k, { chave: k, nome: d.nome || ROTULOS[d.tipo], docs: [] });
-    mapa.get(k).docs.push(d);
-  }
-  const grupos = [...mapa.values()];
-  for (const g of grupos) {
-    // Dentro do grupo, o mais recente em cima: é o que o médico abre
-    // primeiro, e é o que responde "como está agora".
-    g.docs.sort((a, b) => String(b.data_documento || b.criado_em)
-      .localeCompare(String(a.data_documento || a.criado_em)));
-  }
-  return grupos.sort((a, b) => a.chave.localeCompare(b.chave, "pt-BR"));
-}
-
-function anoDe(d) {
-  return String(d.data_documento || d.criado_em || "").slice(0, 4);
-}
+// chaveDoExame, agruparPorExame e anoDe vivem em comum.js: o aplicativo do
+// paciente agrupa pelas MESMAS regras, e duas copias divergiriam em
+// silencio — foi por isso que a tabela de palavras foi para la primeiro.
 
 function desenharAgrupado(lista) {
   for (const g of agruparPorExame(lista)) {
@@ -402,10 +381,6 @@ function desenharAgrupado(lista) {
     // abrir e sem "1 exame", que só somariam ruído.
     if (g.docs.length === 1) { el.grade.appendChild(cartaoDocumento(g.docs[0])); continue; }
 
-    const primeiro = anoDe(g.docs[g.docs.length - 1]);
-    const ultimo = anoDe(g.docs[0]);
-    const periodo = primeiro && ultimo && primeiro !== ultimo
-      ? primeiro + " – " + ultimo : (ultimo || "");
     const aberto = gruposAbertos.has(g.chave);
 
     const cab = document.createElement("button");
@@ -416,7 +391,7 @@ function desenharAgrupado(lista) {
       <span class="capa">${ICONES[g.docs[0].tipo] || "📎"}</span>
       <span class="txt">
         <span class="nome">${g.nome}</span>
-        <span class="meta">${g.docs.length} exames${periodo ? " · " + periodo : ""}</span>
+        <span class="meta">${resumoDoGrupo(g)}</span>
       </span>`;
     el.grade.appendChild(cab);
 

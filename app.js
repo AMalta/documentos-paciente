@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-19.6";
+const VERSAO_APP = "2026-09-19.7";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1565,7 +1565,18 @@ function desenharLista() {
     div.onclick = () => abrirPendente(e);
     el.lista.appendChild(div);
   }
-  for (const d of lista) {
+  if (ordem === "exame") return desenharAgrupadoApp(lista);
+  if (ordem === "tipo") return desenharPorTipoApp(lista);
+  for (const d of lista) el.lista.appendChild(cartaoDoc(d));
+}
+
+/* Um documento guardado, como cartão. Extraído para ser usado solto, dentro
+   de um grupo e dentro de uma faixa de tipo. O PENDENTE continua desenhado
+   à parte, de propósito: ele tem a faixa de "enviando" e não existe no
+   servidor — e ele nunca entra em grupo nenhum, para não sumir fechado
+   dentro de um justo no minuto em que a pessoa quer vê-lo. */
+function cartaoDoc(d) {
+  {
     const paginas = (d.documento_paginas || []).slice().sort((a, b) => a.ordem - b.ordem);
     const div = document.createElement("div");
     div.className = "doc";
@@ -1578,7 +1589,6 @@ function desenharLista() {
       </div>
       <div style="color:var(--tinta-3);font-size:20px">›</div>`;
     div.onclick = () => abrirDocumento(d);
-    el.lista.appendChild(div);
 
     // A miniatura vem por URL assinada: o bucket é privado, e link assinado é
     // o único jeito de o navegador mostrar a imagem sem abrir o acervo para
@@ -1596,6 +1606,90 @@ function desenharLista() {
           });
       }
     }
+    return div;
+  }
+}
+
+/* ── Agrupado por exame, no aplicativo ────────────────────────────────────
+   Mesmas regras da tela do médico (`agruparPorExame`, em comum.js) e mesma
+   escolha: grupo de UM não vira grupo, e os grupos nascem FECHADOS.
+
+   NÃO é o padrão aqui, e a diferença é proposital. O médico chega com uma
+   pergunta clínica — "como está este exame ao longo do tempo". O paciente
+   chega com outra: "onde está o que eu fotografei ontem". Abrindo agrupado,
+   o documento de ontem pode nascer fechado dentro de um grupo — e concluir
+   que a foto se perdeu é a reação mais rápida que este aplicativo já
+   produziu, uma vez, com o documento sem nome atrás de um filtro ligado. */
+let gruposAbertosApp = new Set();
+
+function desenharAgrupadoApp(lista) {
+  for (const g of agruparPorExame(lista)) {
+    if (g.docs.length === 1) { el.lista.appendChild(cartaoDoc(g.docs[0])); continue; }
+    const aberto = gruposAbertosApp.has(g.chave);
+
+    const cab = document.createElement("div");
+    cab.className = "grupo" + (aberto ? " aberto" : "");
+    cab.setAttribute("role", "button");
+    cab.setAttribute("tabindex", "0");
+    cab.setAttribute("aria-expanded", aberto ? "true" : "false");
+    cab.innerHTML = `
+      <div class="grupo-seta" aria-hidden="true">▸</div>
+      <div class="capa">${ICONES[g.docs[0].tipo] || "📎"}</div>
+      <div class="txt">
+        <div class="nome">${g.nome}</div>
+        <div class="meta">${resumoDoGrupo(g)}</div>
+      </div>`;
+    el.lista.appendChild(cab);
+
+    const caixa = document.createElement("div");
+    caixa.className = "grupo-docs" + (aberto ? "" : " escondido");
+    for (const d of g.docs) caixa.appendChild(cartaoDoc(d));
+    el.lista.appendChild(caixa);
+
+    const alternar = () => {
+      const agora = !gruposAbertosApp.has(g.chave);
+      if (agora) gruposAbertosApp.add(g.chave); else gruposAbertosApp.delete(g.chave);
+      cab.classList.toggle("aberto", agora);
+      cab.setAttribute("aria-expanded", agora ? "true" : "false");
+      caixa.classList.toggle("escondido", !agora);
+    };
+    cab.onclick = alternar;
+    cab.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alternar(); }
+    };
+  }
+}
+
+/* ── Por tipo, no aplicativo ──────────────────────────────────────────────
+   Aqui o rótulo sempre foi honesto ("Por tipo", não "Agrupados por tipo"),
+   mas o comportamento era o mesmo da tela do médico antes da correção: um
+   `sort` e nada mais. A faixa com contagem custa pouco e diz onde uma
+   espécie acaba e a outra começa.
+
+   Faixa e não grupo que abre: são quatro ou cinco espécies, e fechá-las
+   esconderia o acervo inteiro atrás de cinco linhas. */
+function desenharPorTipoApp(lista) {
+  const ORDEM_TIPOS = ["exame", "laudo", "receita", "relatorio", "outro"];
+  const porTipo = new Map();
+  for (const d of lista) {
+    if (!porTipo.has(d.tipo)) porTipo.set(d.tipo, []);
+    porTipo.get(d.tipo).push(d);
+  }
+  const tipos = [...porTipo.keys()].sort((a, b) => {
+    const ia = ORDEM_TIPOS.indexOf(a), ib = ORDEM_TIPOS.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  for (const t of tipos) {
+    const docs = porTipo.get(t).sort((a, b) =>
+      String(b.data_documento || b.criado_em)
+        .localeCompare(String(a.data_documento || a.criado_em)));
+    const faixa = document.createElement("div");
+    faixa.className = "secao";
+    faixa.innerHTML = `<span class="secao-nome">${(ROTULOS[t] || t)}`
+                    + `${docs.length > 1 ? "s" : ""}</span>`
+                    + `<span class="secao-n">${docs.length}</span>`;
+    el.lista.appendChild(faixa);
+    for (const d of docs) el.lista.appendChild(cartaoDoc(d));
   }
 }
 
