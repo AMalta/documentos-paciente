@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-18.34";
+const VERSAO_APP = "2026-09-18.35";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1232,16 +1232,23 @@ function pintarCorpo() {
   el.corpoBloco.classList.toggle("escondido", !algumaAcesa);
 
   for (const r of REGIOES.filter((x) => x.corpo)) {
-    const alvo = el.corpo.querySelector(`[data-regiao="${r.id}"]`);
-    if (!alvo) continue;
+    // querySelectorAll, nao querySelector: "membros" sao TRES elementos
+    // (duas pernas juntas e cada braco), e pintar so o primeiro deixaria os
+    // bracos apagados e mudos ao toque.
+    const alvos = [...el.corpo.querySelectorAll(`[data-regiao="${r.id}"]`)];
+    if (!alvos.length) continue;
     const tem = !!conta[r.id];
+    for (const alvo of alvos) {
     alvo.classList.toggle("tem", tem);
     alvo.classList.toggle("ativa", regiaoAtiva === r.id);
     // Regiao sem documento sai do alcance do toque e do leitor de tela:
     // botao que nao faz nada e pior que botao ausente.
-    alvo.setAttribute("aria-hidden", tem ? "false" : "true");
-    alvo.setAttribute("tabindex", tem ? "0" : "-1");
+    if (alvo.getAttribute("aria-hidden") !== "true" || alvos.length === 1) {
+      alvo.setAttribute("aria-hidden", tem ? "false" : "true");
+      alvo.setAttribute("tabindex", tem ? "0" : "-1");
+    }
     alvo.setAttribute("aria-pressed", regiaoAtiva === r.id ? "true" : "false");
+    }
   }
 
   // A dica nomeia o que EXISTE, e muda quando ha filtro. Duas razoes:

@@ -145,6 +145,25 @@ const REGIOES = [
              "utero", "uterin", "ovario", "transvaginal", "papanicolau",
              "preventivo", "ginecolog", "pelvic"] },
 
+  // Bracos e pernas. A lacuna que fechou: Doppler venoso e arterial de
+  // membros inferiores nao caia em lugar NENHUM — e varizes e trombose nao
+  // sao exames raros, menos ainda numa clinica de cardiologia. Osso e
+  // articulacao ja tinham casa em Ossos, mas quem fez ressonancia de joelho
+  // pensa "meu joelho" e aponta a perna, nao deduz que joelho e osso.
+  //
+  // NADA de "umero" na lista, embora seja o osso do braco: casa dentro de
+  // NUMERO. Nem "radio", que casa dentro de RADIOGRAFIA. Nem "pe", que casa
+  // em peito, pescoco e pele. Quarta, quinta e sexta armadilha de palavra
+  // curta neste arquivo — a regra ja esta escrita acima, so foi aplicada
+  // antes de morder desta vez.
+  { id: "membros", corpo: true, rotulo: "Braços e pernas",
+    chaves: ["joelho", "tornozelo", "punho", "carpo", "ombro", "cotovelo",
+             "coxa", "perna", "panturrilha", "braco", "antebraco", "femur",
+             "tibia", "fibula", "patela", "calcanhar", "dedo",
+             "membros inferiores", "membros superiores", "mmii", "mmss",
+             "doppler venoso", "doppler arterial", "varizes", "trombose",
+             "insuficiencia venosa", "eletroneuromiografia", "eletromiografia"] },
+
   // folhinhas — o que nao tem lugar no corpo NEM no seletor de tipo
   //
   // Havia tambem "Receitas" e "Outros papeis", e sairam: as duas filtravam
