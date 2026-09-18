@@ -160,6 +160,13 @@ const REGIOES = [
     chaves: ["joelho", "tornozelo", "punho", "carpo", "ombro", "cotovelo",
              "coxa", "perna", "panturrilha", "braco", "antebraco", "femur",
              "tibia", "fibula", "patela", "calcanhar", "dedo",
+             // Palavra inteira: "=pe" nao casa em peito/pescoco/pele, "=mao"
+             // nao casa em nada, e "=radio"/"=umero" nao casam em
+             // radiografia/numero. Sao os ossos e as partes que so tem nome
+             // curto — nao ha sinonimo longo para "pe".
+             "=pe", "=pes", "=mao", "=maos", "=radio", "=umero",
+             "pe diabetico", "pe em risco", "metatarso", "falange",
+             "quirodactil", "pododactil", "plantar",
              "membros inferiores", "membros superiores", "mmii", "mmss",
              "doppler venoso", "doppler arterial", "varizes", "trombose",
              "insuficiencia venosa", "eletroneuromiografia", "eletromiografia"] },
@@ -209,6 +216,7 @@ const REGIOES = [
          + 'stroke-width="1.1" stroke-linecap="round" fill="none" opacity=".75"/>'
          + '</svg>',
     chaves: ["urina", "urinar", "urinari", "urocultura", "elementos anormais",
+             "=eas",   // volta com seguranca: nao casa mais em "pancreas"
              "sedimentoscopia", "proteinuria", "microalbumin", "urina de 24",
              "clearance"] },
   // Potinho coletor, desenhado. Era a 🧫 do teclado, e emoji nao e nosso:
@@ -246,6 +254,7 @@ const REGIOES = [
          + '<circle cx="9.8" cy="2.6" r="1" fill="#cbb3e4"/>'
          + '</svg>',
     chaves: ["tireoide", "tireoid", "tsh", "t3", "t4", "tiroglobulina",
+             "=trab",  // volta: nao casa mais em "atestado de trabalho"
              "paratireoide", "pth", "cortisol", "prolactina", "fsh",
              "estradiol", "testosterona", "progesterona", "insulina",
              "hormon", "acth", "aldosterona", "dhea", "hcg", "igf",
@@ -260,12 +269,44 @@ const REGIOES = [
    comentario acima. Documento que nao casa com nada nao entra em nenhuma,
    e continua alcancavel pela lista e pela busca: o boneco ACRESCENTA um
    caminho, nunca e o unico. */
+/* Casa uma palavra-chave contra o texto do documento.
+
+   DUAS FORMAS, e a segunda existe porque a primeira mordeu seis vezes:
+
+     "hepat"   PEDACO — casa em "hepatico", "hepatite". E o que se quer na
+               maioria: o laudo varia a terminacao.
+     "=pe"     PALAVRA INTEIRA — casa em "RX DE PE", nao em peito, pescoco,
+               pele nem pesquisa.
+
+   Sem a segunda forma, palavra curta e armadilha: "eco" dentro de
+   "ecografia" mandou todo ultrassom para o torax; "eas" dentro de
+   "pancreas" quase mandou pancreas para urina; "trab" dentro de "trabalho";
+   "umero" dentro de "numero"; "radio" dentro de "radiografia". Cada uma foi
+   contornada tirando a palavra da lista — o que fechava o buraco e deixava
+   o exame sem casa. Maos e pes eram o caso que nao dava para contornar: nao
+   existe sinonimo longo para "pe".
+
+   Feito com indexOf e regex LITERAL: `new RegExp("\b" + ...)` exigiria
+   barra invertida dentro de string, e ela nao sobrevive a geracao deste
+   arquivo. */
+function casaChave(texto, chave) {
+  if (chave[0] !== "=") return texto.includes(chave);
+  const p = chave.slice(1);
+  const letra = /[a-z0-9]/;
+  for (let i = texto.indexOf(p); i >= 0; i = texto.indexOf(p, i + 1)) {
+    const antes = i === 0 ? " " : texto[i - 1];
+    const depois = texto[i + p.length] || " ";
+    if (!letra.test(antes) && !letra.test(depois)) return true;
+  }
+  return false;
+}
+
 function regioesDoDocumento(d) {
   const texto = semAcento((d.nome || "") + " " + (ROTULOS[d.tipo] || ""));
   const achadas = new Set();
   for (const r of REGIOES) {
     if (r.tipos && r.tipos.includes(d.tipo)) { achadas.add(r.id); continue; }
-    if (r.chaves.some((c) => texto.includes(c))) achadas.add(r.id);
+    if (r.chaves.some((c) => casaChave(texto, c))) achadas.add(r.id);
   }
   return achadas;
 }
