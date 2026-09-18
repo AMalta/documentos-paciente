@@ -135,10 +135,15 @@ const REGIOES = [
              "transaminase", "gama gt", "glutamil", "bilirrubina", "amilase",
              "lipase", "pancrea", "vesicula", "biliar", "estomago", "gastr",
              "endoscopia", "colonoscopia", "intestin", "colon", "reto",
-             "fezes", "parasit", "helicobacter",
-             // pelvicas
-             "rim", "rins", "renal", "urina", "urinar", "elementos anormais",
-             "creatinina", "ureia", "clearance", "bexiga", "prostata", "psa",
+             "helicobacter",
+             // Nada de urina nem de fezes AQUI. Elas tem folhinha propria, e
+             // manter as palavras nos dois lugares faria o EAS aparecer ao
+             // tocar o abdome e contar duas vezes — duas portas para a mesma
+             // sala, que e o que ja tiramos tres vezes neste modulo.
+             // A regra que sobra e limpa: no corpo, o ORGAO; nas folhinhas,
+             // o MATERIAL colhido.
+             "rim", "rins", "renal",
+             "creatinina", "ureia", "bexiga", "prostata", "psa",
              "utero", "uterin", "ovario", "transvaginal", "papanicolau",
              "preventivo", "ginecolog", "pelvic"] },
 
