@@ -63,14 +63,9 @@ const AgendaDB = (() => {
    que decide o que é "urgente", e ela precisa ser testável sem DOM. */
 const DIA_MS = 86400000;
 
-function hojeISO() {
-  // Data LOCAL, não UTC. `toISOString()` devolve UTC, e das 21h de Brasília
-  // em diante ele já virou o dia seguinte — o compromisso de amanhã diria
-  // "hoje" para quem abre o aplicativo à noite.
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
+// hojeISO vive em comum.js, carregado antes deste arquivo. Estava aqui
+// primeiro, e certo; a lista de documentos e que usava toISOString() e
+// errava. Uma copia so, e as duas partes acertam ou erram juntas.
 
 function diasAte(dataISO) {
   const [a, m, d] = String(dataISO).split("-").map(Number);

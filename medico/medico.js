@@ -160,11 +160,10 @@ function horaBR(iso) {
   } catch (e) { return "o fim do dia"; }
 }
 
-function dataBR(iso) {
-  if (!iso) return "";
-  const [a, m, d] = String(iso).slice(0, 10).split("-");
-  return d && m && a ? `${d}/${m}/${a}` : "";
-}
+// dataBR vive em comum.js. Aqui o vazio e "" e nao "sem data": na lista do
+// paciente a ausencia de data merece ser dita; na do medico, que ja e
+// densa, ela so somaria ruido em toda linha antiga.
+const dataBRmed = (iso) => dataBR(iso, "");
 
 /* ── O acervo ─────────────────────────────────────────────────────────── */
 async function carregar() {
@@ -189,8 +188,8 @@ function termosDaBusca() {
 function casaBusca(d, termos) {
   if (!termos.length) return true;
   const texto = semAcento([d.nome || "", ROTULOS[d.tipo] || "",
-                           dataBR(d.data_documento || d.criado_em),
-                           String(d.data_documento || d.criado_em).slice(0, 10)].join(" "));
+                           dataBRmed(d.data_documento || d.criado_em),
+                           diaDoDocumento(d)].join(" "));
   return termos.every((t) => texto.includes(t));
 }
 
@@ -262,7 +261,7 @@ function cartaoDocumento(d) {
     <div class="capa">${ICONES[d.tipo] || "📎"}</div>
     <div class="txt">
       <div class="nome">${d.nome || ROTULOS[d.tipo]}</div>
-      <div class="meta">${ROTULOS[d.tipo]} · ${dataBR(d.data_documento || d.criado_em)}</div>
+      <div class="meta">${ROTULOS[d.tipo]} · ${dataBRmed(d.data_documento || d.criado_em)}</div>
       ${paginas.length > 1 ? `<div class="paginas">${paginas.length} páginas</div>` : ""}
     </div>`;
   b.onclick = () => abrirDocumento(d, paginas);
@@ -501,7 +500,7 @@ let visuPaginas = [], visuIndice = 0;
 async function abrirDocumento(doc, paginas) {
   if (!paginas.length) return;
   el.visuTitulo.textContent = (doc.nome || ROTULOS[doc.tipo])
-    + " · " + dataBR(doc.data_documento || doc.criado_em);
+    + " · " + dataBRmed(doc.data_documento || doc.criado_em);
   el.visuImg.removeAttribute("src");
   el.telaVisu.classList.remove("escondido");
   const { data } = await sb.storage.from("documentos")

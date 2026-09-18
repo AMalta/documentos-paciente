@@ -26,6 +26,61 @@ function semAcento(t) {
   return String(t || "").normalize("NFD").replace(ACENTOS, "").toLowerCase();
 }
 
+/* ═══ Datas ══════════════════════════════════════════════════════════════
+   DUAS COISAS DIFERENTES chegam aqui como texto, e tratá-las igual foi o
+   defeito:
+
+     "2026-02-04"                 data PURA — dia, sem hora e sem fuso
+     "2026-02-04T23:30:00+00:00"  INSTANTE — tem hora, e hora tem fuso
+
+   `data_documento` é do primeiro tipo; `criado_em` é do segundo, e o
+   aplicativo cai nele quando a pessoa não informa a data.
+
+   Cortar os 10 primeiros caracteres funciona para o primeiro e ERRA para o
+   segundo: o instante é gravado em UTC, e das 21h de Brasília em diante o
+   UTC já virou o dia seguinte. Um documento fotografado às 22h de 18/09
+   aparecia como 19/09.
+
+   E converter o PRIMEIRO com `new Date()` erra para o outro lado: a data
+   pura é lida como meia-noite UTC, que em Brasília é o dia ANTERIOR — o
+   exame de 04/02 viraria 03/02. Por isso os dois casos são separados aqui,
+   e não "resolvidos" por uma conversão só.
+
+   A agenda já fazia isto certo (`hojeISO`, com o mesmo comentário). Os
+   documentos não — e ninguém nota, porque o erro só aparece depois das 21h.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Hoje, no fuso de quem está olhando. Nunca `toISOString()`, que é UTC. */
+function hojeISO() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/* O DIA de um instante, no fuso de quem está olhando. */
+function diaLocalDe(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/* AAAA-MM-DD para o dia certo, seja data pura ou instante. */
+function diaDoDocumento(d) {
+  const t = String((d && (d.data_documento || d.criado_em)) || "");
+  if (!t) return "";
+  return t.length <= 10 ? t.slice(0, 10) : diaLocalDe(t);
+}
+
+function dataBR(iso, vazio) {
+  const t = String(iso || "");
+  if (!t) return vazio === undefined ? "sem data" : vazio;
+  const dia = t.length <= 10 ? t.slice(0, 10) : diaLocalDe(t);
+  const [a, m, d] = dia.split("-");
+  if (!a || !m || !d) return vazio === undefined ? "sem data" : vazio;
+  return `${d}/${m}/${a}`;
+}
+
 /* O que cada documento oferece a busca. O rotulo do tipo entra para que
    "receita" funcione sem descobrir o seletor, e a data no formato BRASILEIRO
    para que "02/2026" e "2026" achem — e a data que a pessoa lembra. */
@@ -34,7 +89,7 @@ function textoBuscavel(d) {
     d.nome || "",
     ROTULOS[d.tipo] || d.tipo || "",
     dataBR(d.data_documento || d.criado_em) || "",
-    (d.data_documento || d.criado_em || "").slice(0, 10),
+    diaDoDocumento(d),
   ].join(" "));
 }
 

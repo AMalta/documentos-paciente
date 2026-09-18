@@ -413,7 +413,10 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<!-- De dentro do site, como no aplicativo. Aqui a pagina nem e cacheada
+     pelo service worker, mas depender do CDN significaria que uma falha
+     dele deixa o medico sem acervo na frente do paciente. -->
+<script src="../supabase.min.js"></script>
 <script src="../config.js"></script>
 <script src="../comum.js"></script>
 <script src="medico.js"></script>

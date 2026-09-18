@@ -974,7 +974,22 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<!-- A biblioteca do Supabase vem DE DENTRO do site, e nao de um CDN.
+
+     Nao e preferencia: o service worker so guarda arquivos do proprio
+     site, entao o script do CDN nunca entrava no cache. Sem rede, ele nao
+     chegava e `app.js` estourava na linha 15 — `supabase is not defined` —
+     antes de criar qualquer coisa. Nao era degradacao, era tela morta, num
+     aplicativo cujo proprio service worker promete "abrir sem rede".
+
+     Os testes offline nao pegavam: eles desligam a rede DEPOIS de a pagina
+     carregar, com a biblioteca ja em memoria. Ninguem tinha aberto o app
+     ja sem rede.
+
+     Versao FIXADA e copiada para ca (2.45.4, 111 KB). De quebra sai um
+     terceiro do caminho de carregamento de um aplicativo de saude.
+     Atualizar = baixar de novo e rodar a bateria. -->
+<script src="supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="comum.js"></script>
 <script src="fila.js"></script>

@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-19.9";
+const VERSAO_APP = "2026-09-19.11";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1369,11 +1369,9 @@ async function carregar() {
     : "exames, laudos e receitas num lugar só";
 }
 
-function dataBR(iso) {
-  if (!iso) return "sem data";
-  const [a, m, d] = String(iso).slice(0, 10).split("-");
-  return `${d}/${m}/${a}`;
-}
+// dataBR vive em comum.js: as duas paginas mostram a mesma data, e a
+// regra que distingue data pura de instante nao pode existir em duas
+// copias — uma delas passaria a mostrar o dia seguinte depois das 21h.
 
 /* ── Busca ─────────────────────────────────────────────────────────────
    Procurar pelo NOME e o que realmente acha um documento. A categoria foi
@@ -1772,7 +1770,11 @@ el.camera.onchange = async () => {
     const primeiraFoto = !jaAberto;
     el.form.classList.remove("escondido");
     el.fotografar.classList.add("escondido");
-    if (!el.data.value) el.data.value = new Date().toISOString().slice(0, 10);
+    // hojeISO, e nao toISOString(): das 21h de Brasilia em diante o UTC ja
+    // virou o dia seguinte, e o documento fotografado a noite nascia
+    // datado de AMANHA — com a pessoa conferindo e achando certo, porque
+    // "amanha" nao parece erro, parece a data de hoje.
+    if (!el.data.value) el.data.value = hojeISO();
     desenharRascunho();
     // SEM await: o formulario ja esta na tela e os botoes ja funcionam. A
     // leitura chega quando chegar, ou nao chega.
