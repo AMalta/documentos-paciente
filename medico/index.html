@@ -105,11 +105,17 @@
   #corpo .silhueta path{fill:#eceeea}
   #corpo .regiao{fill:#dde2de;stroke:#fff;stroke-width:1.4;cursor:default;
                  transition:fill .12s}
-  #corpo .regiao.tem{fill:#8fbfae;cursor:pointer}
-  #corpo .regiao.tem:hover{fill:#74ab97}
-  #corpo .regiao.ativa{fill:var(--verde)}
+  /* `:not(.alcance)` nas tres: a area de toque do braco e um retangulo
+     TRANSPARENTE, e `:hover` tem especificidade maior que `.alcance` —
+     sem a exclusao, passar o mouse perto do braco pintava um bloco solido
+     no lugar onde nao ha desenho. So aparece com mouse, entao o celular
+     nao acusava. */
+  #corpo .regiao.tem:not(.alcance){fill:#8fbfae;cursor:pointer}
+  #corpo .regiao.tem:not(.alcance):hover{fill:#74ab97}
+  #corpo .regiao.ativa:not(.alcance){fill:var(--verde)}
   /* Recebe o toque e nao se ve: o desenho do braco continua fino. */
   #corpo .regiao.alcance{fill:transparent;stroke:none}
+  #corpo .regiao.alcance.tem{cursor:pointer}
   #corpo .regiao:focus{outline:none}
   #corpo .regiao:focus-visible{outline:2px solid var(--verde);outline-offset:2px}
   .folhinhas{width:100%;display:grid;grid-template-columns:1fr;gap:5px}

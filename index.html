@@ -123,11 +123,17 @@
                  transition:fill .12s}
   /* Azul = tem documento aqui. Nao e "habilitado": e a verdade sobre o
      acervo, e por isso o boneco de cada pessoa acende diferente. */
-  #corpo .regiao.tem{fill:#8fb8d4;cursor:pointer}
-  #corpo .regiao.tem:hover{fill:#77a6c7}
-  #corpo .regiao.ativa{fill:var(--azul)}
+  /* `:not(.alcance)` nas tres: a area de toque do braco e um retangulo
+     TRANSPARENTE, e `:hover` tem especificidade maior que `.alcance` —
+     sem a exclusao, passar o mouse perto do braco pintava um bloco solido
+     no lugar onde nao ha desenho. So aparece com mouse, entao o celular
+     nao acusava. */
+  #corpo .regiao.tem:not(.alcance){fill:#8fb8d4;cursor:pointer}
+  #corpo .regiao.tem:not(.alcance):hover{fill:#77a6c7}
+  #corpo .regiao.ativa:not(.alcance){fill:var(--azul)}
   /* Recebe o toque e nao se ve: o desenho do braco continua fino. */
   #corpo .regiao.alcance{fill:transparent;stroke:none}
+  #corpo .regiao.alcance.tem{cursor:pointer}
   /* O Chrome desenha um contorno PRETO em elemento com tabindex, e ele
      aparecia como uma caixa em volta da cabeca. Some com ele e desenha o
      nosso — mas so no :focus-visible, para o teclado continuar tendo pista
