@@ -30,7 +30,7 @@
    documento legal seria pior que deixar a checagem falhando. */
 const RESPONSAVEL = {
   nome: "",        // pessoa ou empresa que responde pelos dados
-  documento: "",   // CPF ou CNPJ
+  documento: "CNPJ 59.170.478/0001-02",   // CPF ou CNPJ
   contato: "",     // e-mail ou telefone para pedidos e dúvidas
 };
 
