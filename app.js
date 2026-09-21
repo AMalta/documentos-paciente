@@ -568,6 +568,17 @@ function leituraCalar() {
   el.data.classList.remove("conferir");
 }
 
+// Mensagem de falha + botão para tentar de novo, sem precisar recortar a
+// página outra vez — a imagem já processada (rascunho[0]) continua ali.
+function leituraFalhou(motivo) {
+  leituraDizer(motivo + " <b>Preencha os campos abaixo</b>, por favor. "
+    + '<button type="button" id="leitura-tentar" class="leitura-tentar">'
+    + "🔁 Tentar de novo</button>", false);
+  el.leituraIcone.textContent = "⚠️";
+  const botao = document.getElementById("leitura-tentar");
+  if (botao) botao.onclick = () => { if (rascunho[0]) lerDocumento(rascunho[0].blob); };
+}
+
 async function lerDocumento(blob) {
   if (!CONFIG.LEITURA_AUTOMATICA) return;
   // Offline nem tenta: a fila existe para a FOTO chegar ao servidor depois,
@@ -575,8 +586,7 @@ async function lerDocumento(blob) {
   // formulário está aberto. Mas o paciente precisa SABER que não vai vir
   // sozinho, e não descobrir isso só porque o campo ficou vazio.
   if (!navigator.onLine) {
-    leituraDizer("Sem conexão para ler o documento agora. "
-      + "<b>Preencha os campos abaixo</b>, por favor.", false);
+    leituraFalhou("Sem conexão para ler o documento agora.");
     return;
   }
 
@@ -604,8 +614,7 @@ async function lerDocumento(blob) {
     if (meu !== leituraPedido) return;          // outra foto entrou no lugar
     if (!dados || !dados.ok) {
       console.warn("[leitura]", dados && dados.erro);
-      leituraDizer("Não consegui ler este documento automaticamente. "
-        + "<b>Preencha os campos abaixo</b>, por favor.", false);
+      leituraFalhou("Não consegui ler este documento automaticamente.");
       return;
     }
 
@@ -627,8 +636,7 @@ async function lerDocumento(blob) {
     }
     if (!postos.length) {
       if (achouAlgo) return leituraCalar();  // já estava preenchido — nada a dizer
-      leituraDizer("Não consegui identificar informações neste documento. "
-        + "<b>Preencha os campos abaixo</b>, por favor.", false);
+      leituraFalhou("Não consegui identificar informações neste documento.");
       return;
     }
 
@@ -663,8 +671,7 @@ async function lerDocumento(blob) {
   } catch (e) {
     console.warn("[leitura]", e?.message || e);
     if (meu === leituraPedido) {
-      leituraDizer("Não consegui ler este documento automaticamente. "
-        + "<b>Preencha os campos abaixo</b>, por favor.", false);
+      leituraFalhou("Não consegui ler este documento automaticamente.");
     }
   }
 }
