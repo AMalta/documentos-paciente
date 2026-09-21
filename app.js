@@ -38,6 +38,7 @@ const el = {
   telaVisu: $("tela-visu"), visuImg: $("visu-img"), visuTitulo: $("visu-titulo"),
   visuConta: $("visu-conta"), visuAntes: $("visu-antes"),
   visuDepois: $("visu-depois"), visuGirar: $("visu-girar"), visuApagar: $("visu-apagar"), visuFechar: $("visu-fechar"),
+  pdf: $("input-pdf"), pdfBotao: $("btn-pdf"),
 };
 
 let usuario = null;
@@ -1788,16 +1789,15 @@ el.camera.onchange = async () => {
 };
 
 /* ── Upload de PDF (resultados de exame) ─────────────────────────────────
-   Cada página do PDF vira uma "foto": passa pelo mesmo worker de preparar/
-   recortar/finalizar que as fotos da câmera, e cai no mesmo rascunho. Assim
-   o Groq lê a primeira página como leria uma foto, e o resto do fluxo
-   (guardar, subir, mostrar ao médico) não muda uma linha.                 */
+   O laboratório manda um PDF só, mas cada página costuma ser um exame
+   DIFERENTE (hemograma, urina, ureia...) — não um documento de várias
+   páginas. Por isso cada página vira o seu próprio documento: o formulário
+   e a leitura do Groq abrem uma vez por página, em fila — a página 2 só
+   aparece depois que a 1 for guardada (ou pulada).                        */
 if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = "pdf.worker.min.js";
 }
 
-el.pdf = $("input-pdf");
-el.pdfBotao = $("btn-pdf");
 el.pdfBotao.onclick = () => {
   if (!jaAceitou()) { abrirTermo(); return; }
   if (noLimite()) { limparAvisos(); avisarSeApertando(); return; }
@@ -1821,73 +1821,95 @@ async function pdfParaBlobs(arquivo) {
   return blobs;
 }
 
+// Páginas de PDF ainda não viraram documento. Fila, e não um array de
+// páginas de UM documento: é a diferença entre "3 exames" e "1 exame de
+// 3 páginas".
+let filaPdfPaginas = [];
+
+async function abrirProximaPaginaPdf() {
+  if (!filaPdfPaginas.length) return;
+  const restantes = filaPdfPaginas.length;
+  const pagina = filaPdfPaginas.shift();
+
+  const estava = el.pdfBotao.textContent;
+  el.pdfBotao.disabled = true;
+  el.pdfBotao.textContent = "Preparando…";
+  try {
+    const prep = await pedirAoWorker({ tipo: "preparar", arquivo: pagina });
+    const urlPrev = URL.createObjectURL(prep.blob);
+
+    const escolha = await abrirRecorte(
+      urlPrev,
+      restantes > 1 ? `Página do PDF (faltam ${restantes - 1}) — ajuste as margens`
+                    : "Ajuste as margens",
+      { l: prep.largura, a: prep.altura });
+
+    if (!escolha) {
+      URL.revokeObjectURL(urlPrev);
+      return abrirProximaPaginaPdf(); // pulou esta página, tenta a próxima
+    }
+
+    el.pdfBotao.textContent = "Finalizando…";
+    const fim = await pedirAoWorker({
+      tipo: "final", blob: prep.blob, rect: escolha.rect, giro: escolha.giro,
+      lado: CONFIG.LADO_MAXIMO, qualidade: CONFIG.QUALIDADE,
+    });
+    URL.revokeObjectURL(urlPrev);
+
+    // Reinicia o rascunho: esta página É o documento, sozinha — não se
+    // soma a nada que já estava ali.
+    rascunho = [{ blob: fim.blob, largura: fim.largura, altura: fim.altura,
+                  url: URL.createObjectURL(fim.blob) }];
+
+    el.form.classList.remove("escondido");
+    el.fotografar.classList.add("escondido");
+    el.pdfBotao.classList.add("escondido");
+    el.data.value = hojeISO();
+    el.nome.value = "";
+    desenharRascunho();
+    leituraPodeEscrever = { nome: true, data: true, tipo: true };
+    lerDocumento(rascunho[0].blob);
+  } catch (e) {
+    console.error(e);
+    aviso("Não consegui processar uma das páginas do PDF.", "erro");
+    return abrirProximaPaginaPdf();
+  } finally {
+    el.pdfBotao.disabled = false;
+    el.pdfBotao.textContent = estava;
+  }
+}
+
 el.pdf.onchange = async () => {
-  const jaAberto = !el.form.classList.contains("escondido");
   const arquivosPdf = [...el.pdf.files];
   el.pdf.value = "";
   if (!arquivosPdf.length) return;
 
   const estava = el.pdfBotao.textContent;
   el.pdfBotao.disabled = true;
+  el.pdfBotao.textContent = "Abrindo PDF…";
 
+  const novasPaginas = [];
   for (const arquivoPdf of arquivosPdf) {
-    let paginas;
     try {
-      el.pdfBotao.textContent = "Abrindo PDF…";
-      paginas = await pdfParaBlobs(arquivoPdf);
+      novasPaginas.push(...(await pdfParaBlobs(arquivoPdf)));
     } catch (e) {
       console.error(e);
       aviso("Não consegui abrir este PDF. Confira se o arquivo não está "
           + "corrompido ou protegido por senha.", "erro");
-      continue;
-    }
-
-    for (let i = 0; i < paginas.length; i++) {
-      el.pdfBotao.textContent = paginas.length > 1
-        ? `Preparando página ${i + 1} de ${paginas.length}…` : "Preparando…";
-      try {
-        const prep = await pedirAoWorker({ tipo: "preparar", arquivo: paginas[i] });
-        const urlPrev = URL.createObjectURL(prep.blob);
-
-        const escolha = await abrirRecorte(
-          urlPrev,
-          paginas.length > 1
-            ? `Página ${rascunho.length + 1} — ajuste as margens`
-            : "Ajuste as margens",
-          { l: prep.largura, a: prep.altura });
-
-        if (!escolha) { URL.revokeObjectURL(urlPrev); continue; }
-
-        el.pdfBotao.textContent = "Finalizando…";
-        const fim = await pedirAoWorker({
-          tipo: "final", blob: prep.blob, rect: escolha.rect, giro: escolha.giro,
-          lado: CONFIG.LADO_MAXIMO, qualidade: CONFIG.QUALIDADE,
-        });
-        URL.revokeObjectURL(urlPrev);
-        rascunho.push({ blob: fim.blob, largura: fim.largura, altura: fim.altura,
-                        url: URL.createObjectURL(fim.blob) });
-      } catch (e) {
-        console.error(e);
-        aviso("Não consegui processar uma das páginas do PDF.", "erro");
-      }
     }
   }
 
   el.pdfBotao.disabled = false;
   el.pdfBotao.textContent = estava;
+  if (!novasPaginas.length) return;
 
-  if (rascunho.length) {
-    const primeiraPagina = !jaAberto;
-    el.form.classList.remove("escondido");
-    el.fotografar.classList.add("escondido");
-    el.pdfBotao.classList.add("escondido");
-    if (!el.data.value) el.data.value = hojeISO();
-    desenharRascunho();
-    if (primeiraPagina) {
-      leituraPodeEscrever = { nome: true, data: true, tipo: true };
-      lerDocumento(rascunho[0].blob);
-    }
+  if (novasPaginas.length > 1) {
+    aviso(`Este PDF tem ${novasPaginas.length} páginas. Cada uma vai abrir `
+        + "como um documento separado — confirme (ou pule) uma de cada vez.",
+        "info");
   }
+  filaPdfPaginas.push(...novasPaginas);
+  abrirProximaPaginaPdf();
 };
 
 /* ═══ Boas-vindas e instalação ════════════════════════════════════════════
@@ -2397,6 +2419,14 @@ el.fotografar.onclick = () => {
 };
 el.salvar.onclick = guardar;
 el.cancelar.onclick = cancelar;
+
+// Fila de páginas de PDF: depois de guardar OU pular (cancelar) a página
+// atual, a próxima da fila abre sozinha — "uma de cada vez" vira realidade
+// sem o paciente precisar apertar "Enviar PDF" de novo a cada exame.
+const guardarBase = el.salvar.onclick;
+el.salvar.onclick = async () => { await guardarBase(); abrirProximaPaginaPdf(); };
+const cancelarBase = el.cancelar.onclick;
+el.cancelar.onclick = () => { cancelarBase(); abrirProximaPaginaPdf(); };
 el.filtroTipo.onchange = desenharLista;
 el.filtroOrdem.onchange = desenharLista;
 

@@ -42,6 +42,8 @@
               font-size:17px;font-weight:600;display:flex;align-items:center;
               justify-content:center;gap:10px}
   .btn-grande:disabled{opacity:.5}
+  .linha-captura{display:flex;gap:10px}
+  .linha-captura .btn-grande{width:auto;flex:1;padding-left:10px;padding-right:10px}
   .btn-linha{background:var(--superficie);border:1px solid var(--linha);
              color:var(--tinta);padding:11px 14px;font-size:15px}
   .btn-texto{background:none;color:var(--azul);padding:8px 2px;font-size:14px}
@@ -577,7 +579,10 @@
   </div>
 
   <!-- CAPTURA ------------------------------------------------------------ -->
-  <button class="btn-grande" id="btn-fotografar">📷 Fotografar documento</button>
+  <div class="linha-captura">
+    <button class="btn-grande" id="btn-fotografar">📷 Fotografar documento</button>
+    <button class="btn-grande" id="btn-pdf">📄 Enviar PDF de exame</button>
+  </div>
 
   <!-- Câmera do celular. `capture` abre a traseira direto; sem ele o Android
        oferece a galeria, o que também serve para quem já tem a foto salva. -->
@@ -586,7 +591,6 @@
 
   <!-- Resultado de exame em PDF (enviado pelo laboratório). Cada página vira
        uma "foto" e passa pelo mesmo worker de preparar/recortar/finalizar. -->
-  <button class="btn-grande" id="btn-pdf">📄 Enviar PDF de exame</button>
   <input type="file" id="input-pdf" accept="application/pdf"
          multiple class="escondido">
 
