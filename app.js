@@ -39,6 +39,8 @@ const el = {
   visuConta: $("visu-conta"), visuAntes: $("visu-antes"),
   visuDepois: $("visu-depois"), visuGirar: $("visu-girar"), visuApagar: $("visu-apagar"), visuFechar: $("visu-fechar"),
   pdf: $("input-pdf"), pdfBotao: $("btn-pdf"),
+  pdfNav: $("pdf-nav"), pdfNavAnterior: $("pdf-nav-anterior"),
+  pdfNavTexto: $("pdf-nav-texto"), pdfNavProxima: $("pdf-nav-proxima"),
 };
 
 let usuario = null;
@@ -1791,9 +1793,9 @@ el.camera.onchange = async () => {
 /* ── Upload de PDF (resultados de exame) ─────────────────────────────────
    O laboratório manda um PDF só, mas cada página costuma ser um exame
    DIFERENTE (hemograma, urina, ureia...) — não um documento de várias
-   páginas. Por isso cada página vira o seu próprio documento: o formulário
-   e a leitura do Groq abrem uma vez por página, em fila — a página 2 só
-   aparece depois que a 1 for guardada (ou pulada).                        */
+   páginas. Por isso cada página vira o seu próprio documento, e a lista de
+   páginas fica INTEIRA (não é consumida): dá pra andar pra frente e pra
+   trás, e reabrir a MESMA página para recortar um segundo exame nela.     */
 if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = "pdf.worker.min.js";
 }
@@ -1821,15 +1823,41 @@ async function pdfParaBlobs(arquivo) {
   return blobs;
 }
 
-// Páginas de PDF ainda não viraram documento. Fila, e não um array de
-// páginas de UM documento: é a diferença entre "3 exames" e "1 exame de
-// 3 páginas".
-let filaPdfPaginas = [];
+// Páginas do PDF em andamento: array FIXO (não é fila que se esvazia) mais
+// um índice de posição. `null`/`-1` quando não há upload de PDF em curso.
+let filaPdfPaginas = null;
+let indicePdfAtual = -1;
 
-async function abrirProximaPaginaPdf() {
-  if (!filaPdfPaginas.length) return;
-  const restantes = filaPdfPaginas.length;
-  const pagina = filaPdfPaginas.shift();
+function atualizarNavPdf() {
+  const emFluxoPdf = Array.isArray(filaPdfPaginas) && indicePdfAtual >= 0;
+  el.pdfNav.classList.toggle("escondido", !emFluxoPdf);
+  if (!emFluxoPdf) return;
+  el.pdfNavTexto.textContent = `Página ${indicePdfAtual + 1} de ${filaPdfPaginas.length} do PDF`;
+  el.pdfNavAnterior.disabled = indicePdfAtual <= 0;
+  el.pdfNavProxima.disabled = indicePdfAtual >= filaPdfPaginas.length - 1;
+}
+
+function encerrarFluxoPdf() {
+  filaPdfPaginas = null;
+  indicePdfAtual = -1;
+  atualizarNavPdf();
+}
+
+// Depois de guardar ou pular (cancelar) a página atual: segue pra próxima,
+// ou encerra se essa era a última. Não faz nada fora de um fluxo de PDF.
+function avancarPdf() {
+  if (!filaPdfPaginas) return;
+  if (indicePdfAtual + 1 < filaPdfPaginas.length) abrirPaginaPdf(indicePdfAtual + 1);
+  else encerrarFluxoPdf();
+}
+
+async function abrirPaginaPdf(indice) {
+  if (!filaPdfPaginas || indice < 0 || indice >= filaPdfPaginas.length) {
+    encerrarFluxoPdf();
+    return;
+  }
+  indicePdfAtual = indice;
+  const pagina = filaPdfPaginas[indice];
 
   const estava = el.pdfBotao.textContent;
   el.pdfBotao.disabled = true;
@@ -1840,14 +1868,12 @@ async function abrirProximaPaginaPdf() {
 
     const escolha = await abrirRecorte(
       urlPrev,
-      restantes > 1 ? `Página do PDF (faltam ${restantes - 1}) — ajuste as margens`
-                    : "Ajuste as margens",
+      filaPdfPaginas.length > 1
+        ? `Página ${indice + 1} de ${filaPdfPaginas.length} — ajuste as margens`
+        : "Ajuste as margens",
       { l: prep.largura, a: prep.altura });
 
-    if (!escolha) {
-      URL.revokeObjectURL(urlPrev);
-      return abrirProximaPaginaPdf(); // pulou esta página, tenta a próxima
-    }
+    if (!escolha) { URL.revokeObjectURL(urlPrev); return avancarPdf(); }
 
     el.pdfBotao.textContent = "Finalizando…";
     const fim = await pedirAoWorker({
@@ -1856,8 +1882,7 @@ async function abrirProximaPaginaPdf() {
     });
     URL.revokeObjectURL(urlPrev);
 
-    // Reinicia o rascunho: esta página É o documento, sozinha — não se
-    // soma a nada que já estava ali.
+    rascunho.forEach((p) => URL.revokeObjectURL(p.url));
     rascunho = [{ blob: fim.blob, largura: fim.largura, altura: fim.altura,
                   url: URL.createObjectURL(fim.blob) }];
 
@@ -1867,17 +1892,27 @@ async function abrirProximaPaginaPdf() {
     el.data.value = hojeISO();
     el.nome.value = "";
     desenharRascunho();
+    atualizarNavPdf();
     leituraPodeEscrever = { nome: true, data: true, tipo: true };
     lerDocumento(rascunho[0].blob);
   } catch (e) {
     console.error(e);
     aviso("Não consegui processar uma das páginas do PDF.", "erro");
-    return abrirProximaPaginaPdf();
+    return avancarPdf();
   } finally {
     el.pdfBotao.disabled = false;
     el.pdfBotao.textContent = estava;
   }
 }
+
+el.pdfNavAnterior.onclick = () => {
+  if (indicePdfAtual > 0) abrirPaginaPdf(indicePdfAtual - 1);
+};
+el.pdfNavProxima.onclick = () => {
+  if (filaPdfPaginas && indicePdfAtual < filaPdfPaginas.length - 1) {
+    abrirPaginaPdf(indicePdfAtual + 1);
+  }
+};
 
 el.pdf.onchange = async () => {
   const arquivosPdf = [...el.pdf.files];
@@ -1904,12 +1939,13 @@ el.pdf.onchange = async () => {
   if (!novasPaginas.length) return;
 
   if (novasPaginas.length > 1) {
-    aviso(`Este PDF tem ${novasPaginas.length} páginas. Cada uma vai abrir `
-        + "como um documento separado — confirme (ou pule) uma de cada vez.",
-        "info");
+    aviso(`Este PDF tem ${novasPaginas.length} páginas. Cada uma abre como `
+        + "um documento separado — use ◀ ▶ para navegar (volte a uma "
+        + "página para recortar outro exame nela), e Cancelar para pular "
+        + "uma página.", "info");
   }
-  filaPdfPaginas.push(...novasPaginas);
-  abrirProximaPaginaPdf();
+  filaPdfPaginas = novasPaginas;
+  abrirPaginaPdf(0);
 };
 
 /* ═══ Boas-vindas e instalação ════════════════════════════════════════════
@@ -2424,9 +2460,9 @@ el.cancelar.onclick = cancelar;
 // atual, a próxima da fila abre sozinha — "uma de cada vez" vira realidade
 // sem o paciente precisar apertar "Enviar PDF" de novo a cada exame.
 const guardarBase = el.salvar.onclick;
-el.salvar.onclick = async () => { await guardarBase(); abrirProximaPaginaPdf(); };
+el.salvar.onclick = async () => { await guardarBase(); avancarPdf(); };
 const cancelarBase = el.cancelar.onclick;
-el.cancelar.onclick = () => { cancelarBase(); abrirProximaPaginaPdf(); };
+el.cancelar.onclick = () => { cancelarBase(); avancarPdf(); };
 el.filtroTipo.onchange = desenharLista;
 el.filtroOrdem.onchange = desenharLista;
 

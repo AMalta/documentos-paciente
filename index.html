@@ -46,6 +46,10 @@
   .linha-captura .btn-grande{width:auto;flex:1;padding-left:10px;padding-right:10px}
   .btn-linha{background:var(--superficie);border:1px solid var(--linha);
              color:var(--tinta);padding:11px 14px;font-size:15px}
+  .btn-linha:disabled{opacity:.4}
+  .pdf-nav{display:flex;align-items:center;gap:8px;margin-bottom:12px;
+           font-size:13px;color:var(--tinta-2)}
+  .pdf-nav span{flex:1;text-align:center}
   .btn-texto{background:none;color:var(--azul);padding:8px 2px;font-size:14px}
   .btn-salvar{background:var(--verde);color:#fff;padding:15px;font-size:16px;
               font-weight:600;width:100%}
@@ -602,6 +606,15 @@
     </div>
 
     <div class="paginas" id="paginas"></div>
+
+    <!-- Só aparece durante um upload de PDF (ver atualizarNavPdf em app.js).
+         Deixa andar pra frente/trás entre as páginas do arquivo, sem precisar
+         guardar ou cancelar pra sair da atual. -->
+    <div class="pdf-nav escondido" id="pdf-nav">
+      <button class="btn-linha" id="pdf-nav-anterior" type="button">◀ Anterior</button>
+      <span id="pdf-nav-texto"></span>
+      <button class="btn-linha" id="pdf-nav-proxima" type="button">Próxima ▶</button>
+    </div>
 
     <!-- LEITURA AUTOMÁTICA. Fica ACIMA dos campos, porque é sobre eles que
          ela fala. Nasce escondida e some sozinha quando não há nada a
