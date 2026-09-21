@@ -26,6 +26,7 @@ const el = {
   lista: $("lista"), sub: $("cabecalho-sub"),
   busca: $("busca"), buscaCaixa: $("busca-caixa"), buscaLimpar: $("busca-limpar"),
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"), folhinhas: $("folhinhas"),
+  corpoCabecalho: $("corpo-cabecalho"), corpoSeta: $("corpo-seta"),
   corpoDica: $("corpo-dica"), subs: $("subs"),
   agenda: $("agenda"), agendaItens: $("agenda-itens"), agendaMais: $("agenda-mais"),
   telaCompromisso: $("tela-compromisso"),
@@ -41,6 +42,7 @@ const el = {
   pdf: $("input-pdf"), pdfBotao: $("btn-pdf"),
   pdfNav: $("pdf-nav"), pdfNavAnterior: $("pdf-nav-anterior"),
   pdfNavTexto: $("pdf-nav-texto"), pdfNavProxima: $("pdf-nav-proxima"),
+  pdfMaisPagina: $("btn-pdf-mais-pagina"),
 };
 
 let usuario = null;
@@ -570,8 +572,13 @@ async function lerDocumento(blob) {
   if (!CONFIG.LEITURA_AUTOMATICA) return;
   // Offline nem tenta: a fila existe para a FOTO chegar ao servidor depois,
   // e não há como adiar uma sugestão que precisa aparecer agora, enquanto o
-  // formulário está aberto.
-  if (!navigator.onLine) return;
+  // formulário está aberto. Mas o paciente precisa SABER que não vai vir
+  // sozinho, e não descobrir isso só porque o campo ficou vazio.
+  if (!navigator.onLine) {
+    leituraDizer("Sem conexão para ler o documento agora. "
+      + "<b>Preencha os campos abaixo</b>, por favor.", false);
+    return;
+  }
 
   const meu = ++leituraPedido;
   leituraDizer("Lendo o documento para preencher os campos…", true);
@@ -597,8 +604,16 @@ async function lerDocumento(blob) {
     if (meu !== leituraPedido) return;          // outra foto entrou no lugar
     if (!dados || !dados.ok) {
       console.warn("[leitura]", dados && dados.erro);
-      return leituraCalar();
+      leituraDizer("Não consegui ler este documento automaticamente. "
+        + "<b>Preencha os campos abaixo</b>, por favor.", false);
+      return;
     }
+
+    // Achou algo? Independente de ter conseguido ESCREVER (o paciente pode
+    // já ter digitado por cima, e aí leituraPodeEscrever barra de propósito)
+    // — "não achei nada no documento" e "já estava preenchido" são avisos
+    // diferentes, e só o primeiro precisa dizer algo.
+    const achouAlgo = !!(dados.tipo || dados.nome || dados.data);
 
     const postos = [];
     if (dados.tipo && leituraPodeEscrever.tipo) {
@@ -610,7 +625,12 @@ async function lerDocumento(blob) {
     if (dados.data && leituraPodeEscrever.data) {
       el.data.value = dados.data; postos.push("a data");
     }
-    if (!postos.length) return leituraCalar();
+    if (!postos.length) {
+      if (achouAlgo) return leituraCalar();  // já estava preenchido — nada a dizer
+      leituraDizer("Não consegui identificar informações neste documento. "
+        + "<b>Preencha os campos abaixo</b>, por favor.", false);
+      return;
+    }
 
     const lista = postos.length > 1
       ? postos.slice(0, -1).join(", ") + " e " + postos[postos.length - 1]
@@ -642,7 +662,10 @@ async function lerDocumento(blob) {
     leituraDizer(texto, false);
   } catch (e) {
     console.warn("[leitura]", e?.message || e);
-    if (meu === leituraPedido) leituraCalar();
+    if (meu === leituraPedido) {
+      leituraDizer("Não consegui ler este documento automaticamente. "
+        + "<b>Preencha os campos abaixo</b>, por favor.", false);
+    }
   }
 }
 
@@ -1612,9 +1635,8 @@ function desenharLista() {
   for (const e of pend) {
     const div = document.createElement("div");
     div.className = "doc";
-    const url = e.paginas[0] ? URL.createObjectURL(e.paginas[0].blob) : "";
     div.innerHTML = `
-      <div class="capa">${url ? `<img src="${url}" alt="">` : (ICONES[e.tipo] || "📎")}</div>
+      <div class="capa">${ICONES[e.tipo] || "📎"}</div>
       <div class="txt">
         <div class="nome">${e.nome || ROTULOS[e.tipo]}</div>
         <div class="meta">${ROTULOS[e.tipo]} · ${dataBR(e.data_documento || e.criado_em)}
@@ -1649,23 +1671,6 @@ function cartaoDoc(d) {
       </div>
       <div style="color:var(--tinta-3);font-size:20px">›</div>`;
     div.onclick = () => abrirDocumento(d);
-
-    // A miniatura vem por URL assinada: o bucket é privado, e link assinado é
-    // o único jeito de o navegador mostrar a imagem sem abrir o acervo para
-    // quem descobrir o caminho do arquivo.
-    if (paginas[0]) {
-      const local = capaLocal.get(paginas[0].storage_path);
-      if (local) {
-        div.querySelector(".capa").innerHTML = `<img src="${local}" alt="">`;
-      } else {
-        sb.storage.from("documentos").createSignedUrl(paginas[0].storage_path, 3600)
-          .then(({ data }) => {
-            if (data?.signedUrl) {
-              div.querySelector(".capa").innerHTML = `<img src="${data.signedUrl}" alt="">`;
-            }
-          });
-      }
-    }
     return div;
   }
 }
@@ -1876,6 +1881,52 @@ function atualizarNavPdf() {
   el.pdfNavProxima.disabled = indicePdfAtual >= filaPdfPaginas.length - 1;
 }
 
+// Só aparece quando existe uma PRÓXIMA página do PDF para oferecer — sem
+// isso o botão ficaria clicável na última página e não faria nada.
+function atualizarBotaoMaisPagina() {
+  const temProxima = Array.isArray(filaPdfPaginas)
+    && indicePdfAtual >= 0 && indicePdfAtual < filaPdfPaginas.length - 1;
+  el.pdfMaisPagina.classList.toggle("escondido", !temProxima);
+}
+
+// Pega a PRÓXIMA página do PDF, deixa recortar, e — ao confirmar — ANEXA o
+// resultado ao documento que já está aberto no formulário (em vez de abrir
+// um novo). É o caminho para um exame que ocupa mais de uma página do
+// arquivo: sem isso, cada página vira um documento à parte sempre.
+el.pdfMaisPagina.onclick = async () => {
+  if (!filaPdfPaginas || indicePdfAtual >= filaPdfPaginas.length - 1) return;
+  const proximoIndice = indicePdfAtual + 1;
+  const pagina = filaPdfPaginas[proximoIndice];
+
+  el.pdfMaisPagina.disabled = true;
+  try {
+    const prep = await pedirAoWorker({ tipo: "preparar", arquivo: pagina });
+    const urlPrev = URL.createObjectURL(prep.blob);
+    const escolha = await abrirRecorte(urlPrev,
+      `Página ${proximoIndice + 1} de ${filaPdfPaginas.length} — mesmo documento`,
+      { l: prep.largura, a: prep.altura });
+
+    if (!escolha || escolha.navegarPdf) { URL.revokeObjectURL(urlPrev); return; }
+
+    const fim = await pedirAoWorker({
+      tipo: "final", blob: prep.blob, rect: escolha.rect, giro: escolha.giro,
+      lado: CONFIG.LADO_MAXIMO, qualidade: CONFIG.QUALIDADE,
+    });
+    URL.revokeObjectURL(urlPrev);
+
+    rascunho.push({ blob: fim.blob, largura: fim.largura, altura: fim.altura,
+                    url: URL.createObjectURL(fim.blob) });
+    indicePdfAtual = proximoIndice;   // marca esta página como usada
+    desenharRascunho();
+    atualizarBotaoMaisPagina();
+  } catch (e) {
+    console.error(e);
+    aviso("Não consegui anexar essa página ao documento.", "erro");
+  } finally {
+    el.pdfMaisPagina.disabled = false;
+  }
+};
+
 function encerrarFluxoPdf() {
   const estavaAtivo = filaPdfPaginas !== null;
   filaPdfPaginas = null;
@@ -1946,6 +1997,7 @@ async function abrirPaginaPdf(indice) {
     el.data.value = hojeISO();
     el.nome.value = "";
     desenharRascunho();
+    atualizarBotaoMaisPagina();
     leituraPodeEscrever = { nome: true, data: true, tipo: true };
     lerDocumento(rascunho[0].blob);
   } catch (e) {
@@ -2555,6 +2607,26 @@ el.corpo.addEventListener("keydown", (e) => {
   const alvo = e.target.closest(".regiao.tem");
   if (alvo) { e.preventDefault(); alternarRegiao(alvo.dataset.regiao); }
 });
+
+// Colapsar/expandir o card do boneco. Preferência salva no aparelho — não
+// é dado de saúde, é só "como a pessoa gosta de ver a tela", então
+// localStorage serve bem aqui (mesmo padrão já usado para bemvindo-visto).
+function corpoAlternarColapso(recolhido) {
+  el.corpoBloco.classList.toggle("recolhido", recolhido);
+  el.corpoCabecalho.setAttribute("aria-expanded", String(!recolhido));
+  el.corpoSeta.textContent = recolhido ? "▸" : "▾";
+  try { localStorage.setItem("corpo-recolhido", recolhido ? "1" : "0"); }
+  catch (e) { /* janela anônima */ }
+}
+el.corpoCabecalho.onclick = () => {
+  corpoAlternarColapso(!el.corpoBloco.classList.contains("recolhido"));
+};
+{
+  let recolhidoSalvo = false;
+  try { recolhidoSalvo = localStorage.getItem("corpo-recolhido") === "1"; }
+  catch (e) { /* janela anônima */ }
+  if (recolhidoSalvo) corpoAlternarColapso(true);
+}
 
 /* ── Partida ──────────────────────────────────────────────────────────── */
 (async () => {
