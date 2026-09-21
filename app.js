@@ -463,6 +463,18 @@ el.recorteOk.onclick = () => fecharRecorte(rectAtual);
 el.recorteTudo.onclick = () => fecharRecorte({ x: 0, y: 0, l: 1, a: 1 });
 el.recorteCancelar.onclick = () => fecharRecorte(null);
 
+// Navegação entre páginas do PDF, resolvida a partir da PRÓPRIA tela de
+// recorte — não é "confirmar" nem "cancelar" o corte desta página, é
+// trocar de página sem decidir nada sobre a atual ainda.
+function fecharRecorteNavegando(delta) {
+  el.telaRecorte.classList.add("escondido");
+  el.recorteImg.src = "";
+  const r = resolverRecorte; resolverRecorte = null;
+  r?.({ navegarPdf: delta });
+}
+el.pdfNavAnterior.onclick = () => fecharRecorteNavegando(-1);
+el.pdfNavProxima.onclick = () => fecharRecorteNavegando(1);
+
 /* ── Rascunho ─────────────────────────────────────────────────────────── */
 function desenharRascunho() {
   el.paginas.innerHTML = "";
@@ -1848,6 +1860,13 @@ async function pdfParaBlobs(arquivo) {
 let filaPdfPaginas = null;
 let indicePdfAtual = -1;
 
+// Capturado UMA vez, no carregamento — não a cada página. Tentar "lembrar"
+// o texto de antes em cada chamada é o que causava o botão preso em
+// "Preparando…": chamadas encadeadas (pular página, erro, navegar) rodavam
+// em paralelo sem se esperar, e uma podia salvar o texto errado (o
+// "Preparando…" de outra) como se fosse o estado de repouso.
+const TEXTO_PDF_REPOUSO = el.pdfBotao.textContent;
+
 function atualizarNavPdf() {
   const emFluxoPdf = Array.isArray(filaPdfPaginas) && indicePdfAtual >= 0;
   el.pdfNav.classList.toggle("escondido", !emFluxoPdf);
@@ -1858,16 +1877,23 @@ function atualizarNavPdf() {
 }
 
 function encerrarFluxoPdf() {
+  const estavaAtivo = filaPdfPaginas !== null;
   filaPdfPaginas = null;
   indicePdfAtual = -1;
   atualizarNavPdf();
+  el.pdfBotao.disabled = false;
+  el.pdfBotao.textContent = TEXTO_PDF_REPOUSO;
+  if (estavaAtivo) aviso("PDF concluído — todas as páginas foram processadas.", "ok");
 }
 
 // Depois de guardar ou pular (cancelar) a página atual: segue pra próxima,
 // ou encerra se essa era a última. Não faz nada fora de um fluxo de PDF.
-function avancarPdf() {
+// `await`-ável de propósito: SEM isso, cada chamada dispara a próxima e
+// segue em frente sem esperar, e foi essa corrida — não o conteúdo do
+// código — que deixava o botão preso.
+async function avancarPdf() {
   if (!filaPdfPaginas) return;
-  if (indicePdfAtual + 1 < filaPdfPaginas.length) abrirPaginaPdf(indicePdfAtual + 1);
+  if (indicePdfAtual + 1 < filaPdfPaginas.length) await abrirPaginaPdf(indicePdfAtual + 1);
   else encerrarFluxoPdf();
 }
 
@@ -1879,20 +1905,28 @@ async function abrirPaginaPdf(indice) {
   indicePdfAtual = indice;
   const pagina = filaPdfPaginas[indice];
 
-  const estava = el.pdfBotao.textContent;
   el.pdfBotao.disabled = true;
   el.pdfBotao.textContent = "Preparando…";
   try {
     const prep = await pedirAoWorker({ tipo: "preparar", arquivo: pagina });
     const urlPrev = URL.createObjectURL(prep.blob);
 
-    const escolha = await abrirRecorte(
+    // abrirRecorte já deixa a tela visível antes de devolver a promessa —
+    // por isso dá pra atualizar a barra de navegação logo em seguida, e ela
+    // aparece por cima da imagem em tamanho real, não da miniatura do form.
+    const promessaRecorte = abrirRecorte(
       urlPrev,
       filaPdfPaginas.length > 1
         ? `Página ${indice + 1} de ${filaPdfPaginas.length} — ajuste as margens`
         : "Ajuste as margens",
       { l: prep.largura, a: prep.altura });
+    atualizarNavPdf();
+    const escolha = await promessaRecorte;
 
+    if (escolha && escolha.navegarPdf) {
+      URL.revokeObjectURL(urlPrev);
+      return abrirPaginaPdf(indice + escolha.navegarPdf);
+    }
     if (!escolha) { URL.revokeObjectURL(urlPrev); return avancarPdf(); }
 
     el.pdfBotao.textContent = "Finalizando…";
@@ -1912,7 +1946,6 @@ async function abrirPaginaPdf(indice) {
     el.data.value = hojeISO();
     el.nome.value = "";
     desenharRascunho();
-    atualizarNavPdf();
     leituraPodeEscrever = { nome: true, data: true, tipo: true };
     lerDocumento(rascunho[0].blob);
   } catch (e) {
@@ -1921,7 +1954,7 @@ async function abrirPaginaPdf(indice) {
     return avancarPdf();
   } finally {
     el.pdfBotao.disabled = false;
-    el.pdfBotao.textContent = estava;
+    el.pdfBotao.textContent = TEXTO_PDF_REPOUSO;
   }
 }
 
@@ -1934,12 +1967,24 @@ el.pdfNavProxima.onclick = () => {
   }
 };
 
+// Fechar o app com um documento a meio (recorte feito, formulário aberto e
+// não guardado) ou com páginas do PDF ainda não processadas perde esse
+// trabalho de verdade — nada disso está gravado ainda. O que já foi
+// guardado (naFila) NÃO entra aqui: aquilo sobrevive um fechar, e avisar
+// por causa dele seria alarme falso.
+window.addEventListener("beforeunload", (e) => {
+  const trabalhoEmRisco = rascunho.length > 0
+    || (filaPdfPaginas && filaPdfPaginas.length > 0);
+  if (!trabalhoEmRisco) return;
+  e.preventDefault();
+  e.returnValue = "";
+});
+
 el.pdf.onchange = async () => {
   const arquivosPdf = [...el.pdf.files];
   el.pdf.value = "";
   if (!arquivosPdf.length) return;
 
-  const estava = el.pdfBotao.textContent;
   el.pdfBotao.disabled = true;
   el.pdfBotao.textContent = "Abrindo PDF…";
 
@@ -1955,7 +2000,7 @@ el.pdf.onchange = async () => {
   }
 
   el.pdfBotao.disabled = false;
-  el.pdfBotao.textContent = estava;
+  el.pdfBotao.textContent = TEXTO_PDF_REPOUSO;
   if (!novasPaginas.length) return;
 
   if (novasPaginas.length > 1) {
