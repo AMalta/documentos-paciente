@@ -640,6 +640,26 @@ async function lerDocumento(blob) {
    pendência solta. Falhando o documento, nada sobe.                          */
 async function guardar() {
   if (!rascunho.length) return;
+
+  const nomeNovo = (el.nome.value || "").trim() || ROTULOS[el.tipo.value];
+  const dataNova = el.data.value || null;
+
+  // Duplicidade: mesmo nome + mesma data, em QUALQUER origem (foto ou PDF),
+  // já guardado (documentos) ou ainda na fila de envio (naFila). Só compara
+  // quando há data — nome batendo sem data é comum demais (dois exames sem
+  // data preenchida) e um aviso ali seria ruído, não ajuda.
+  if (dataNova) {
+    const normalizar = (s) => (s || "").normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    const jaExiste = [...documentos, ...naFila].some((d) =>
+      normalizar(d.nome) === normalizar(nomeNovo) && d.data_documento === dataNova);
+    if (jaExiste) {
+      const seguir = confirm(`Você já tem um documento chamado "${nomeNovo}" `
+        + `com a data ${dataBR(dataNova)}. Guardar mesmo assim?`);
+      if (!seguir) return;
+    }
+  }
+
   el.salvar.disabled = true;
   el.salvar.textContent = "Guardando…";
   limparAvisos();
@@ -650,8 +670,8 @@ async function guardar() {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
     paciente_id: usuario.id,
     tipo: el.tipo.value,
-    nome: (el.nome.value || "").trim() || ROTULOS[el.tipo.value],
-    data_documento: el.data.value || null,
+    nome: nomeNovo,
+    data_documento: dataNova,
     criado_em: new Date().toISOString(),
     documento_id: null,
     paginas: rascunho.map((p) => ({
