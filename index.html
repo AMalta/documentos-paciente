@@ -47,9 +47,6 @@
   .btn-linha{background:var(--superficie);border:1px solid var(--linha);
              color:var(--tinta);padding:11px 14px;font-size:15px}
   .btn-linha:disabled{opacity:.4}
-  .pdf-nav{display:flex;align-items:center;gap:8px;margin-bottom:12px;
-           font-size:13px;color:var(--tinta-2)}
-  .pdf-nav span{flex:1;text-align:center}
   .btn-texto{background:none;color:var(--azul);padding:8px 2px;font-size:14px}
   .btn-salvar{background:var(--verde);color:#fff;padding:15px;font-size:16px;
               font-weight:600;width:100%}
@@ -319,6 +316,16 @@
   .tela-cheia .dica{padding:10px 16px;font-size:13px;text-align:center;
                     color:#b8c6d1;background:rgba(0,0,0,.35);
                     padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+  /* Navegação entre páginas do PDF, dentro da tela de recorte — só visível
+     durante um upload de PDF (ver atualizarNavPdf em app.js). Fica aqui e
+     não no formulário: é na imagem em tamanho real que dá pra ver do que
+     se trata a página, não numa miniatura pequena. */
+  .pdf-nav{display:flex;align-items:center;gap:8px;padding:8px 16px;
+           font-size:13px;color:#fff;background:rgba(0,0,0,.35)}
+  .pdf-nav span{flex:1;text-align:center}
+  .pdf-nav button{background:rgba(255,255,255,.12);border-radius:8px;
+                  color:#fff;padding:8px 12px;font-size:13px}
+  .pdf-nav button:disabled{opacity:.35}
 
   /* Recorte: a área fora da marca escurece, os cantos se arrastam */
   #recorte-area{position:absolute}
@@ -607,15 +614,6 @@
 
     <div class="paginas" id="paginas"></div>
 
-    <!-- Só aparece durante um upload de PDF (ver atualizarNavPdf em app.js).
-         Deixa andar pra frente/trás entre as páginas do arquivo, sem precisar
-         guardar ou cancelar pra sair da atual. -->
-    <div class="pdf-nav escondido" id="pdf-nav">
-      <button class="btn-linha" id="pdf-nav-anterior" type="button">◀ Anterior</button>
-      <span id="pdf-nav-texto"></span>
-      <button class="btn-linha" id="pdf-nav-proxima" type="button">Próxima ▶</button>
-    </div>
-
     <!-- LEITURA AUTOMÁTICA. Fica ACIMA dos campos, porque é sobre eles que
          ela fala. Nasce escondida e some sozinha quando não há nada a
          dizer — linha fixa dizendo "não li nada" seria pior que silêncio. -->
@@ -888,6 +886,14 @@
     <button id="recorte-cancelar">Cancelar</button>
     <span class="titulo" id="recorte-titulo">Ajuste as margens</span>
     <button class="confirmar" id="recorte-ok">Usar</button>
+  </div>
+  <!-- Só aparece durante um upload de PDF (ver atualizarNavPdf em app.js).
+       Fica aqui, e não no formulário depois: é na imagem em tamanho real
+       que dá pra ver do que se trata a página. -->
+  <div class="pdf-nav escondido" id="pdf-nav">
+    <button id="pdf-nav-anterior" type="button">◀ Anterior</button>
+    <span id="pdf-nav-texto"></span>
+    <button id="pdf-nav-proxima" type="button">Próxima ▶</button>
   </div>
   <div class="palco" id="recorte-palco">
     <div id="recorte-area">
