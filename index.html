@@ -584,6 +584,12 @@
   <input type="file" id="camera" accept="image/*" capture="environment"
          multiple class="escondido">
 
+  <!-- Resultado de exame em PDF (enviado pelo laboratório). Cada página vira
+       uma "foto" e passa pelo mesmo worker de preparar/recortar/finalizar. -->
+  <button class="btn-grande" id="btn-pdf">📄 Enviar PDF de exame</button>
+  <input type="file" id="input-pdf" accept="application/pdf"
+         multiple class="escondido">
+
   <!-- FORMULÁRIO (aparece depois da primeira foto) ------------------------ -->
   <section id="form" class="cartao escondido" style="margin-top:14px">
     <div style="font-weight:600;margin-bottom:2px">Novo documento</div>
@@ -780,6 +786,22 @@
 
       <div class="conta-cartao" id="conta-uso"
            style="padding:12px 16px;margin-bottom:12px;font-size:14px"></div>
+
+      <!-- O NOME. Existe por causa da tela do MÉDICO, não desta: lá o
+           acervo abria anônimo, dizendo só "Acervo do paciente". O médico
+           está com a pessoa na frente e a tela não confirmava que é dela.
+           Fica aqui, e não no cadastro inicial, porque pedir nome antes da
+           primeira foto é uma barreira a mais entre o paciente e o que ele
+           veio fazer. -->
+      <div class="conta-cartao" id="conta-nome-cartao">
+        <h3>Seu nome</h3>
+        <p>É o que o médico vê no alto da tela quando
+          você mostra seus documentos. Só ele, e só enquanto o acesso vale.</p>
+        <input id="conta-nome" type="text" autocomplete="name"
+               placeholder="Como o médico deve te chamar" maxlength="60">
+        <button class="btn-salvar" id="conta-nome-salvar"
+                style="width:100%;margin-top:8px">Guardar nome</button>
+      </div>
 
       <div class="conta-estado" id="conta-estado">
         <span class="ico">⚠️</span>
@@ -1009,6 +1031,13 @@
      Versao FIXADA e copiada para ca (2.45.4, 111 KB). De quebra sai um
      terceiro do caminho de carregamento de um aplicativo de saude.
      Atualizar = baixar de novo e rodar a bateria. -->
+<!-- pdf.js, copiado localmente pelo mesmo motivo do supabase.min.js acima:
+     nada de terceiro no caminho de carregamento de um app de saude.
+     Baixar de https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js
+     e o worker de .../pdf.worker.min.js, salvando os dois na pasta do site.
+     (Versao 3.11.174: a partir da 4.x o pdf.js so distribui .mjs, sem o
+     arquivo classico que funciona com <script> comum e pdfjsLib global.) -->
+<script src="pdf.min.js"></script>
 <script src="supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="comum.js"></script>

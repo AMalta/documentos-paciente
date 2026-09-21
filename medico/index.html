@@ -68,6 +68,7 @@
   .topo{position:sticky;top:0;z-index:20;background:var(--branco);
         border-bottom:1px solid var(--linha);padding:11px 16px;
         display:flex;align-items:center;gap:14px}
+  .topo .marca b{font-weight:700}
   .topo .marca{font-size:15px;font-weight:600}
   .topo .marca span{color:var(--suave);font-weight:400}
   .prazo{margin-left:auto;display:flex;align-items:center;gap:6px;
@@ -300,7 +301,13 @@
 <!-- ACERVO ----------------------------------------------------------------- -->
 <div class="escondido" id="tela-acervo">
   <div class="topo">
-    <div class="marca">Acervo do paciente <span id="topo-medico"></span></div>
+    <!-- O nome do PACIENTE vem primeiro, e em destaque: e a unica coisa
+         nesta tela que diz DE QUEM e o acervo. Sem ele, o medico abre uma
+         lista de exames sem dono — e uma tela que nao afirma nada nao pode
+         estar errada, o que soa bom e nao e: erro visivel se corrige, e
+         ausencia de afirmacao, nao. -->
+    <div class="marca"><b id="topo-paciente">Acervo do paciente</b>
+      <span id="topo-medico"></span></div>
     <div class="prazo" id="prazo"></div>
     <button class="sair" id="sair">Encerrar</button>
   </div>

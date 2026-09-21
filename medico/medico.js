@@ -44,7 +44,8 @@ const el = {
   entrada: $("tela-entrada"), acervo: $("tela-acervo"),
   codigo: $("codigo"), nome: $("nome"), crm: $("crm"),
   abrir: $("abrir"), erroEntrada: $("erro-entrada"),
-  topoMedico: $("topo-medico"), prazo: $("prazo"), sair: $("sair"),
+  topoMedico: $("topo-medico"), topoPaciente: $("topo-paciente"),
+  prazo: $("prazo"), sair: $("sair"),
   busca: $("busca"), filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"),
   corpoDica: $("corpo-dica"), folhinhas: $("folhinhas"), verTodos: $("ver-todos"),
@@ -127,6 +128,22 @@ el.abrir.onclick = async () => {
     pacienteId = lib.paciente_id;
     medicoNome = nome;
     el.topoMedico.textContent = "· " + nome;
+    /* O NOME DO PACIENTE. Vem por funcao (`nome_do_paciente`, sql/008) e
+       nao por leitura da tabela: RLS e por linha, e uma politica de select
+       em `pacientes_app` entregaria telefone, nascimento e aceite do termo
+       junto. O paciente consentiu em mostrar DOCUMENTOS.
+
+       Falhando ou vindo vazio, a tela fica como era. Nao ha aviso: nome em
+       branco e o estado normal de quem ainda nao preencheu, e alarme sobre
+       isso, na frente do paciente, so atrapalharia a consulta. */
+    try {
+      const { data: nomePac } = await sb.rpc("nome_do_paciente",
+        { p_paciente: pacienteId });
+      const limpo = String(nomePac || "").trim();
+      if (limpo) el.topoPaciente.textContent = limpo;
+    } catch (e) {
+      console.warn("[nome]", e?.message || e);
+    }
     // "ate 00:00" e literalmente correto e confunde: o prazo e a meia-noite
     // SEGUINTE, e o numero lido de relance parece dizer que ja venceu. A
     // frase do proprio termo — "termina no mesmo dia" — nao tem esse risco.

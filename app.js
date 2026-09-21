@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-19.12";
+const VERSAO_APP = "2026-09-19.13";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -326,10 +326,11 @@ async function entrar() {
 async function carregarPerfil() {
   const { data, error } = await sb.from("pacientes_app")
     .upsert({ id: usuario.id }, { onConflict: "id" })
-    .select("termo_aceito_em, termo_versao").single();
+    .select("termo_aceito_em, termo_versao, nome").single();
   if (error) { console.warn("[perfil]", error.message); return; }
   usuario.termo_aceito_em = data?.termo_aceito_em || null;
   usuario.termo_versao = data?.termo_versao || null;
+  usuario.nome = data?.nome || null;
 }
 
 /* ═══ Recorte de margens ══════════════════════════════════════════════════
@@ -491,6 +492,7 @@ function cancelar() {
   rascunho = [];
   el.form.classList.add("escondido");
   el.fotografar.classList.remove("escondido");
+  el.pdfBotao.classList.remove("escondido");
   el.nome.value = "";
   el.camera.value = "";
   leituraPedido++;          // invalida resposta em voo
@@ -1785,6 +1787,109 @@ el.camera.onchange = async () => {
   }
 };
 
+/* ── Upload de PDF (resultados de exame) ─────────────────────────────────
+   Cada página do PDF vira uma "foto": passa pelo mesmo worker de preparar/
+   recortar/finalizar que as fotos da câmera, e cai no mesmo rascunho. Assim
+   o Groq lê a primeira página como leria uma foto, e o resto do fluxo
+   (guardar, subir, mostrar ao médico) não muda uma linha.                 */
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "pdf.worker.min.js";
+}
+
+el.pdf = $("input-pdf");
+el.pdfBotao = $("btn-pdf");
+el.pdfBotao.onclick = () => {
+  if (!jaAceitou()) { abrirTermo(); return; }
+  if (noLimite()) { limparAvisos(); avisarSeApertando(); return; }
+  el.pdf.click();
+};
+
+async function pdfParaBlobs(arquivo) {
+  const buffer = await arquivo.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const blobs = [];
+  for (let n = 1; n <= pdf.numPages; n++) {
+    const pagina = await pdf.getPage(n);
+    const vp = pagina.getViewport({ scale: 2 }); // resolução suficiente pro Groq ler
+    const canvas = document.createElement("canvas");
+    canvas.width = vp.width;
+    canvas.height = vp.height;
+    await pagina.render({ canvasContext: canvas.getContext("2d"), viewport: vp }).promise;
+    const blob = await new Promise((ok) => canvas.toBlob(ok, "image/jpeg", 0.92));
+    blobs.push(new File([blob], `pagina-${n}.jpg`, { type: "image/jpeg" }));
+  }
+  return blobs;
+}
+
+el.pdf.onchange = async () => {
+  const jaAberto = !el.form.classList.contains("escondido");
+  const arquivosPdf = [...el.pdf.files];
+  el.pdf.value = "";
+  if (!arquivosPdf.length) return;
+
+  const estava = el.pdfBotao.textContent;
+  el.pdfBotao.disabled = true;
+
+  for (const arquivoPdf of arquivosPdf) {
+    let paginas;
+    try {
+      el.pdfBotao.textContent = "Abrindo PDF…";
+      paginas = await pdfParaBlobs(arquivoPdf);
+    } catch (e) {
+      console.error(e);
+      aviso("Não consegui abrir este PDF. Confira se o arquivo não está "
+          + "corrompido ou protegido por senha.", "erro");
+      continue;
+    }
+
+    for (let i = 0; i < paginas.length; i++) {
+      el.pdfBotao.textContent = paginas.length > 1
+        ? `Preparando página ${i + 1} de ${paginas.length}…` : "Preparando…";
+      try {
+        const prep = await pedirAoWorker({ tipo: "preparar", arquivo: paginas[i] });
+        const urlPrev = URL.createObjectURL(prep.blob);
+
+        const escolha = await abrirRecorte(
+          urlPrev,
+          paginas.length > 1
+            ? `Página ${rascunho.length + 1} — ajuste as margens`
+            : "Ajuste as margens",
+          { l: prep.largura, a: prep.altura });
+
+        if (!escolha) { URL.revokeObjectURL(urlPrev); continue; }
+
+        el.pdfBotao.textContent = "Finalizando…";
+        const fim = await pedirAoWorker({
+          tipo: "final", blob: prep.blob, rect: escolha.rect, giro: escolha.giro,
+          lado: CONFIG.LADO_MAXIMO, qualidade: CONFIG.QUALIDADE,
+        });
+        URL.revokeObjectURL(urlPrev);
+        rascunho.push({ blob: fim.blob, largura: fim.largura, altura: fim.altura,
+                        url: URL.createObjectURL(fim.blob) });
+      } catch (e) {
+        console.error(e);
+        aviso("Não consegui processar uma das páginas do PDF.", "erro");
+      }
+    }
+  }
+
+  el.pdfBotao.disabled = false;
+  el.pdfBotao.textContent = estava;
+
+  if (rascunho.length) {
+    const primeiraPagina = !jaAberto;
+    el.form.classList.remove("escondido");
+    el.fotografar.classList.add("escondido");
+    el.pdfBotao.classList.add("escondido");
+    if (!el.data.value) el.data.value = hojeISO();
+    desenharRascunho();
+    if (primeiraPagina) {
+      leituraPodeEscrever = { nome: true, data: true, tipo: true };
+      lerDocumento(rascunho[0].blob);
+    }
+  }
+};
+
 /* ═══ Boas-vindas e instalação ════════════════════════════════════════════
    O QR do consultório leva a uma página, não a uma loja — e é aqui que o
    paciente decide se aquilo vira um ícone no celular dele ou uma aba que ele
@@ -1981,11 +2086,44 @@ function avisarSeApertando() {
    noutro app, às vezes noutro navegador, e a sessão se perde no caminho.
    Digitar o código mantém tudo na mesma tela. O link continua valendo para
    quem preferir tocar nele.                                                 */
+/* ── O nome do paciente ───────────────────────────────────────────────────
+   Existe por causa da tela do MÉDICO. Lá o acervo abria anônimo — "Acervo
+   do paciente" e mais nada —, com a pessoa sentada na frente dele. Uma
+   tela que não afirma de quem é o acervo nunca pode estar errada, e isso
+   soa bom mas não é: erro visível se corrige; ausência de afirmação, não.
+
+   Fica na tela da CONTA, e não no começo: pedir nome antes da primeira
+   foto é uma barreira entre o paciente e o que ele veio fazer. E não é
+   obrigatório em lugar nenhum — em branco, a tela do médico continua
+   dizendo "Acervo do paciente", como sempre disse. */
+async function salvarNome() {
+  const nome = (ct.nome.value || "").trim().slice(0, 60);
+  ct.nomeSalvar.disabled = true;
+  ct.nomeSalvar.textContent = "Guardando…";
+  try {
+    // upsert, e não update: a linha em `pacientes_app` pode não existir
+    // ainda — update sem linha afeta zero e volta em silêncio, que foi
+    // exatamente como um aceite de termo já "deu certo" sem gravar nada.
+    const { error } = await sb.from("pacientes_app")
+      .upsert({ id: usuario.id, nome: nome || null }, { onConflict: "id" });
+    if (error) throw error;
+    usuario.nome = nome || null;
+    aviso(nome ? "Nome guardado." : "Nome apagado.", "ok");
+  } catch (e) {
+    console.warn("[nome]", e?.message || e);
+    aviso(explicar(e), "erro");
+  } finally {
+    ct.nomeSalvar.disabled = false;
+    ct.nomeSalvar.textContent = "Guardar nome";
+  }
+}
+
 const ct = {
   botao: $("btn-conta"), tela: $("tela-conta"), fechar: $("conta-fechar"),
   estado: $("conta-estado"), estadoTxt: $("conta-estado-txt"),
   proteger: $("conta-proteger"), pronta: $("conta-pronta"),
   passo1: $("proteger-passo1"), passo2: $("proteger-passo2"),
+  nome: $("conta-nome"), nomeSalvar: $("conta-nome-salvar"),
   email: $("conta-email"), enviar: $("conta-enviar"), eco: $("conta-email-eco"),
   codigo: $("conta-codigo"), confirmar: $("conta-confirmar"), voltar: $("conta-voltar"),
   emailAtual: $("conta-email-atual"), sair: $("conta-sair"),
@@ -2035,6 +2173,8 @@ function abrirConta(paraRecuperar = false) {
   ct.passo1.classList.remove("passo-oculto");
   ct.passo2.classList.add("passo-oculto");
   ct.codigo.value = "";
+  // O que ja esta gravado, e nao o que sobrou da digitacao anterior.
+  ct.nome.value = usuario?.nome || "";
   pintarConta();
   if (paraRecuperar) {
     ct.proteger.classList.remove("escondido");
@@ -2131,6 +2271,7 @@ async function confirmarCodigo() {
 ct.botao.onclick = () => abrirConta(false);
 ct.bvVoltar.onclick = () => { fecharBoasVindas(); abrirConta(true); };
 ct.fechar.onclick = () => ct.tela.classList.add("escondido");
+ct.nomeSalvar.onclick = salvarNome;
 ct.enviar.onclick = enviarCodigo;
 ct.confirmar.onclick = confirmarCodigo;
 ct.voltar.onclick = () => {
