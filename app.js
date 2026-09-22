@@ -2038,20 +2038,60 @@ function desenharLista() {
     (!tipo || e.tipo === tipo) && casaBusca(e, termos) && naRegiao(e));
 
   if (!lista.length && !pend.length) {
-    // Tres situacoes diferentes, tres respostas. Dizer "nenhum documento"
-    // para quem acabou de digitar uma palavra faz pensar que o acervo sumiu.
+    // Nomes legiveis de cada filtro LIGADO agora, na ordem em que aparecem
+    // na tela: tipo, depois regiao do corpo (com sub-assunto junto, se
+    // houver). A busca por texto entra separada, porque ja tem frase
+    // propria ("Nada encontrado para X") — aqui ela so soma ao combinado
+    // quando outro filtro tambem esta ligado.
+    const nomesFiltro = [];
+    if (tipo) nomesFiltro.push(ROTULOS[tipo]);
+    if (regiaoAtiva) {
+      const r = REGIOES.find((x) => x.id === regiaoAtiva);
+      let rotulo = (r && r.rotulo) || "";
+      const s = subAtivo && r && r.sub && r.sub.find((x) => x.id === subAtivo);
+      if (s) rotulo += " › " + s.rotulo;
+      if (rotulo) nomesFiltro.push(rotulo);
+    }
+    const combinados = termos.length
+      ? [`“${el.busca.value}”`, ...nomesFiltro] : nomesFiltro.slice();
+
+    // Duas situacoes diferentes, tres respostas — mas quando DOIS FILTROS OU
+    // MAIS estao ligados ao mesmo tempo (ex.: tipo "Receita" + regiao
+    // "Tórax"), a frase antiga so citava a busca de texto e ignorava o
+    // resto, ou caia no generico "esse filtro" (singular) sem dizer QUAIS.
+    // Quem via aquilo nao sabia se soltava o tipo, a regiao ou os dois.
+    // Agora cada filtro ligado entra na frase, entao a pessoa sabe
+    // exatamente o que esta zerando a lista.
     let texto;
-    if (termos.length) {
+    if (combinados.length >= 2) {
+      texto = `Nada encontrado para ${combinados.map((n) => `<b>${n}</b>`).join(" + ")}.`
+            + `<br><span style="font-size:13px">Tente soltar um dos filtros.</span>`;
+    } else if (termos.length) {
       texto = `Nada encontrado para <b>${el.busca.value}</b>.`
             + `<br><span style="font-size:13px">Procure por parte do nome, `
             + `pelo tipo (“receita”) ou pelo ano.</span>`;
+    } else if (nomesFiltro.length) {
+      texto = `Nenhum documento em <b>${nomesFiltro[0]}</b>.`;
     } else if (documentos.length || naFila.length) {
       texto = "Nenhum documento com esse filtro.";
     } else {
       texto = "Ainda não há nada guardado.<br>Comece fotografando um exame.";
     }
+
+    // So mostra "limpar filtros" quando ha o que limpar — na lista
+    // realmente vazia (acervo zerado) o botao nao teria o que fazer.
+    const temFiltro = combinados.length > 0;
     el.lista.innerHTML = `<div class="vazio"><div class="icone">${
-      termos.length ? "🔎" : "🗂️"}</div><p>${texto}</p></div>`;
+      termos.length ? "🔎" : "🗂️"}</div><p>${texto}</p>${
+      temFiltro ? `<button class="ver-todos" id="vazio-limpar">✕ limpar filtros</button>` : ""}</div>`;
+    if (temFiltro) {
+      document.getElementById("vazio-limpar").onclick = () => {
+        el.filtroTipo.value = "";
+        el.busca.value = "";
+        regiaoAtiva = null; subAtivo = null;
+        desenharLista();
+      };
+    }
     return;
   }
 
