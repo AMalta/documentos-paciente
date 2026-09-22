@@ -209,6 +209,19 @@
   .doc.dica-deslizar{animation:dica-deslizar 1.1s ease-in-out}
   @media (prefers-reduced-motion:reduce){ .doc.dica-deslizar{animation:none} }
 
+  /* Balão de texto com a mesma instrução, uma vez só (ver o comentário no
+     HTML, junto de #dica-swipe). Tom de dica, não de aviso — por isso o
+     azul claro do resto do app, não o âmbar reservado para "atenção". */
+  .dica-swipe{display:flex;align-items:center;gap:8px;
+              background:var(--azul-claro);color:var(--azul-escuro);
+              border-radius:10px;padding:10px 8px 10px 12px;margin-bottom:10px;
+              font-size:13.5px;line-height:1.4}
+  .dica-swipe span:first-child{flex:1}
+  .dica-swipe button{background:none;color:inherit;border-radius:6px;
+                      width:26px;height:26px;flex:0 0 auto;font-size:17px;
+                      opacity:.75}
+  .dica-swipe button:active{background:rgba(0,0,0,.08)}
+
   /* ── "Recentes" fixo no topo, mesmo com filtro/busca ativos ──────────────
      Mostra os ultimos guardados sem depender do que a lista de baixo esta
      filtrando: quem acabou de fotografar quer confirmar que salvou, nao
@@ -1118,6 +1131,20 @@
   <div class="recentes escondido" id="recentes">
     <div class="recentes-titulo">📌 Recentes</div>
     <div class="recentes-trilha" id="recentes-trilha"></div>
+  </div>
+
+  <!-- Instrução escrita do gesto de deslizar, além do wiggle no primeiro
+       cartão (ver .dica-deslizar no CSS e dicaDeslizarSeNecessario no
+       app.js). O wiggle sozinho é fácil de não notar, ou de notar e não
+       entender o que aquele tremor significa — quem visse o cartão andar
+       um pouco e voltar não tinha como concluir sozinho "isso é para
+       arrastar, e arrastar apaga ou compartilha". A frase escrita é a
+       instrução; a animação só aponta onde. Some assim que a pessoa
+       realmente desliza um cartão (não tem mais o que ensinar) ou toca o
+       ×; aparece só uma vez na vida do aparelho (mesma marca do wiggle). -->
+  <div class="dica-swipe escondido" id="dica-swipe">
+    <span>💡 Arraste um documento para o lado para apagar ou compartilhar</span>
+    <button id="dica-swipe-fechar" aria-label="Entendi, não mostrar de novo">×</button>
   </div>
 
   <div id="lista"></div>

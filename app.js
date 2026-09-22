@@ -27,6 +27,7 @@ const el = {
   filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   lista: $("lista"), sub: $("cabecalho-sub"),
   recentes: $("recentes"), recentesTrilha: $("recentes-trilha"),
+  dicaSwipe: $("dica-swipe"), dicaSwipeFechar: $("dica-swipe-fechar"),
   busca: $("busca"), buscaCaixa: $("busca-caixa"), buscaLimpar: $("busca-limpar"),
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"), folhinhas: $("folhinhas"),
   corpoCabecalho: $("corpo-cabecalho"), corpoSeta: $("corpo-seta"),
@@ -1767,6 +1768,9 @@ function tornarDeslizavel(wrap, alvo, origem) {
       deslizAberto._fecharDeslizar(false);
     }
     deslizAberto = wrap;
+    // A pessoa acabou de USAR o gesto — o balão de instrução não tem mais
+    // o que ensinar. Some na hora, sem esperar o wiggle acabar sozinho.
+    if (el.dicaSwipe) el.dicaSwipe.classList.add("escondido");
   };
 
   wrap.addEventListener("pointerdown", (e) => {
@@ -1996,6 +2000,11 @@ function dicaDeslizarSeNecessario() {
   if (!primeiro || primeiro.offsetParent === null) return;
 
   try { localStorage.setItem("dica-deslizar-vista", "1"); } catch (e) { /* janela anônima */ }
+
+  // O balão de texto (#dica-swipe) é a instrução de verdade — o wiggle
+  // abaixo só aponta ONDE. Por isso ele aparece mesmo para quem pediu
+  // menos movimento na tela (early return logo depois é só da animação).
+  if (el.dicaSwipe) el.dicaSwipe.classList.remove("escondido");
 
   // Quem pediu menos movimento na tela não ganha a animação — mas já não
   // precisa mais dela rodar de novo, então a marca acima continua valendo.
@@ -3148,6 +3157,11 @@ el.buscaLimpar.onclick = () => {
 // Enter fecha o teclado do celular em vez de submeter coisa nenhuma: com a
 // lista ja filtrada, o teclado so esta tapando o resultado.
 el.busca.onkeydown = (e) => { if (e.key === "Enter") el.busca.blur(); };
+
+// Fechar manual do balão de instrução do deslizar (ver dicaDeslizarSeNecessario).
+// A marca no localStorage já foi gravada quando o balão apareceu — este
+// botão só tira ele da tela, não precisa gravar nada de novo.
+el.dicaSwipeFechar.onclick = () => el.dicaSwipe.classList.add("escondido");
 
 // Um ouvinte no SVG inteiro, e nao um por regiao: pintarCorpo() redesenha o
 // estado a cada lista, e religar handler a cada vez acumularia ouvintes.
