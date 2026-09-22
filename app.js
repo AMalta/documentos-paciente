@@ -17,7 +17,7 @@ const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
 const $ = (id) => document.getElementById(id);
 const el = {
-  avisos: $("avisos"), fotografar: $("btn-fotografar"), camera: $("camera"),
+  avisos: $("avisos"), celebrar: $("celebrar"), fotografar: $("btn-fotografar"), camera: $("camera"),
   form: $("form"), paginas: $("paginas"), tipo: $("tipo"), nome: $("nome"),
   leitura: $("leitura"), leituraIcone: $("leitura-icone"),
   leituraTexto: $("leitura-texto"),
@@ -129,6 +129,22 @@ function aviso(texto, tipo = "info", titulo = "") {
   alvo.appendChild(d);
   if (tipo === "ok") setTimeout(() => d.remove(), 4000);
   return d;
+}
+
+// Selo de "guardado": o único reforço visual forte do app, e por isso
+// reservado só para o momento que mais precisa de confirmação clara — o
+// documento foi guardado de verdade. `celebrarTimer` corta uma chamada
+// em andamento antes de começar outra: guardar duas páginas em sequência
+// rápida não deve deixar o selo preso a meio caminho de sumir.
+let celebrarTimer = null;
+function celebrarGuardado() {
+  clearTimeout(celebrarTimer);
+  el.celebrar.classList.remove("mostrar");
+  // Força o navegador a "esquecer" a transição anterior antes de reaplicar
+  // a classe — sem isto, duas chamadas seguidas não reiniciam a animação.
+  void el.celebrar.offsetWidth;
+  el.celebrar.classList.add("mostrar");
+  celebrarTimer = setTimeout(() => el.celebrar.classList.remove("mostrar"), 900);
 }
 
 /* Traduz a falha para o que o paciente precisa saber. O texto cru do
@@ -735,6 +751,8 @@ async function guardar() {
   cancelar();
   el.salvar.disabled = false;
   el.salvar.textContent = "Guardar documento";
+  celebrarGuardado();
+  aviso("Documento guardado.", "ok");
   // Acabou de guardar: MOSTRE o que ela guardou. Com um filtro ligado, o
   // documento novo pode nao casar com ele e some da tela — e ela conclui
   // que a foto se perdeu. Foi exatamente o que aconteceu com um documento

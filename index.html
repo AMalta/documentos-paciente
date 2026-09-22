@@ -228,6 +228,24 @@
   @media (prefers-reduced-motion:reduce){
     .leitura.lendo .leitura-icone{animation:none}
   }
+  /* Selo de "guardado". Some sozinho — não precisa de toque, não bloqueia
+     nada embaixo (pointer-events:none), e é o ÚNICO reforço visual forte do
+     app: se tudo piscasse, nada chamaria atenção. Fica reservado para o
+     momento que mais importa confirmar — o documento foi guardado de
+     verdade. O aviso de texto (rodapé) continua além disto, para quem
+     depende de leitor de tela ou perdeu o instante da animação. */
+  .celebrar{position:fixed;top:38%;left:50%;z-index:80;pointer-events:none;
+       width:88px;height:88px;border-radius:50%;background:var(--verde);
+       color:#fff;font-size:42px;display:flex;align-items:center;
+       justify-content:center;opacity:0;
+       transform:translate(-50%,-50%) scale(.5);
+       transition:opacity .2s ease-out,
+                  transform .38s cubic-bezier(.34,1.56,.64,1)}
+  .celebrar.mostrar{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  @media (prefers-reduced-motion:reduce){
+    .celebrar{transition:opacity .15s ease-out}
+    .celebrar.mostrar{transform:translate(-50%,-50%) scale(1)}
+  }
   /* A segunda linha do aviso, só para a DATA. Âmbar e não vermelho: não
      houve erro, há uma coisa para conferir — vermelho no meio de um
      formulário que funcionou faz a pessoa procurar o que ela fez de
@@ -620,6 +638,7 @@
   </div>
 
   <div id="avisos"></div>
+  <div class="celebrar" id="celebrar" aria-hidden="true">✓</div>
 
   <!-- AGENDA ------------------------------------------------------------ -->
   <!-- Fica ACIMA do botao de fotografar de proposito. O lembrete so existe
