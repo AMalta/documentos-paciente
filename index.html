@@ -396,6 +396,18 @@
      a marca quer dizer "você ainda não olhou isto", não "isto está
      errado". */
   #data.conferir{border-color:var(--ambar);background:var(--ambar-fundo)}
+
+  /* ── Aviso de documento repetido, CEDO ────────────────────────────────
+     Antes só aparecia dentro de uma confirmação ao tocar em "Guardar" —
+     depois de a pessoa já ter fotografado e preenchido tudo. Este aviso
+     mora dentro do próprio formulário e aparece na hora em que nome+data
+     passam a bater com algo já guardado (ver verificarDuplicata em
+     app.js), para dar tempo de corrigir ANTES de continuar. Âmbar, não
+     vermelho: não é um erro, é algo para conferir — mesma lógica de
+     #data.conferir. */
+  .duplicata{margin:12px 0 2px;padding:9px 11px;border-radius:10px;
+             font-size:13px;line-height:1.4;background:var(--ambar-fundo);
+             color:var(--ambar);font-weight:600}
   .sub.ativa{background:var(--azul);border-color:var(--azul);color:#fff}
   .sub.ativa .n{color:#cfe2ef}
   @media (max-width:340px){ .folhinhas{grid-template-columns:1fr} }
@@ -924,6 +936,10 @@
       </div>
     </div>
 
+    <div class="duplicata escondido" id="duplicata">
+      ⚠️ Você já tem <b id="duplicata-nome"></b> guardado com essa data.
+    </div>
+
     <!-- Só aparece durante um upload de PDF, e só quando há uma próxima
          página disponível (ver atualizarBotaoMaisPagina em app.js). Cobre o
          exame que ocupa mais de uma página do arquivo: em vez de virar dois
@@ -1193,8 +1209,16 @@
         <button class="btn-linha" id="conta-sair" style="width:100%">Sair desta conta</button>
       </div>
 
+      <!-- Reabre a mesma tela de boas-vindas de quando a conta foi criada.
+           Antes essa explicação só existia na primeira abertura — quem
+           esquecia como o app funciona, ou queria mostrar para outra
+           pessoa, não tinha para onde voltar (ver abrirBoasVindas em
+           app.js, chamado aqui com revisao=true). -->
+      <button class="btn-linha" id="conta-como-funciona"
+              style="width:100%;margin-top:4px">Como o indiDoc funciona</button>
+
       <button class="btn-linha" id="conta-ver-termo"
-              style="width:100%;margin-top:4px">Ver o que eu aceitei</button>
+              style="width:100%;margin-top:8px">Ver o que eu aceitei</button>
 
       <!-- Encerrar fica no fim, separado e discreto. É o que o termo promete
            ("ou a conta inteira"), e tem de estar alcançável sem ajuda de

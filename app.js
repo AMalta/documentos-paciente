@@ -23,6 +23,7 @@ const el = {
   leitura: $("leitura"), leituraIcone: $("leitura-icone"),
   leituraTexto: $("leitura-texto"),
   data: $("data"), salvar: $("btn-salvar"), cancelar: $("btn-cancelar"),
+  duplicata: $("duplicata"), duplicataNome: $("duplicata-nome"),
   filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   lista: $("lista"), sub: $("cabecalho-sub"),
   recentes: $("recentes"), recentesTrilha: $("recentes-trilha"),
@@ -592,6 +593,7 @@ function desenharRascunho() {
   el.formContagem.textContent = rascunho.length > 1
     ? rascunho.length + " páginas" : "";
   el.formDica.classList.toggle("escondido", dicaPaginasVista);
+  verificarDuplicata();
 }
 
 function cancelar() {
@@ -602,6 +604,7 @@ function cancelar() {
   el.pdfBotao.classList.remove("escondido");
   el.nome.value = "";
   el.camera.value = "";
+  el.duplicata.classList.add("escondido");
   leituraPedido++;          // invalida resposta em voo
   leituraCalar();
 }
@@ -636,14 +639,49 @@ let leituraPodeEscrever = {};
 let leituraPedido = 0;   // descarta resposta de uma foto já cancelada
 
 function leituraSoltar(campo) { leituraPodeEscrever[campo] = false; }
-el.nome.addEventListener("input", () => leituraSoltar("nome"));
+el.nome.addEventListener("input", () => { leituraSoltar("nome"); verificarDuplicata(); });
 el.data.addEventListener("input", () => {
   leituraSoltar("data");
   // Mexeu na data: a marca some. Ela quer dizer "voce ainda nao olhou
   // isto", nao "isto esta errado" — e quem digitou por cima ja olhou.
   el.data.classList.remove("conferir");
+  verificarDuplicata();
 });
-el.tipo.addEventListener("change", () => leituraSoltar("tipo"));
+el.tipo.addEventListener("change", () => { leituraSoltar("tipo"); verificarDuplicata(); });
+
+/* ── Duplicidade, verificada CEDO ─────────────────────────────────────────
+   Antes, só se sabia que o documento já existia ao tocar em "Guardar" —
+   depois de fotografar tudo e preencher o formulário inteiro. Tarde demais:
+   a pessoa fazia o trabalho todo para descobrir, só no fim, que já tinha
+   aquele exame guardado.
+
+   `encontrarDuplicata` é a mesma checagem de sempre (mesmo nome + mesma
+   data, em qualquer origem — já guardado ou ainda na fila de envio), agora
+   extraída para uma função só, usada tanto aqui quanto no gate final de
+   `guardar()`. Só compara quando há data, pelo mesmo motivo de antes: nome
+   batendo sem data é comum demais para servir de aviso.
+
+   `verificarDuplicata` roda a cada mudança em nome/tipo/data E depois que a
+   leitura automática preenche os campos sozinha (ver `sugerir`) — porque
+   preencher `.value` por código não dispara o evento "input" dos campos, e
+   sem essa chamada extra o aviso nunca apareceria para quem deixou a
+   leitura escrever por ela. */
+function encontrarDuplicata(nome, data) {
+  if (!data) return null;
+  const normalizar = (s) => (s || "").normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  return [...documentos, ...naFila].find((d) =>
+    normalizar(d.nome) === normalizar(nome) && d.data_documento === data) || null;
+}
+
+function verificarDuplicata() {
+  const nome = (el.nome.value || "").trim() || ROTULOS[el.tipo.value];
+  const data = el.data.value || null;
+  const dup = encontrarDuplicata(nome, data);
+  el.duplicataNome.textContent = dup ? `"${dup.nome || nome}"` : "";
+  el.duplicata.classList.toggle("escondido", !dup);
+  return dup;
+}
 
 function leituraDizer(texto, lendo) {
   el.leitura.classList.remove("escondido");
@@ -730,6 +768,8 @@ async function lerDocumento(blob) {
       return;
     }
 
+    verificarDuplicata();   // .value por código não dispara "input" sozinho
+
     const lista = postos.length > 1
       ? postos.slice(0, -1).join(", ") + " e " + postos[postos.length - 1]
       : postos[0];
@@ -776,21 +816,17 @@ async function guardar() {
   const nomeNovo = (el.nome.value || "").trim() || ROTULOS[el.tipo.value];
   const dataNova = el.data.value || null;
 
-  // Duplicidade: mesmo nome + mesma data, em QUALQUER origem (foto ou PDF),
-  // já guardado (documentos) ou ainda na fila de envio (naFila). Só compara
-  // quando há data — nome batendo sem data é comum demais (dois exames sem
-  // data preenchida) e um aviso ali seria ruído, não ajuda.
-  if (dataNova) {
-    const normalizar = (s) => (s || "").normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-    const jaExiste = [...documentos, ...naFila].some((d) =>
-      normalizar(d.nome) === normalizar(nomeNovo) && d.data_documento === dataNova);
-    if (jaExiste) {
-      const seguir = await confirmarModal(`Você já tem um documento chamado "${nomeNovo}" `
-        + `com a data ${dataBR(dataNova)}. Guardar mesmo assim?`,
-        { textoConfirmar: "Guardar mesmo assim" });
-      if (!seguir) return;
-    }
+  // Duplicidade: a mesma checagem de `verificarDuplicata` (ver o comentário
+  // lá), agora como confirmação de verdade antes de gravar — não só um
+  // aviso que dava para ignorar sem querer. A pessoa já deve ter visto o
+  // aviso no formulário a esta altura; isto aqui é o último freio, para
+  // quem preencheu tudo rápido sem reparar nele.
+  const duplicata = encontrarDuplicata(nomeNovo, dataNova);
+  if (duplicata) {
+    const seguir = await confirmarModal(`Você já tem um documento chamado "${nomeNovo}" `
+      + `com a data ${dataBR(dataNova)}. Guardar mesmo assim?`,
+      { textoConfirmar: "Guardar mesmo assim" });
+    if (!seguir) return;
   }
 
   el.salvar.disabled = true;
@@ -2594,8 +2630,16 @@ function mostrarFaixa() {
   bv.faixa.classList.remove("escondido");
 }
 
-function abrirBoasVindas() {
+/* `revisao=true` é como a tela abre a partir de "Minha conta" (ver
+   ct.comoFunciona.onclick), fora da primeira visita: a pessoa já tem
+   conta, então "Já usei antes em outro celular" — que dispara a
+   recuperação de acesso — não faz sentido aqui e some; o botão de
+   fechar troca de "Começar agora" para "Entendi", porque não há nada
+   para começar, só para rever. */
+function abrirBoasVindas(revisao = false) {
   bv.tela.classList.remove("escondido");
+  bv.comecar.textContent = revisao ? "Entendi" : "Começar agora";
+  $("bv-voltar").classList.toggle("escondido", revisao);
   /* TRÊS CAMINHOS, e o terceiro faltava.
 
      Com o convite do navegador, o botão. No iPhone, que nunca oferece, as
@@ -2730,7 +2774,7 @@ const ct = {
   email: $("conta-email"), enviar: $("conta-enviar"), eco: $("conta-email-eco"),
   codigo: $("conta-codigo"), confirmar: $("conta-confirmar"), voltar: $("conta-voltar"),
   emailAtual: $("conta-email-atual"), sair: $("conta-sair"),
-  encerrar: $("conta-encerrar"),
+  encerrar: $("conta-encerrar"), comoFunciona: $("conta-como-funciona"),
   bvVoltar: $("bv-voltar"),
 };
 
@@ -2875,6 +2919,7 @@ async function confirmarCodigo() {
 ct.botao.onclick = () => abrirConta(false);
 ct.bvVoltar.onclick = () => { fecharBoasVindas(); abrirConta(true); };
 ct.fechar.onclick = () => ct.tela.classList.add("escondido");
+ct.comoFunciona.onclick = () => abrirBoasVindas(true);
 ct.nomeSalvar.onclick = salvarNome;
 ct.enviar.onclick = enviarCodigo;
 ct.confirmar.onclick = confirmarCodigo;
