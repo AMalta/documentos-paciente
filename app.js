@@ -2635,6 +2635,30 @@ el.corpoCabecalho.onclick = () => {
   if (recolhidoSalvo) corpoAlternarColapso(true);
 }
 
+// Tamanho do texto. Preferência salva no aparelho, mesmo padrão do resto.
+// `escala` chega como string do dataset (data-escala="1.15"); as classes
+// batem com o valor por igualdade de texto, não numérica, então "1" fica
+// sem classe nenhuma (tamanho normal já é o padrão da folha de estilo).
+const botoesTextoOpcao = [...document.querySelectorAll(".texto-opcao")];
+function aplicarTamanhoTexto(escala) {
+  document.body.classList.remove("texto-m", "texto-g");
+  if (escala === "1.15") document.body.classList.add("texto-m");
+  else if (escala === "1.3") document.body.classList.add("texto-g");
+  for (const b of botoesTextoOpcao) {
+    b.classList.toggle("selecionada", b.dataset.escala === escala);
+  }
+  try { localStorage.setItem("tamanho-texto", escala); } catch (e) { /* janela anônima */ }
+}
+for (const b of botoesTextoOpcao) {
+  b.onclick = () => aplicarTamanhoTexto(b.dataset.escala);
+}
+{
+  let escalaSalva = "1";
+  try { escalaSalva = localStorage.getItem("tamanho-texto") || "1"; }
+  catch (e) { /* janela anônima */ }
+  aplicarTamanhoTexto(escalaSalva);
+}
+
 /* ── Partida ──────────────────────────────────────────────────────────── */
 (async () => {
   if (!CONFIG.SUPABASE_URL.includes("supabase.co") || CONFIG.SUPABASE_ANON_KEY.length < 40) {
