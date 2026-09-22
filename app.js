@@ -498,7 +498,8 @@ function posicionar(x, y, l, a) {
 
   const comeco = (e) => {
     const canto = e.target.dataset.canto;
-    modo = canto || "mover";
+    const lado = e.target.dataset.lado;
+    modo = canto || lado || "mover";
     const r = el.marca.getBoundingClientRect();
     const area = el.recorteArea.getBoundingClientRect();
     ini = { px: e.clientX, py: e.clientY,
@@ -515,6 +516,13 @@ function posicionar(x, y, l, a) {
     else if (modo === "tr") posicionar(ini.x, ini.y + dy, ini.l + dx, ini.a - dy);
     else if (modo === "bl") posicionar(ini.x + dx, ini.y, ini.l - dx, ini.a + dy);
     else if (modo === "br") posicionar(ini.x, ini.y, ini.l + dx, ini.a + dy);
+    // Lados: mexem em UM eixo só, na direção que a própria barra indica —
+    // é o ajuste fino que faltava, sem "puxar" a dimensão perpendicular
+    // junto (o problema de usar só cantos para tudo).
+    else if (modo === "cima") posicionar(ini.x, ini.y + dy, ini.l, ini.a - dy);
+    else if (modo === "baixo") posicionar(ini.x, ini.y, ini.l, ini.a + dy);
+    else if (modo === "esquerda") posicionar(ini.x + dx, ini.y, ini.l - dx, ini.a);
+    else if (modo === "direita") posicionar(ini.x, ini.y, ini.l + dx, ini.a);
     e.preventDefault();
   };
 

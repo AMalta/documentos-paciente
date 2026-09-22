@@ -70,6 +70,7 @@
      hierarquia visual que "Guardar" x "Cancelar" já usa no formulário. */
   .linha-captura .btn-grande#btn-pdf{background:var(--superficie);color:var(--azul);
                                       border:1.5px solid var(--azul-claro);box-shadow:var(--sombra-1)}
+  .captura-dica{margin:8px 2px 0;font-size:12.5px;color:var(--tinta-3);text-align:center}
   .btn-linha{background:var(--superficie);border:1px solid var(--linha);
              color:var(--tinta);padding:11px 14px;font-size:15px}
   .btn-linha:disabled{opacity:.4}
@@ -543,14 +544,42 @@
   #recorte-girar{background:rgba(255,255,255,.22);font-weight:600}
   .dica-girar{background:#8a5a12;color:#fff;border-radius:8px;padding:8px 12px;
               margin-bottom:8px;font-size:13px}
-  .marca{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.55);
+  /* A maioria dos documentos fotografados é papel BRANCO — e a marca era
+     branca pura, sem nenhum contorno escuro. Contra o próprio papel, a
+     linha quase desaparecia: a pessoa tentava "controlar" um traço que mal
+     dava para ver. O box-shadow duplo (um anel escuro fora, outro dentro)
+     mantém a linha branca visível em qualquer fundo, claro ou escuro —
+     mesma técnica de contorno que apps de foto já usam para isto. */
+  .marca{position:absolute;border:2px solid #fff;
+         box-shadow:0 0 0 9999px rgba(0,0,0,.55),
+                    0 0 0 1px rgba(0,0,0,.65),
+                    inset 0 0 0 1px rgba(0,0,0,.65);
          cursor:move;touch-action:none}
-  .canto{position:absolute;width:34px;height:34px;touch-action:none}
-  .canto::after{content:"";position:absolute;width:20px;height:20px;border:3px solid #fff}
-  .canto.tl{top:-17px;left:-17px}       .canto.tl::after{top:14px;left:14px;border-right:0;border-bottom:0}
-  .canto.tr{top:-17px;right:-17px}      .canto.tr::after{top:14px;right:14px;border-left:0;border-bottom:0}
-  .canto.bl{bottom:-17px;left:-17px}    .canto.bl::after{bottom:14px;left:14px;border-right:0;border-top:0}
-  .canto.br{bottom:-17px;right:-17px}   .canto.br::after{bottom:14px;right:14px;border-left:0;border-top:0}
+  /* Cantos: alvo de toque maior (era 34px, abaixo do mínimo confortável) e
+     a marca em L ganha uma sombra escura (drop-shadow) pelo mesmo motivo
+     do contorno acima — sem ela, o L branco também sumia no papel claro. */
+  .canto{position:absolute;width:42px;height:42px;touch-action:none}
+  .canto::after{content:"";position:absolute;width:22px;height:22px;border:3px solid #fff;
+                filter:drop-shadow(0 0 1.5px rgba(0,0,0,.8))}
+  .canto.tl{top:-21px;left:-21px}       .canto.tl::after{top:20px;left:20px;border-right:0;border-bottom:0}
+  .canto.tr{top:-21px;right:-21px}      .canto.tr::after{top:20px;right:20px;border-left:0;border-bottom:0}
+  .canto.bl{bottom:-21px;left:-21px}    .canto.bl::after{bottom:20px;left:20px;border-right:0;border-top:0}
+  .canto.br{bottom:-21px;right:-21px}   .canto.br::after{bottom:20px;right:20px;border-left:0;border-top:0}
+
+  /* Lados: antes só dava para ajustar arrastando um CANTO, o que sempre
+     mexe em duas direções ao mesmo tempo — corrigir só a margem esquerda,
+     por exemplo, exigia acertar um alvo pequeno sem "puxar" a altura junto.
+     Estas quatro barras deixam mover UM lado de cada vez, na direção que
+     ele já indica. */
+  .lado{position:absolute;touch-action:none}
+  .lado::after{content:"";position:absolute;background:#fff;border-radius:3px;
+               filter:drop-shadow(0 0 1.5px rgba(0,0,0,.8))}
+  .lado.cima,.lado.baixo{left:50%;transform:translateX(-50%);width:64px;height:26px}
+  .lado.esquerda,.lado.direita{top:50%;transform:translateY(-50%);width:26px;height:64px}
+  .lado.cima{top:-13px}    .lado.cima::after{left:50%;top:50%;margin:-2px 0 0 -18px;width:36px;height:4px}
+  .lado.baixo{bottom:-13px} .lado.baixo::after{left:50%;top:50%;margin:-2px 0 0 -18px;width:36px;height:4px}
+  .lado.esquerda{left:-13px} .lado.esquerda::after{left:50%;top:50%;margin:-18px 0 0 -2px;width:4px;height:36px}
+  .lado.direita{right:-13px} .lado.direita::after{left:50%;top:50%;margin:-18px 0 0 -2px;width:4px;height:36px}
 
   /* Visualizador: a imagem é do dono, então nada de menu do navegador */
   #visu-img{max-width:100%;max-height:100%;object-fit:contain;
@@ -877,6 +906,10 @@
     <button class="btn-grande" id="btn-fotografar">📷 Fotografar documento</button>
     <button class="btn-grande" id="btn-pdf">📄 Enviar PDF de exame</button>
   </div>
+  <!-- Diz o que vem DEPOIS de tocar, antes de a pessoa ser levada para a
+       câmera do celular — sem isto, a tela de ajustar margens que aparece
+       na volta pega de surpresa quem não esperava mais um passo. -->
+  <p class="captura-dica">Depois da foto, você ajusta as bordas antes de guardar.</p>
 
   <!-- Câmera do celular. `capture` abre a traseira direto; sem ele o Android
        oferece a galeria, o que também serve para quem já tem a foto salva. -->
@@ -1256,6 +1289,10 @@
     <div id="recorte-area">
       <img id="recorte-img" alt="">
       <div class="marca" id="marca">
+        <div class="lado cima" data-lado="cima"></div>
+        <div class="lado baixo" data-lado="baixo"></div>
+        <div class="lado esquerda" data-lado="esquerda"></div>
+        <div class="lado direita" data-lado="direita"></div>
         <div class="canto tl" data-canto="tl"></div>
         <div class="canto tr" data-canto="tr"></div>
         <div class="canto bl" data-canto="bl"></div>
@@ -1271,8 +1308,8 @@
       Documento em pé numa foto deitada? Toque em <b>Girar</b> — a letra
       fica bem maior.
     </div>
-    Arraste os cantos até sobrar só o documento. Cortar a mesa em volta deixa
-    a letra maior e o arquivo menor.
+    Arraste um lado ou um canto até sobrar só o documento. Cortar a mesa em
+    volta deixa a letra maior e o arquivo menor.
     <div class="recorte-acoes">
       <button id="recorte-girar">↻ Girar</button>
       <button id="recorte-tudo">Usar a foto inteira</button>
