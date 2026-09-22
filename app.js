@@ -47,7 +47,7 @@ const el = {
   pdfMaisPagina: $("btn-pdf-mais-pagina"),
   modalFundo: $("modal-fundo"), modalTitulo: $("modal-titulo"),
   modalTexto: $("modal-texto"), modalCancelar: $("modal-cancelar"),
-  modalConfirmar: $("modal-confirmar"),
+  modalConfirmar: $("modal-confirmar"), faixaOffline: $("faixa-offline"),
 };
 
 let usuario = null;
@@ -1059,6 +1059,16 @@ async function enviarFila() {
 window.addEventListener("online", () => { enviarFila(); sincronizarAgenda(); });
 setInterval(() => { if (navigator.onLine) { enviarFila(); sincronizarAgenda(); } }, 60000);
 
+/* ── Faixa "sem conexão" ───────────────────────────────────────────────────
+   `online`/`offline` do navegador cobrem a troca de rede em si; falta o
+   caso de abrir o app já sem internet, por isso a chamada extra na
+   partida (ver a IIFE final do arquivo). */
+function atualizarFaixaOffline() {
+  el.faixaOffline.classList.toggle("escondido", navigator.onLine);
+}
+window.addEventListener("online", atualizarFaixaOffline);
+window.addEventListener("offline", atualizarFaixaOffline);
+
 /* Convite para guardar o acesso, no único momento em que ele faz sentido:
    logo depois do primeiro documento salvo. Aparece uma vez por sessão e
    some se a pessoa já tem e-mail — cobrança repetida vira ruído e ensina o
@@ -1924,6 +1934,36 @@ function desenharEsqueletoLista(qtd = 4) {
   }
 }
 
+/* ── Dica do gesto de deslizar ────────────────────────────────────────────
+   Ver o comentário no CSS (.dica-deslizar). Roda toda vez que a lista é
+   desenhada, mas a checagem do localStorage é barata e sai no início — na
+   prática só faz alguma coisa uma única vez, na vida do aparelho. */
+function dicaDeslizarSeNecessario() {
+  let vista = "1";
+  try { vista = localStorage.getItem("dica-deslizar-vista"); } catch (e) {}
+  if (vista) return;
+
+  // Sem cartão nenhum ainda (lista vazia ou skeleton): tenta de novo na
+  // próxima vez que `desenharLista` rodar, então NÃO marca como vista aqui.
+  // `offsetParent` nulo pega também o caso de o primeiro documento estar
+  // dentro de um GRUPO FECHADO (ordem "Por exame") — animar um cartão que
+  // ninguém está vendo marcaria a dica como "mostrada" sem ter mostrado nada.
+  const primeiro = el.lista.querySelector(".doc-deslizar .doc");
+  if (!primeiro || primeiro.offsetParent === null) return;
+
+  try { localStorage.setItem("dica-deslizar-vista", "1"); } catch (e) { /* janela anônima */ }
+
+  // Quem pediu menos movimento na tela não ganha a animação — mas já não
+  // precisa mais dela rodar de novo, então a marca acima continua valendo.
+  const reduzMovimento = window.matchMedia
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduzMovimento) return;
+
+  primeiro.classList.add("dica-deslizar");
+  primeiro.addEventListener("animationend",
+    () => primeiro.classList.remove("dica-deslizar"), { once: true });
+}
+
 function desenharLista() {
   const tipo = el.filtroTipo.value;
   const ordem = el.filtroOrdem.value;
@@ -1978,9 +2018,11 @@ function desenharLista() {
   // ação a quem não pode agir só gera ansiedade.
   for (const e of pend) el.lista.appendChild(cartaoPendente(e));
 
-  if (ordem === "exame") { desenharAgrupadoApp(lista); return; }
-  if (ordem === "tipo") { desenharPorTipoApp(lista); return; }
-  for (const d of lista) el.lista.appendChild(cartaoDoc(d));
+  if (ordem === "exame") desenharAgrupadoApp(lista);
+  else if (ordem === "tipo") desenharPorTipoApp(lista);
+  else for (const d of lista) el.lista.appendChild(cartaoDoc(d));
+
+  dicaDeslizarSeNecessario();
 }
 
 /* ── "Recentes", fixo em cima, IGNORANDO filtro/busca/corpo ─────────────────
@@ -3044,6 +3086,7 @@ for (const b of botoesTextoOpcao) {
 
 /* ── Partida ──────────────────────────────────────────────────────────── */
 (async () => {
+  atualizarFaixaOffline();
   if (!CONFIG.SUPABASE_URL.includes("supabase.co") || CONFIG.SUPABASE_ANON_KEY.length < 40) {
     aviso("Preencha <b>config.js</b> com a URL e a chave anônima do projeto.",
           "erro", "Falta configurar");
