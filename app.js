@@ -2725,7 +2725,31 @@ for (const b of botoesTextoOpcao) {
 })();
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(() => {});
+  navigator.serviceWorker.register("sw.js").then((registro) => {
+    // "updatefound" dispara quando o navegador acha um sw.js DIFERENTE do
+    // que já está rodando e começa a instalar em segundo plano — sozinho,
+    // sem pedir licença, do jeito que o próprio sw.js já faz (skipWaiting +
+    // clients.claim). O trabalho aqui é só um: avisar que aconteceu, porque
+    // sem isso a pessoa fica na versão velha até fechar e abrir o app nas
+    // vez, e "não funciona" que na real era cache já custou tempo demais
+    // nesta conversa.
+    registro.addEventListener("updatefound", () => {
+      const novo = registro.installing;
+      if (!novo) return;
+      novo.addEventListener("statechange", () => {
+        // "installed" acontece também na PRIMEIRA instalação, sem versão
+        // velha para trocar — só é uma ATUALIZAÇÃO de verdade quando já
+        // existe um controller rodando por cima da página atual.
+        if (novo.state === "installed" && navigator.serviceWorker.controller) {
+          const d = aviso('Nova versão disponível. '
+            + '<button type="button" id="btn-atualizar-versao" '
+            + 'class="leitura-tentar">Atualizar</button>', "info");
+          const botao = d.querySelector("#btn-atualizar-versao");
+          if (botao) botao.onclick = () => location.reload();
+        }
+      });
+    });
+  }).catch(() => {});
 }
 
 /* ── Botão voltar do celular ─────────────────────────────────────────────
