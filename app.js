@@ -25,6 +25,7 @@ const el = {
   data: $("data"), salvar: $("btn-salvar"), cancelar: $("btn-cancelar"),
   filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   lista: $("lista"), sub: $("cabecalho-sub"),
+  recentes: $("recentes"), recentesTrilha: $("recentes-trilha"),
   busca: $("busca"), buscaCaixa: $("busca-caixa"), buscaLimpar: $("busca-limpar"),
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"), folhinhas: $("folhinhas"),
   corpoCabecalho: $("corpo-cabecalho"), corpoSeta: $("corpo-seta"),
@@ -1377,50 +1378,152 @@ el.visuGirar.onclick = girarPaginaAberta;
    uma falha no meio deixa as imagens fora e a linha de pé: o documento
    continua na lista e apagar de novo termina o serviço — `remove` sobre
    arquivo que já não existe não reclama.                                  */
-async function apagarDocumentoAberto() {
-  if (!visuOrigem) return;
-  const nome = el.visuTitulo.textContent || "este documento";
-  const quantas = visuPaginas.length;
+/* ── Apagar, direto — sem precisar abrir o documento antes ───────────────
+   Extraído do que era só `apagarDocumentoAberto`: aquela função dependia
+   inteira do estado do visualizador (visuDoc, visuCaminhos...), então só
+   existia um jeito de apagar — abrir o documento primeiro. O gesto de
+   deslizar (ver `tornarDeslizavel`) precisa apagar a partir do CARTÃO da
+   lista, sem abrir nada; por isso a lógica de verdade mora aqui, recebendo
+   o documento como parâmetro, e as dias formas de chamar (botão da tela
+   cheia, deslizar o cartão) viram cascas finas em cima dela. */
+async function apagarDocumento(doc) {
+  const nome = doc.nome || ROTULOS[doc.tipo] || "este documento";
+  const paginas = (doc.documento_paginas || []).slice().sort((a, b) => a.ordem - b.ordem);
+  const quantas = paginas.length;
 
   // A quebra de linha vem de LINHA, nunca de escapada dentro de aspas:
   // uma quebra solta no meio de uma string e erro de sintaxe.
   const aviso1 = `Apagar "${nome}"${quantas > 1 ? ` e suas ${quantas} páginas` : ""}?`;
   const aviso2 = `Isto não pode ser desfeito. Se você tem o papel original, `
     + `ele continua com você — some apenas a cópia guardada aqui.`;
-  if (!confirm(aviso1 + LINHA + LINHA + aviso2)) return;
+  if (!confirm(aviso1 + LINHA + LINHA + aviso2)) return false;
 
-  el.visuApagar.disabled = true;
+  if (!navigator.onLine) {
+    aviso("Apagar um documento guardado precisa de internet — ele "
+         + "está no servidor, não no celular.", "info", "Sem conexão");
+    return false;
+  }
   try {
-    if (visuOrigem === "pendente") {
-      // Ainda não subiu: existe só neste celular, e apagar funciona offline.
-      await FilaDB.remover(visuEntrada.id);
-    } else {
-      if (!navigator.onLine) {
-        return aviso("Apagar um documento guardado precisa de internet — ele "
-                     + "está no servidor, não no celular.", "info", "Sem conexão");
-      }
-      const { error: e1 } = await sb.storage.from("documentos").remove(visuCaminhos);
-      if (e1) throw e1;
-      // A linha some com as páginas junto (on delete cascade).
-      const { error: e2 } = await sb.from("documentos").delete().eq("id", visuDoc.id);
-      if (e2) throw e2;
-      for (const c of visuCaminhos) {
-        const capa = capaLocal.get(c);
-        if (capa) { URL.revokeObjectURL(capa); capaLocal.delete(c); }
-      }
+    const caminhos = paginas.map((p) => p.storage_path);
+    const { error: e1 } = await sb.storage.from("documentos").remove(caminhos);
+    if (e1) throw e1;
+    // A linha some com as páginas junto (on delete cascade).
+    const { error: e2 } = await sb.from("documentos").delete().eq("id", doc.id);
+    if (e2) throw e2;
+    for (const c of caminhos) {
+      const capa = capaLocal.get(c);
+      if (capa) { URL.revokeObjectURL(capa); capaLocal.delete(c); }
     }
-    el.visuFechar.click();
+    // Se era este mesmo documento que estava aberto no visualizador, fecha —
+    // apagar pelo cartão de trás da tela cheia deixaria ela mostrando um
+    // documento que já não existe mais.
+    if (visuOrigem === "documento" && visuDoc && visuDoc.id === doc.id) {
+      el.visuFechar.click();
+    }
     await carregar();
     aviso("Documento apagado.", "ok");
+    return true;
   } catch (e) {
     console.warn("[apagar]", e?.message || e?.error || JSON.stringify(e));
     aviso("Não consegui apagar agora. O documento continua guardado — "
           + "tente de novo em instantes.", "erro");
+    return false;
+  }
+}
+
+/* O pendente ainda não subiu: existe só neste celular, e apagar funciona
+   offline — sem o aviso de "precisa de internet" que o documento já
+   guardado tem. */
+async function apagarEntradaPendente(entrada) {
+  const nome = entrada.nome || ROTULOS[entrada.tipo] || "este documento";
+  if (!confirm(`Apagar "${nome}"? Ainda não terminou de enviar.`)) return false;
+  await FilaDB.remover(entrada.id);
+  if (visuOrigem === "pendente" && visuEntrada && visuEntrada.id === entrada.id) {
+    el.visuFechar.click();
+  }
+  await carregar();
+  aviso("Documento apagado.", "ok");
+  return true;
+}
+
+el.visuApagar.onclick = async () => {
+  if (!visuOrigem) return;
+  el.visuApagar.disabled = true;
+  try {
+    if (visuOrigem === "pendente") await apagarEntradaPendente(visuEntrada);
+    else await apagarDocumento(visuDoc);
   } finally {
     el.visuApagar.disabled = false;
   }
+};
+
+/* ── Compartilhar, direto do cartão ───────────────────────────────────────
+   Mesma lógica das imagens do visualizador (URL assinada para o que já
+   subiu, blob local para o pendente), só que empacotada como arquivo, para
+   o próprio celular abrir o menu de "enviar para" — WhatsApp, e-mail,
+   Bluetooth — sem passar pelo aplicativo de novo. */
+async function compartilharDocumento(doc) {
+  const paginas = (doc.documento_paginas || []).slice().sort((a, b) => a.ordem - b.ordem);
+  if (!paginas.length) return;
+  if (!navigator.onLine) {
+    return aviso("Compartilhar um documento guardado precisa de internet.",
+      "info", "Sem conexão");
+  }
+  try {
+    // 5 minutos: tempo de sobra para o menu de compartilhar abrir e buscar
+    // o arquivo, e o link morre logo depois — não é o mesmo link de mostrar
+    // ao médico, que fica ativo o dia inteiro de propósito.
+    const { data, error } = await sb.storage.from("documentos")
+      .createSignedUrls(paginas.map((p) => p.storage_path), 300);
+    if (error) throw error;
+    const urls = (data || []).map((d) => d.signedUrl).filter(Boolean);
+    if (!urls.length) throw new Error("sem urls assinadas");
+    const nomeBase = doc.nome || ROTULOS[doc.tipo] || "documento";
+    const arquivos = await Promise.all(urls.map(async (u, i) => {
+      const blob = await (await fetch(u)).blob();
+      return new File([blob], `${nomeBase}${urls.length > 1 ? "-" + (i + 1) : ""}.jpg`,
+        { type: blob.type || "image/jpeg" });
+    }));
+    await compartilharArquivos(arquivos, nomeBase);
+  } catch (e) {
+    console.warn("[compartilhar]", e?.message || e);
+    aviso("Não consegui preparar o compartilhamento agora. Tente de novo.", "erro");
+  }
 }
-el.visuApagar.onclick = apagarDocumentoAberto;
+
+async function compartilharEntradaPendente(entrada) {
+  const nomeBase = entrada.nome || ROTULOS[entrada.tipo] || "documento";
+  const arquivos = (entrada.paginas || []).map((p, i) =>
+    new File([p.blob], `${nomeBase}${entrada.paginas.length > 1 ? "-" + (i + 1) : ""}.jpg`,
+      { type: p.blob.type || "image/jpeg" }));
+  await compartilharArquivos(arquivos, nomeBase);
+}
+
+async function compartilharArquivos(arquivos, titulo) {
+  if (!arquivos.length) return;
+  if (navigator.canShare && navigator.canShare({ files: arquivos })) {
+    try {
+      await navigator.share({ files: arquivos, title: titulo || "Documento" });
+    } catch (e) {
+      // AbortError: a pessoa fechou o menu de compartilhar sem escolher nada
+      // — nao e erro, e a escolha dela, e um aviso aqui so atrapalharia.
+      if (e && e.name !== "AbortError") {
+        console.warn("[compartilhar]", e);
+        aviso("Não consegui compartilhar agora.", "erro");
+      }
+    }
+  } else {
+    // Sem suporte a compartilhar arquivos (comum em computador): baixa a
+    // primeira página, para a pessoa anexar por conta própria onde precisar.
+    const url = URL.createObjectURL(arquivos[0]);
+    const a = document.createElement("a");
+    a.href = url; a.download = arquivos[0].name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    aviso("Este aparelho não compartilha arquivos direto. Baixamos a "
+        + "primeira página para você anexar onde precisar.", "info");
+  }
+}
 
 // Toque longo na imagem não abre o menu do navegador.
 el.visuImg.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -1498,6 +1601,100 @@ const MINIMO_BUSCA = 1;
    sem acento e em minusculas, e o documento se chama "COLESTEROL TOTAL E
    FRAÇÕES". Exigir que os dois coincidam mediria a paciencia de quem digita,
    nao a vontade de achar. */
+/* ── Deslizar o cartão para agir ──────────────────────────────────────────
+   `touch-action:pan-y` no CSS já garante que rolar a lista pra cima/baixo
+   continua funcionando sem que a gente precise adivinhar a direção do dedo
+   a cada toque: só o gesto horizontal chega aqui como evento de ponteiro.
+
+   Um cartão aberto por vez: guardamos qual é o "wrap" deslizado agora, e
+   abrir outro fecha o anterior sozinho — do jeito que WhatsApp e Gmail já
+   fazem, e sem isso a lista acumularia cartões meio-abertos espalhados. */
+let deslizAberto = null;
+
+function tornarDeslizavel(wrap, alvo, origem) {
+  const cartao = wrap.querySelector(".doc");
+  const LIMITE = 78; // largura de cada botão de ação, em px
+  let inicioX = 0, inicioTranslado = 0, atual = 0, arrastando = false;
+
+  const fechar = (animar = true) => {
+    cartao.style.transition = animar ? "transform .2s ease" : "none";
+    cartao.style.transform = "translateX(0px)";
+    wrap.dataset.aberto = "";
+    if (deslizAberto === wrap) deslizAberto = null;
+  };
+  // Fica acessível de fora: é assim que abrir UM cartão fecha o outro.
+  wrap._fecharDeslizar = fechar;
+
+  const abrirLado = (lado) => {
+    cartao.style.transition = "transform .2s ease";
+    cartao.style.transform = `translateX(${lado === "esq" ? LIMITE : -LIMITE}px)`;
+    wrap.dataset.aberto = lado;
+    if (deslizAberto && deslizAberto !== wrap && deslizAberto._fecharDeslizar) {
+      deslizAberto._fecharDeslizar(false);
+    }
+    deslizAberto = wrap;
+  };
+
+  wrap.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    arrastando = true;
+    inicioX = e.clientX;
+    inicioTranslado = wrap.dataset.aberto === "esq" ? LIMITE
+                    : wrap.dataset.aberto === "dir" ? -LIMITE : 0;
+    cartao.style.transition = "none";
+    try { wrap.setPointerCapture(e.pointerId); } catch (err) { /* ignora */ }
+  });
+  wrap.addEventListener("pointermove", (e) => {
+    if (!arrastando) return;
+    atual = Math.max(-LIMITE, Math.min(LIMITE, inicioTranslado + (e.clientX - inicioX)));
+    cartao.style.transform = `translateX(${atual}px)`;
+  });
+  const soltar = () => {
+    if (!arrastando) return;
+    arrastando = false;
+    if (atual > LIMITE * 0.45) abrirLado("esq");
+    else if (atual < -LIMITE * 0.45) abrirLado("dir");
+    else fechar();
+  };
+  wrap.addEventListener("pointerup", soltar);
+  wrap.addEventListener("pointercancel", soltar);
+
+  // Com o cartão aberto, o primeiro toque nele só fecha — abrir o documento
+  // sem querer, por baixo do dedo que ia tocar "Apagar", seria pior que não
+  // ter o gesto. Sem estar aberto, o clique de sempre continua livre.
+  cartao.addEventListener("click", (e) => {
+    if (wrap.dataset.aberto) { e.stopPropagation(); e.preventDefault(); fechar(); }
+  }, true);
+
+  const btnCompartilhar = wrap.querySelector(".doc-fundo-compartilhar");
+  const btnApagar = wrap.querySelector(".doc-fundo-apagar");
+  if (btnCompartilhar) btnCompartilhar.onclick = () => {
+    fechar();
+    origem === "pendente" ? compartilharEntradaPendente(alvo) : compartilharDocumento(alvo);
+  };
+  if (btnApagar) btnApagar.onclick = () => {
+    fechar();
+    origem === "pendente" ? apagarEntradaPendente(alvo) : apagarDocumento(alvo);
+  };
+}
+
+/* Envolve um cartão `.doc` já pronto com o fundo de ações e liga o gesto de
+   deslizar. Function separada de `cartaoDoc`/o laço do pendente porque as
+   DUAS listas (documento guardado e pendente na fila) ganham o mesmo
+   comportamento, só trocando qual função de apagar/compartilhar chamar. */
+function comAcoesDeslizar(cartao, alvo, origem) {
+  const wrap = document.createElement("div");
+  wrap.className = "doc-deslizar";
+  wrap.innerHTML = `
+    <div class="doc-fundo">
+      <button class="doc-fundo-btn doc-fundo-compartilhar" type="button">📤 Compartilhar</button>
+      <button class="doc-fundo-btn doc-fundo-apagar" type="button">🗑️ Apagar</button>
+    </div>`;
+  wrap.appendChild(cartao);
+  tornarDeslizavel(wrap, alvo, origem);
+  return wrap;
+}
+
 let regiaoAtiva = null;
 /* O refino dentro da regiao. SEMPRE se apaga junto com ela — um sub-assunto
    sobrevivente de uma regiao que nao esta mais ligada filtraria sem nada na
@@ -1639,6 +1836,7 @@ function desenharLista() {
     total < MINIMO_BUSCA && !termos.length);
   el.buscaCaixa.classList.toggle("tem-texto", !!el.busca.value);
   pintarCorpo();
+  desenharRecentes();
 
   const naRegiao = (d) => (!regiaoAtiva || regioesDoDocumento(d).has(regiaoAtiva))
     && (!subAtivo || noSubAssunto(d, regiaoAtiva, subAtivo));
@@ -1677,24 +1875,47 @@ function desenharLista() {
   // Os que ainda não subiram vêm primeiro e dizem em que pé estão. O aviso é
   // tranquilizador de propósito: não há nada para o paciente fazer, e pedir
   // ação a quem não pode agir só gera ansiedade.
-  for (const e of pend) {
-    const div = document.createElement("div");
-    div.className = "doc";
-    div.innerHTML = `
-      <div class="capa">${ICONES[e.tipo] || "📎"}</div>
-      <div class="txt">
-        <div class="nome">${e.nome || ROTULOS[e.tipo]}</div>
-        <div class="meta">${ROTULOS[e.tipo]} · ${dataBR(e.data_documento || e.criado_em)}
-          ${e.paginas.length > 1 ? " · " + e.paginas.length + " páginas" : ""}</div>
-        <div class="fila">${navigator.onLine ? "⏳ enviando…"
-          : "⏳ guardado no celular · envia quando a internet voltar"}</div>
-      </div>`;
-    div.onclick = () => abrirPendente(e);
-    el.lista.appendChild(div);
-  }
-  if (ordem === "exame") return desenharAgrupadoApp(lista);
-  if (ordem === "tipo") return desenharPorTipoApp(lista);
+  for (const e of pend) el.lista.appendChild(cartaoPendente(e));
+
+  if (ordem === "exame") { desenharAgrupadoApp(lista); return; }
+  if (ordem === "tipo") { desenharPorTipoApp(lista); return; }
   for (const d of lista) el.lista.appendChild(cartaoDoc(d));
+}
+
+/* ── "Recentes", fixo em cima, IGNORANDO filtro/busca/corpo ─────────────────
+   Deliberadamente lê `documentos` (o acervo inteiro), não `lista` (o que
+   sobrou dos filtros): o ponto inteiro deste bloco é continuar mostrando o
+   que acabou de ser guardado mesmo que a pessoa tenha, digamos, o filtro de
+   tipo em "Receitas" e tenha acabado de fotografar um exame de sangue — ela
+   quer conferir que salvou, não que o filtro está "certo".
+
+   Só documentos JÁ guardados (não os pendentes): o pendente já aparece bem
+   em cima da lista, com a própria faixa de "enviando…" — repeti-lo aqui
+   diria a mesma coisa duas vezes em lugares diferentes. */
+function desenharRecentes() {
+  const N = 3;
+  const recentes = documentos.slice()
+    .sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)))
+    .slice(0, N);
+
+  el.recentes.classList.toggle("escondido", recentes.length === 0);
+  if (!recentes.length) return;
+
+  el.recentesTrilha.innerHTML = "";
+  for (const d of recentes) {
+    const paginas = (d.documento_paginas || []);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "recente";
+    b.innerHTML = `
+      <div class="capa">${ICONES[d.tipo] || "📎"}</div>
+      <div class="nome">${d.nome || ROTULOS[d.tipo]}</div>
+      <div class="meta">${dataBR(d.data_documento || d.criado_em)}
+        ${paginas.length > 1 ? " · " + paginas.length + " pág." : ""}</div>
+      <div class="selo">✓ guardado</div>`;
+    b.onclick = () => abrirDocumento(d);
+    el.recentesTrilha.appendChild(b);
+  }
 }
 
 /* Um documento guardado, como cartão. Extraído para ser usado solto, dentro
@@ -1716,8 +1937,27 @@ function cartaoDoc(d) {
       </div>
       <div style="color:var(--tinta-3);font-size:20px">›</div>`;
     div.onclick = () => abrirDocumento(d);
-    return div;
+    return comAcoesDeslizar(div, d, "documento");
   }
+}
+
+/* O pendente, como cartão — mesmo visual de sempre (ver o laço em
+   `desenharLista`), extraído pra função pra ganhar o mesmo deslizar do
+   documento já guardado, sem duplicar o innerHTML nos dois lugares. */
+function cartaoPendente(e) {
+  const div = document.createElement("div");
+  div.className = "doc";
+  div.innerHTML = `
+    <div class="capa">${ICONES[e.tipo] || "📎"}</div>
+    <div class="txt">
+      <div class="nome">${e.nome || ROTULOS[e.tipo]}</div>
+      <div class="meta">${ROTULOS[e.tipo]} · ${dataBR(e.data_documento || e.criado_em)}
+        ${e.paginas.length > 1 ? " · " + e.paginas.length + " páginas" : ""}</div>
+      <div class="fila">${navigator.onLine ? "⏳ enviando…"
+        : "⏳ guardado no celular · envia quando a internet voltar"}</div>
+    </div>`;
+  div.onclick = () => abrirPendente(e);
+  return comAcoesDeslizar(div, e, "pendente");
 }
 
 /* ── Agrupado por exame, no aplicativo ────────────────────────────────────

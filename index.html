@@ -143,6 +143,49 @@
   .doc .meta{font-size:13px;color:var(--tinta-2);margin-top:1px}
   .doc .fila{font-size:12px;color:var(--ambar);margin-top:2px}
 
+  /* ── Deslizar para agir (apagar / compartilhar) ──────────────────────────
+     `touch-action:pan-y` e o que faz o dedo continuar rolando a lista pra
+     cima e pra baixo normalmente: so o gesto HORIZONTAL fica reservado pro
+     nosso JS, o vertical o proprio navegador cuida, sem precisarmos decidir
+     direcao a cada toque. O cartao (`.doc`) desliza por cima; os botoes
+     ficam sempre no lugar, atras dele, e so aparecem quando o cartao anda. */
+  .doc-deslizar{position:relative;border-radius:12px;margin-bottom:10px;
+                touch-action:pan-y;overflow:hidden}
+  .doc-deslizar .doc{margin-bottom:0;position:relative;z-index:1}
+  .doc-fundo{position:absolute;inset:0;border-radius:12px;overflow:hidden;
+             display:flex}
+  .doc-fundo-btn{border:0;font:inherit;cursor:pointer;height:100%;
+                 display:flex;align-items:center;gap:6px;padding:0 18px;
+                 color:#fff;font-size:13px;font-weight:600;white-space:nowrap}
+  /* Compartilhar mora a ESQUERDA (o dedo empurra pra direita pra achar) e
+     Apagar a DIREITA (empurra pra esquerda) — a mesma lateralidade do
+     visualizador, onde apagar tambem fica do lado de "avançar". */
+  .doc-fundo-compartilhar{background:var(--azul-vivo);margin-right:auto}
+  .doc-fundo-apagar{background:var(--vermelho);margin-left:auto}
+
+  /* ── "Recentes" fixo no topo, mesmo com filtro/busca ativos ──────────────
+     Mostra os ultimos guardados sem depender do que a lista de baixo esta
+     filtrando: quem acabou de fotografar quer confirmar que salvou, nao
+     re-configurar o filtro que ja tinha ligado pra outra coisa. */
+  .recentes{margin-bottom:14px}
+  .recentes-titulo{font-size:12px;font-weight:700;letter-spacing:.08em;
+       text-transform:uppercase;color:var(--tinta-2);margin:0 2px 8px}
+  .recentes-trilha{display:flex;gap:9px;overflow-x:auto;padding:1px 1px 3px;
+       scrollbar-width:none}
+  .recentes-trilha::-webkit-scrollbar{display:none}
+  .recente{flex:0 0 auto;width:132px;background:var(--superficie);
+       border:1px solid var(--linha);border-radius:12px;padding:10px;
+       box-shadow:var(--sombra-1);cursor:pointer;text-align:left}
+  .recente:active{box-shadow:none;background:var(--papel)}
+  .recente .capa{width:30px;height:30px;border-radius:7px;
+       background:var(--azul-claro);color:var(--azul);display:flex;
+       align-items:center;justify-content:center;font-size:16px;
+       margin-bottom:7px}
+  .recente .nome{font-weight:600;font-size:13px;overflow:hidden;
+       text-overflow:ellipsis;white-space:nowrap}
+  .recente .meta{font-size:11.5px;color:var(--tinta-2);margin-top:1px}
+  .recente .selo{font-size:11px;color:var(--verde);font-weight:600;margin-top:4px}
+
   /* Estado vazio: hoje já orienta bem o que fazer (ver `desenharLista`),
      aqui só ganha mais respiro e um ícone mais presente para não parecer
      tela quebrada na primeira visita — antes de haver qualquer documento. */
@@ -898,6 +941,18 @@
            diz "Agrupados por tipo" — la o nome longo e o coerente. -->
       <option value="exame">Por exame</option>
     </select>
+  </div>
+
+  <!-- RECENTES ------------------------------------------------------------ -->
+  <!-- Fixo no topo e INDEPENDENTE dos filtros/busca/corpo abaixo: mostra os
+       2-3 ultimos documentos guardados (ver `desenharRecentes` em app.js).
+       Quem acabou de fotografar um exame quer conferir que salvou certo —
+       se essa confirmacao dependesse do filtro estar em "Todos", ela
+       sumiria bem na hora em que mais serve, so porque a pessoa tinha
+       deixado um filtro de outra visita ligado. -->
+  <div class="recentes escondido" id="recentes">
+    <div class="recentes-titulo">📌 Recentes</div>
+    <div class="recentes-trilha" id="recentes-trilha"></div>
   </div>
 
   <div id="lista"></div>
