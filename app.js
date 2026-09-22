@@ -2118,8 +2118,19 @@ function desenharLista() {
 
    Só documentos JÁ guardados (não os pendentes): o pendente já aparece bem
    em cima da lista, com a própria faixa de "enviando…" — repeti-lo aqui
-   diria a mesma coisa duas vezes em lugares diferentes. */
+   diria a mesma coisa duas vezes em lugares diferentes.
+
+   MAS só vale a pena existir quando ela DIVERGE do topo da lista — com tudo
+   em "Todos os tipos" / "Mais recentes" e sem busca nem região tocada (o
+   estado em que a pessoa abre o app), os 3 documentos daqui são os MESMOS
+   3 que já nascem no topo da lista, na mesma ordem: a faixa duplicava o
+   que a pessoa já estava vendo um dedo abaixo. Some nesse caso; volta a
+   aparecer assim que algum filtro muda o que a lista mostra primeiro. */
 function desenharRecentes() {
+  const semFiltro = !el.filtroTipo.value && !regiaoAtiva
+    && el.filtroOrdem.value === "recente" && !termosDaBusca().length;
+  if (semFiltro) { el.recentes.classList.add("escondido"); return; }
+
   const N = 3;
   const recentes = documentos.slice()
     .sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)))
@@ -2245,7 +2256,22 @@ function desenharAgrupadoApp(lista) {
 
    Faixa e não grupo que abre: são quatro ou cinco espécies, e fechá-las
    esconderia o acervo inteiro atrás de cinco linhas. */
+/* ── Por tipo, no aplicativo ──────────────────────────────────────────────
+   Aqui o rótulo sempre foi honesto ("Por tipo", não "Agrupados por tipo"),
+   mas o comportamento era o mesmo da tela do médico antes da correção: um
+   `sort` e nada mais. A faixa com contagem custa pouco e diz onde uma
+   espécie acaba e a outra começa.
+
+   Faixa e não grupo que abre: são quatro ou cinco espécies, e fechá-las
+   esconderia o acervo inteiro atrás de cinco linhas.
+
+   EXCEÇÃO: com o filtro de tipo já travado numa categoria (select
+   "filtro-tipo" em "Receitas", por exemplo), `lista` só tem receita — e
+   pintar aqui uma faixa "Receitas (n)" repetiria, uma linha abaixo, o que o
+   próprio select já diz. A faixa some só nesse caso; com "Todos os tipos"
+   ela continua separando as espécies como sempre. */
 function desenharPorTipoApp(lista) {
+  const pularFaixa = !!el.filtroTipo.value;
   const ORDEM_TIPOS = ["exame", "laudo", "receita", "relatorio", "outro"];
   const porTipo = new Map();
   for (const d of lista) {
@@ -2260,12 +2286,14 @@ function desenharPorTipoApp(lista) {
     const docs = porTipo.get(t).sort((a, b) =>
       String(b.data_documento || b.criado_em)
         .localeCompare(String(a.data_documento || a.criado_em)));
-    const faixa = document.createElement("div");
-    faixa.className = "secao";
-    faixa.innerHTML = `<span class="secao-nome">${(ROTULOS[t] || t)}`
-                    + `${docs.length > 1 ? "s" : ""}</span>`
-                    + `<span class="secao-n">${docs.length}</span>`;
-    el.lista.appendChild(faixa);
+    if (!pularFaixa) {
+      const faixa = document.createElement("div");
+      faixa.className = "secao";
+      faixa.innerHTML = `<span class="secao-nome">${(ROTULOS[t] || t)}`
+                      + `${docs.length > 1 ? "s" : ""}</span>`
+                      + `<span class="secao-n">${docs.length}</span>`;
+      el.lista.appendChild(faixa);
+    }
     for (const d of docs) el.lista.appendChild(cartaoDoc(d));
   }
 }
