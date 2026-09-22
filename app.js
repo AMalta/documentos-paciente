@@ -18,7 +18,8 @@ const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
 const el = {
   avisos: $("avisos"), celebrar: $("celebrar"), fotografar: $("btn-fotografar"), camera: $("camera"),
-  form: $("form"), paginas: $("paginas"), tipo: $("tipo"), nome: $("nome"),
+  form: $("form"), formDica: $("form-dica"), formContagem: $("form-contagem"),
+  paginas: $("paginas"), tipo: $("tipo"), nome: $("nome"),
   leitura: $("leitura"), leituraIcone: $("leitura-icone"),
   leituraTexto: $("leitura-texto"),
   data: $("data"), salvar: $("btn-salvar"), cancelar: $("btn-cancelar"),
@@ -494,6 +495,20 @@ el.pdfNavAnterior.onclick = () => fecharRecorteNavegando(-1);
 el.pdfNavProxima.onclick = () => fecharRecorteNavegando(1);
 
 /* ── Rascunho ─────────────────────────────────────────────────────────── */
+
+// A dica "um laudo de várias folhas é UM documento" só precisa ser dita até
+// a pessoa guardar o primeiro documento — a partir daí ela já demonstrou que
+// entendeu, e repeti-la em todo exame novo vira ruído fixo no topo do card
+// (mesmo raciocínio já usado para bemvindo-visto e corpo-recolhido).
+let dicaPaginasVista = false;
+try { dicaPaginasVista = localStorage.getItem("dica-paginas-vista") === "1"; }
+catch (e) { /* janela anônima */ }
+function marcarDicaPaginasVista() {
+  if (dicaPaginasVista) return;
+  dicaPaginasVista = true;
+  try { localStorage.setItem("dica-paginas-vista", "1"); } catch (e) { /* janela anônima */ }
+}
+
 function desenharRascunho() {
   el.paginas.innerHTML = "";
   rascunho.forEach((p, i) => {
@@ -518,6 +533,10 @@ function desenharRascunho() {
       desenharRascunho();
     };
   });
+
+  el.formContagem.textContent = rascunho.length > 1
+    ? rascunho.length + " páginas" : "";
+  el.formDica.classList.toggle("escondido", dicaPaginasVista);
 }
 
 function cancelar() {
@@ -748,6 +767,7 @@ async function guardar() {
     return;
   }
 
+  marcarDicaPaginasVista();
   cancelar();
   el.salvar.disabled = false;
   el.salvar.textContent = "Guardar documento";

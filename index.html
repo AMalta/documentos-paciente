@@ -54,6 +54,19 @@
   .cartao{background:var(--superficie);border:1px solid var(--linha);
           border-radius:12px;padding:14px;margin-bottom:12px}
 
+  /* Cabeçalho do card "Novo documento": título + contador de páginas na
+     mesma linha, no lugar de repetir a explicação toda vez (ver form-dica
+     e marcarDicaPaginasVista em app.js). */
+  .form-cabecalho{display:flex;align-items:baseline;justify-content:space-between;
+                  gap:8px}
+  .form-contagem{font-size:12px;color:var(--tinta-3);white-space:nowrap;
+                 flex:0 0 auto}
+  .form-dica{font-size:13px;color:var(--tinta-2);margin-top:2px}
+  /* Tipo + data numa linha só — os dois são campos curtos e empilhados
+     gastavam altura à toa. */
+  .form-linha2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .form-linha2 label{margin-top:12px}
+
   label{display:block;font-size:13px;color:var(--tinta-2);margin:12px 0 4px;
         font-weight:500}
   input,select{width:100%;padding:12px;border:1px solid var(--linha);
@@ -668,8 +681,14 @@
 
   <!-- FORMULÁRIO (aparece depois da primeira foto) ------------------------ -->
   <section id="form" class="cartao escondido" style="margin-top:14px">
-    <div style="font-weight:600;margin-bottom:2px">Novo documento</div>
-    <div style="font-size:13px;color:var(--tinta-2)">
+    <div class="form-cabecalho">
+      <div style="font-weight:600">Novo documento</div>
+      <span class="form-contagem" id="form-contagem"></span>
+    </div>
+    <!-- Some sozinha depois que a pessoa guarda o primeiro documento (ver
+         marcarDicaPaginasVista em app.js) — mesmo padrão de bemvindo-visto e
+         corpo-recolhido: explica uma vez, não repete a cada exame novo. -->
+    <div class="form-dica" id="form-dica">
       Um laudo de várias folhas é <b>um</b> documento — vá adicionando as páginas.
     </div>
 
@@ -683,20 +702,30 @@
       <span id="leitura-texto"></span>
     </div>
 
-    <label for="tipo">O que é este documento?</label>
-    <select id="tipo">
-      <option value="exame">Exame</option>
-      <option value="laudo">Laudo</option>
-      <option value="receita">Receita</option>
-      <option value="relatorio">Relatório</option>
-      <option value="outro">Outro</option>
-    </select>
-
+    <!-- Nome primeiro: é o que a pessoa decide de cabeça ("como vou chamar
+         isso"), não o tipo — que é só uma classificação. -->
     <label for="nome">Nome <span style="color:var(--tinta-3)">(ex.: Hemograma)</span></label>
     <input id="nome" type="text" autocomplete="off" placeholder="Como você chama este documento">
 
-    <label for="data">Data do documento</label>
-    <input id="data" type="date">
+    <!-- Tipo e data lado a lado: os dois são campos curtos, e empilhá-los
+         gastava duas linhas de altura por pouco. Mesmo padrão da .filtros
+         que já existe na lista. -->
+    <div class="form-linha2">
+      <div>
+        <label for="tipo">Tipo</label>
+        <select id="tipo">
+          <option value="exame">Exame</option>
+          <option value="laudo">Laudo</option>
+          <option value="receita">Receita</option>
+          <option value="relatorio">Relatório</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div>
+        <label for="data">Data</label>
+        <input id="data" type="date">
+      </div>
+    </div>
 
     <!-- Só aparece durante um upload de PDF, e só quando há uma próxima
          página disponível (ver atualizarBotaoMaisPagina em app.js). Cobre o
