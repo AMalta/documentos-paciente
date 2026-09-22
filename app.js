@@ -2727,3 +2727,46 @@ for (const b of botoesTextoOpcao) {
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
+
+/* ── Botão voltar do celular ─────────────────────────────────────────────
+   Dois papéis, um só listener, porque os dois disputam o MESMO botão:
+
+   1) Fechar a tela ou o formulário aberto — recorte, conta, visualizador,
+      compromisso, mostrar-ao-médico, ou o formulário de documento. Sem
+      isto, o botão voltar do Android pularia direto para "sair do app"
+      mesmo com uma dessas telas na frente, o que ninguém espera.
+   2) Só na tela principal (nada aberto): perguntar antes de sair de
+      verdade. Um toque sozinho não fecha — evita perder, sem querer, um
+      documento a meio de preencher por um deslize do gesto de voltar.
+      Dois toques em menos de 2s deixam sair.
+
+   `history.pushState` cria um degrau extra no histórico só para o Android
+   ter o que "voltar" — sem isto não haveria popstate nenhum para ouvir. */
+const FECHAR_TELA_CHEIA = {
+  "tela-conta": "conta-fechar", "tela-recorte": "recorte-cancelar",
+  "tela-visu": "visu-fechar", "tela-compromisso": "comp-cancelar",
+  "tela-mostrar": "mostrar-fechar",
+};
+function fecharTelaAtual() {
+  for (const [telaId, botaoId] of Object.entries(FECHAR_TELA_CHEIA)) {
+    const tela = document.getElementById(telaId);
+    if (tela && !tela.classList.contains("escondido")) {
+      const botao = document.getElementById(botaoId);
+      if (botao) { botao.click(); return true; }
+    }
+  }
+  if (!el.form.classList.contains("escondido")) { cancelar(); return true; }
+  return false;
+}
+
+let ultimoAvisoSair = 0;
+history.pushState({ app: true }, "");
+window.addEventListener("popstate", () => {
+  if (fecharTelaAtual()) { history.pushState({ app: true }, ""); return; }
+
+  const agora = Date.now();
+  if (agora - ultimoAvisoSair < 2000) return;   // segundo toque: deixa sair
+  ultimoAvisoSair = agora;
+  aviso("Toque em voltar mais uma vez para sair.", "info");
+  history.pushState({ app: true }, "");
+});
