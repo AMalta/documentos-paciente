@@ -45,6 +45,9 @@ const el = {
   pdfNav: $("pdf-nav"), pdfNavAnterior: $("pdf-nav-anterior"),
   pdfNavTexto: $("pdf-nav-texto"), pdfNavProxima: $("pdf-nav-proxima"),
   pdfMaisPagina: $("btn-pdf-mais-pagina"),
+  modalFundo: $("modal-fundo"), modalTitulo: $("modal-titulo"),
+  modalTexto: $("modal-texto"), modalCancelar: $("modal-cancelar"),
+  modalConfirmar: $("modal-confirmar"),
 };
 
 let usuario = null;
@@ -136,6 +139,53 @@ function aviso(texto, tipo = "info", titulo = "") {
   if (tipo === "ok") setTimeout(() => d.remove(), 4000);
   return d;
 }
+
+/* ── Modal de confirmação ─────────────────────────────────────────────────
+   Substitui o confirm() nativo do navegador: mesma pergunta, mesmo "espera
+   a resposta antes de continuar", mas no visual do app, não na caixa cinza
+   do sistema. `mensagem` aceita quebras de linha soltas (LINHA), como os
+   textos que já existiam para o confirm() nativo — o CSS (white-space:
+   pre-line) cuida de exibi-las.
+
+   `opcoes.perigo` pinta o botão de confirmar em vermelho, para ações que
+   não voltam atrás (apagar, encerrar conta) — o mesmo sinal visual que o
+   resto do app já usa nesses casos.
+
+   Um modal só, reaproveitado por todo mundo: como cada chamada espera a
+   anterior fechar (é sempre `await`), não há disputa por ele. */
+function confirmarModal(mensagem, opcoes = {}) {
+  const { titulo = "", textoConfirmar = "Confirmar",
+          textoCancelar = "Cancelar", perigo = false } = opcoes;
+  return new Promise((resolve) => {
+    el.modalTitulo.classList.toggle("escondido", !titulo);
+    el.modalTitulo.textContent = titulo;
+    el.modalTexto.textContent = mensagem;
+    el.modalCancelar.textContent = textoCancelar;
+    el.modalConfirmar.textContent = textoConfirmar;
+    el.modalConfirmar.classList.toggle("perigo", perigo);
+    el.modalFundo.classList.remove("escondido");
+
+    const fechar = (resultado) => {
+      el.modalFundo.classList.add("escondido");
+      el.modalConfirmar.onclick = null;
+      el.modalCancelar.onclick = null;
+      el.modalFundo.onclick = null;
+      document.removeEventListener("keydown", teclado);
+      resolve(resultado);
+    };
+    const teclado = (e) => {
+      if (e.key === "Escape") fechar(false);
+      else if (e.key === "Enter") fechar(true);
+    };
+    el.modalConfirmar.onclick = () => fechar(true);
+    el.modalCancelar.onclick = () => fechar(false);
+    // Tocar fora do cartão cancela — o mesmo gesto que fecha qualquer
+    // outra caixa flutuante do app.
+    el.modalFundo.onclick = (e) => { if (e.target === el.modalFundo) fechar(false); };
+    document.addEventListener("keydown", teclado);
+  });
+}
+
 
 // Selo de "guardado": o único reforço visual forte do app, e por isso
 // reservado só para o momento que mais precisa de confirmação clara — o
@@ -736,8 +786,9 @@ async function guardar() {
     const jaExiste = [...documentos, ...naFila].some((d) =>
       normalizar(d.nome) === normalizar(nomeNovo) && d.data_documento === dataNova);
     if (jaExiste) {
-      const seguir = confirm(`Você já tem um documento chamado "${nomeNovo}" `
-        + `com a data ${dataBR(dataNova)}. Guardar mesmo assim?`);
+      const seguir = await confirmarModal(`Você já tem um documento chamado "${nomeNovo}" `
+        + `com a data ${dataBR(dataNova)}. Guardar mesmo assim?`,
+        { textoConfirmar: "Guardar mesmo assim" });
       if (!seguir) return;
     }
   }
@@ -869,8 +920,21 @@ function quandoBR(iso) {
 /* A lista mostra SÓ quem chegou a abrir. Código gerado e não usado não é
    acesso — é papel rasgado, e enchê-la deles faria a pessoa parar de olhar
    justamente a lista que precisa olhar. */
+/* Mesmo espírito do skeleton da lista principal (ver desenharEsqueletoLista):
+   2 blocos bastam aqui, porque a lista de quem abriu o acervo raramente
+   tem mais que isso, e o card inteiro é pequeno. */
+function desenharEsqueletoAcessos(qtd = 2) {
+  mv.acessos.innerHTML = "";
+  for (let i = 0; i < qtd; i++) {
+    const div = document.createElement("div");
+    div.className = "esqueleto-acesso";
+    div.innerHTML = `<div class="bloco linha1"></div><div class="bloco linha2"></div>`;
+    mv.acessos.appendChild(div);
+  }
+}
+
 async function listarAcessos() {
-  mv.acessos.innerHTML = '<div class="mv-nenhum">Carregando…</div>';
+  desenharEsqueletoAcessos();
   const { data, error } = await sb.from("liberacoes")
     .select("id, medico_nome, medico_crm, usado_em, expira_em, revogado_em")
     .not("usado_em", "is", null)
@@ -910,9 +974,10 @@ async function listarAcessos() {
 }
 
 async function revogar(a) {
-  if (!confirm(`Cancelar o acesso de ${a.medico_nome || "este médico"}?`
+  if (!await confirmarModal(`Cancelar o acesso de ${a.medico_nome || "este médico"}?`
                + LINHA + LINHA
-               + "Ele deixa de ver seus documentos imediatamente.")) return;
+               + "Ele deixa de ver seus documentos imediatamente.",
+               { textoConfirmar: "Cancelar acesso" })) return;
   // `update`, nunca `delete`: a linha é o registro de consentimento, e a
   // prova de que alguém viu não pode sumir porque o acesso acabou. É por
   // isso que `liberacoes` não tem política de exclusão.
@@ -1124,8 +1189,9 @@ async function marcarFeito(c) {
   await salvarCompromisso({ ...c, feito_em: new Date().toISOString() });
   if (!c.repetir_meses) return aviso("Marcado como feito.", "ok");
   const proxima = somarMeses(c.quando, c.repetir_meses);
-  if (confirm(`Marcar o próximo "${c.titulo}" para ${dataBR(proxima)}?`
-              + LINHA + LINHA + "Você pode mudar a data depois.")) {
+  if (await confirmarModal(`Marcar o próximo "${c.titulo}" para ${dataBR(proxima)}?`
+              + LINHA + LINHA + "Você pode mudar a data depois.",
+              { textoConfirmar: "Marcar" })) {
     await salvarCompromisso({
       id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
       paciente_id: usuario.id, tipo: c.tipo, titulo: c.titulo,
@@ -1209,7 +1275,8 @@ cp.salvar.onclick = async () => {
 };
 cp.apagar.onclick = async () => {
   if (!compEditando) return;
-  if (!confirm(`Apagar "${compEditando.titulo}"?`)) return;
+  if (!await confirmarModal(`Apagar "${compEditando.titulo}"?`,
+      { textoConfirmar: "Apagar", perigo: true })) return;
   await apagarCompromisso(compEditando.id);
   fecharCompromisso();
 };
@@ -1400,7 +1467,8 @@ async function apagarDocumento(doc) {
   const aviso1 = `Apagar "${nome}"${quantas > 1 ? ` e suas ${quantas} páginas` : ""}?`;
   const aviso2 = `Isto não pode ser desfeito. Se você tem o papel original, `
     + `ele continua com você — some apenas a cópia guardada aqui.`;
-  if (!confirm(aviso1 + LINHA + LINHA + aviso2)) return false;
+  if (!await confirmarModal(aviso1 + LINHA + LINHA + aviso2,
+      { textoConfirmar: "Apagar", perigo: true })) return false;
 
   if (!navigator.onLine) {
     aviso("Apagar um documento guardado precisa de internet — ele "
@@ -1440,7 +1508,8 @@ async function apagarDocumento(doc) {
    guardado tem. */
 async function apagarEntradaPendente(entrada) {
   const nome = entrada.nome || ROTULOS[entrada.tipo] || "este documento";
-  if (!confirm(`Apagar "${nome}"? Ainda não terminou de enviar.`)) return false;
+  if (!await confirmarModal(`Apagar "${nome}"? Ainda não terminou de enviar.`,
+      { textoConfirmar: "Apagar", perigo: true })) return false;
   await FilaDB.remover(entrada.id);
   if (visuOrigem === "pendente" && visuEntrada && visuEntrada.id === entrada.id) {
     el.visuFechar.click();
@@ -2696,9 +2765,10 @@ async function enviarCodigo() {
       // Trazer de volta um acervo que já existe. Se houver documentos nesta
       // sessão anônima, eles ficam para trás — avisa antes, não depois.
       if (documentos.length) {
-        const ok = confirm(`Você tem ${documentos.length} documento(s) guardado(s) `
+        const ok = await confirmarModal(`Você tem ${documentos.length} documento(s) guardado(s) `
           + "neste celular que ainda não estão ligados a e-mail nenhum. Ao entrar "
-          + "com outra conta, eles deixam de aparecer aqui. Deseja continuar?");
+          + "com outra conta, eles deixam de aparecer aqui. Deseja continuar?",
+          { textoConfirmar: "Continuar" });
         if (!ok) throw new Error("cancelado");
       }
       // Com CAPTCHA ligado no Supabase, TODA porta de entrada passa a exigir
@@ -2771,8 +2841,9 @@ ct.voltar.onclick = () => {
   ct.passo1.classList.remove("passo-oculto");
 };
 ct.sair.onclick = async () => {
-  if (!confirm("Sair da conta neste celular? Seus documentos continuam "
-             + "guardados e voltam quando você entrar de novo.")) return;
+  if (!await confirmarModal("Sair da conta neste celular? Seus documentos continuam "
+             + "guardados e voltam quando você entrar de novo.",
+             { textoConfirmar: "Sair" })) return;
   await sb.auth.signOut();
   location.reload();
 };
@@ -2799,10 +2870,11 @@ async function encerrarConta() {
     return aviso("Encerrar a conta precisa de internet: seus documentos estão "
                  + "no servidor.", "info", "Sem conexão");
   }
-  if (!confirm("Encerrar sua conta e apagar tudo o que está guardado?"
+  if (!await confirmarModal("Encerrar sua conta e apagar tudo o que está guardado?"
                + LINHA + LINHA
                + "Isto NÃO é o mesmo que sair do aplicativo. Não dá para "
-               + "desfazer, e os documentos não voltam em nenhum celular.")) return;
+               + "desfazer, e os documentos não voltam em nenhum celular.",
+               { textoConfirmar: "Encerrar conta", perigo: true })) return;
 
   // Conta de verdade, do servidor e da fila: a segunda pergunta precisa
   // dizer o que se perde, não "tudo".
@@ -2810,8 +2882,9 @@ async function encerrarConta() {
   const aviso2 = quantos
     ? `Confirmar: apagar ${quantos} documento(s) e encerrar a conta?`
     : "Confirmar: encerrar a conta?";
-  if (!confirm(aviso2 + LINHA + LINHA
-               + "Se você tem os papéis originais, eles continuam com você.")) return;
+  if (!await confirmarModal(aviso2 + LINHA + LINHA
+               + "Se você tem os papéis originais, eles continuam com você.",
+               { textoConfirmar: "Confirmar", perigo: true })) return;
 
   ct.encerrar.disabled = true;
   ct.encerrar.textContent = "Encerrando…";

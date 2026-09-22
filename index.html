@@ -451,6 +451,19 @@
   .acesso.morto{opacity:.55}
   .acesso.morto .nome{font-weight:500}
   .mv-nenhum{font-size:13.5px;color:#a8d5c2;line-height:1.55;padding:2px}
+  /* Mesmo padrão do skeleton da lista principal (ver .esqueleto), mas em
+     tons claros translúcidos: aqui o fundo é escuro (#0f4c3a), então um
+     cinza claro pulsando some contra ele — precisa da própria variante. */
+  .esqueleto-acesso{background:rgba(255,255,255,.08);border-radius:11px;
+                    padding:12px 13px;margin-bottom:8px}
+  .esqueleto-acesso .bloco{border-radius:6px;
+                    background:linear-gradient(90deg,rgba(255,255,255,.12) 25%,
+                               rgba(255,255,255,.24) 37%,rgba(255,255,255,.12) 63%);
+                    background-size:400% 100%;
+                    animation:esqueleto-pulso 1.4s ease-in-out infinite}
+  .esqueleto-acesso .linha1{height:13px;width:55%;margin-bottom:8px}
+  .esqueleto-acesso .linha2{height:10px;width:35%}
+  @media (prefers-reduced-motion:reduce){ .esqueleto-acesso .bloco{animation:none} }
 
   /* ── Telas cheias: recorte e visualização ── */
   .tela-cheia{position:fixed;inset:0;background:#0d1620;z-index:50;display:flex;
@@ -657,6 +670,31 @@
 
   .rodape{margin:26px 0 8px;text-align:center;font-size:12px;color:var(--tinta-3);
           line-height:1.6}
+
+  /* ── Modal de confirmação ─────────────────────────────────────────────
+     Substitui o confirm() nativo do navegador nos pontos onde o app pede
+     "tem certeza?" (apagar, encerrar conta, cancelar acesso...). O confirm()
+     nativo funciona, mas é a caixa cinza do sistema — quebra a identidade
+     visual bem no momento mais delicado, que é decidir apagar algo. z-index
+     acima de tudo (a tela cheia mais alta, #termo, usa 65). */
+  .modal-fundo{position:fixed;inset:0;background:rgba(20,33,43,.55);
+               display:flex;align-items:center;justify-content:center;
+               padding:22px;z-index:100}
+  .modal-cartao{background:var(--superficie);border-radius:14px;padding:20px;
+                max-width:360px;width:100%;
+                box-shadow:0 16px 40px rgba(20,33,43,.32)}
+  .modal-titulo{font-size:16px;font-weight:700;margin:0 0 8px;color:var(--tinta)}
+  .modal-texto{font-size:14.5px;color:var(--tinta-2);line-height:1.55;
+              white-space:pre-line;margin:0}
+  .modal-botoes{display:flex;gap:10px;margin-top:20px}
+  .modal-botoes button{flex:1;padding:12px;font-size:15px;font-weight:600;
+                       border-radius:10px}
+  .modal-cancelar{background:var(--papel);color:var(--tinta)}
+  .modal-confirmar{background:var(--azul);color:#fff}
+  /* Ações que não têm volta (apagar, encerrar conta) ganham o botão
+     vermelho — a mesma cor que o resto do app já usa para "perigo". */
+  .modal-confirmar.perigo{background:var(--vermelho)}
+
   .escondido{display:none!important}
 </style>
 </head>
@@ -1249,6 +1287,19 @@
      via — e so aparecia depois de fechar a tela, empilhada. Um container so,
      fixo e acima de tudo, resolve para as telas de hoje e as de amanha. -->
 <div id="avisos-cheia"></div>
+
+<!-- Modal de confirmação: um só, reaproveitado por toda ação que hoje
+     pergunta "tem certeza?" (ver confirmarModal em app.js). -->
+<div class="modal-fundo escondido" id="modal-fundo">
+  <div class="modal-cartao">
+    <h3 class="modal-titulo escondido" id="modal-titulo"></h3>
+    <p class="modal-texto" id="modal-texto"></p>
+    <div class="modal-botoes">
+      <button class="modal-cancelar" id="modal-cancelar">Cancelar</button>
+      <button class="modal-confirmar" id="modal-confirmar">Confirmar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MOSTRAR AO MÉDICO ----------------------------------------------------- -->
 <!-- Duas metades da mesma promessa do termo: "você gera um código dentro do
