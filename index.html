@@ -37,6 +37,13 @@
          box-shadow:0 4px 18px rgba(18,58,86,.25)}
   header h1{margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em}
   header p{margin:4px 0 0;font-size:13.5px;opacity:.88}
+  /* Selo discreto: lembra que os dados estão seguros sem precisar entrar em
+     "Minha conta" para achar essa informação. Fica junto do texto do
+     cabeçalho — sempre visível, sem chamar mais atenção do que o resto. */
+  .selo-seguranca{display:inline-flex;align-items:center;gap:5px;
+                  margin-top:7px;font-size:11.5px;opacity:.75;
+                  letter-spacing:.01em}
+  .selo-seguranca svg{flex:0 0 auto;opacity:.9}
   main{padding:16px;max-width:620px;margin:0 auto}
 
   .aviso{padding:12px 14px;border-radius:8px;font-size:14px;margin-bottom:14px;
@@ -128,6 +135,27 @@
                 background:none;color:var(--tinta-3);font-size:20px;
                 padding:6px 12px;display:none}
   .busca.tem-texto #busca-limpar{display:block}
+
+  /* ── Skeleton (carregando a lista) ───────────────────────────────────────
+     Mesma "moldura" do .doc (mesmo padding, mesma altura, mesmo espaçamento
+     entre cartões) para o layout não "pular" quando o skeleton vira cartão
+     de verdade — só o miolo troca, de ícone+texto para blocos cinza. */
+  .esqueleto{background:var(--superficie);border:1px solid var(--linha);
+             border-radius:12px;padding:12px 14px;margin-bottom:10px;
+             display:flex;gap:12px;align-items:center;box-shadow:var(--sombra-1)}
+  .esqueleto .bloco{border-radius:8px;
+                     background:linear-gradient(90deg,var(--linha) 25%,
+                                #eef2f5 37%,var(--linha) 63%);
+                     background-size:400% 100%;
+                     animation:esqueleto-pulso 1.4s ease-in-out infinite}
+  .esqueleto .capa{width:46px;height:46px;flex:0 0 auto;border-radius:8px}
+  .esqueleto .txt{flex:1;min-width:0}
+  .esqueleto .linha1{height:14px;width:62%;margin-bottom:8px}
+  .esqueleto .linha2{height:11px;width:40%}
+  @keyframes esqueleto-pulso{0%{background-position:100% 0}100%{background-position:0 0}}
+  /* Sem animação para quem pediu menos movimento na tela: os blocos ficam
+     parados, só o cinza já basta para avisar "isto ainda está carregando". */
+  @media (prefers-reduced-motion:reduce){ .esqueleto .bloco{animation:none} }
 
   .doc{background:var(--superficie);border:1px solid var(--linha);
        border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;
@@ -642,6 +670,7 @@
           aria-label="Mostrar ao médico">🩺</button>
   <h1>indiDoc</h1>
   <p id="cabecalho-sub">seus exames, laudos e receitas num lugar só</p>
+  <p class="selo-seguranca">🔒 Dados salvos com segurança</p>
   <button class="btn-conta" id="btn-conta" aria-label="Minha conta">👤</button>
 </header>
 

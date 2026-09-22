@@ -51,6 +51,10 @@ let usuario = null;
 let rascunho = [];        // páginas já preparadas, esperando o "Guardar"
 let documentos = [];
 let naFila = [];     // guardados no celular, ainda sem subir
+// Só a PRIMEIRA carga mostra o skeleton. Nas seguintes (depois de guardar,
+// apagar, trocar de conta…) a lista já tem conteúdo na tela — trocá-lo por
+// blocos cinza a cada vez seria a lista "piscando" sem motivo.
+let primeiraCargaLista = true;
 
 const cp = {
   tituloTela: $("comp-titulo-tela"), cancelar: $("comp-cancelar"),
@@ -1546,6 +1550,12 @@ function abrirPendente(entrada) {
 
 /* ── Lista ────────────────────────────────────────────────────────────── */
 async function carregar() {
+  // Skeleton só entra ANTES da primeira resposta chegar, e só na primeira
+  // carga (ver `primeiraCargaLista`) — é a única vez que a lista está
+  // realmente vazia na tela, então é a única vez que blocos cinza substituem
+  // "nada" em vez de substituir documentos que a pessoa já via.
+  if (primeiraCargaLista) desenharEsqueletoLista();
+
   // A FILA PRIMEIRO, e sem depender da rede. Lendo o servidor antes e
   // desistindo no erro, era exatamente sem internet — quando a fila importa —
   // que ela deixava de ser desenhada: a tela congelava no estado anterior e o
@@ -1565,6 +1575,7 @@ async function carregar() {
   else documentos = data || [];
 
   await lerConsumo();
+  primeiraCargaLista = false;
   desenharLista();
   // A agenda anda junto da lista, e nao numa chamada propria: sao os mesmos
   // tres momentos (abrir, voltar a conexao, o minuto) e um so lugar para
@@ -1821,6 +1832,27 @@ function alternarRegiao(id) {
   regiaoAtiva = regiaoAtiva === id ? null : id;
   subAtivo = null;
   desenharLista();
+}
+
+/* ── Skeleton da lista (só na primeira carga) ─────────────────────────────
+   Blocos cinza pulsando no lugar dos cartões de documento, com a mesma
+   moldura do `.doc` (ver CSS), enquanto a primeira resposta do servidor não
+   chega. O objetivo é só a sensação de "já está acontecendo algo" — troca
+   pelo conteúdo de verdade assim que `desenharLista` roda pela primeira
+   vez, sem esperar nada além disso. */
+function desenharEsqueletoLista(qtd = 4) {
+  el.lista.innerHTML = "";
+  for (let i = 0; i < qtd; i++) {
+    const div = document.createElement("div");
+    div.className = "esqueleto";
+    div.innerHTML = `
+      <div class="bloco capa"></div>
+      <div class="txt">
+        <div class="bloco linha1"></div>
+        <div class="bloco linha2"></div>
+      </div>`;
+    el.lista.appendChild(div);
+  }
 }
 
 function desenharLista() {
