@@ -475,6 +475,21 @@ async function carregarPessoas() {
   if (error) { console.warn("[pessoas]", error.message); return; }
   pessoas = (data || []).slice()
     .sort((a, b) => (b.parentesco === "eu") - (a.parentesco === "eu"));
+
+  // Conta sem pessoa nenhuma e um estado em que o aplicativo nao guarda
+  // NADA: sem a "eu", o gatilho do banco nao tem para onde mandar o
+  // documento e o insert bate no NOT NULL. O gatilho trg_conta_pessoa_eu
+  // (sql/009) ja impede isso do lado de la; esta linha e a rede para o dia
+  // em que alguem apontar o app para um banco sem ele — e custa uma
+  // gravacao que so acontece uma vez na vida da conta.
+  if (!pessoas.length) {
+    const nova = await sb.from("pessoas").insert({
+      conta_id: usuario.id, nome: usuario.nome || null, parentesco: "eu",
+    }).select("id, nome, parentesco, data_nascimento, criado_em").single();
+    if (nova.data) pessoas = [nova.data];
+    else console.warn("[pessoas] conta sem pessoa e nao consegui criar",
+                      nova.error && nova.error.message);
+  }
   pessoasDaConta = usuario.id;
 
   // A escolha da visita anterior, se a pessoa ainda existir. Guardada por

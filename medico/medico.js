@@ -64,6 +64,11 @@ let regiaoAtiva = null;
 // O refino dentro da regiao. Apaga-se junto com ela, sempre.
 let subAtivo = null;
 let pacienteId = null;
+// A PESSOA liberada, que e o que este acervo mostra. Uma conta pode
+// guardar mais de um acervo — a mae e o filho —, e o codigo de seis
+// digitos libera UM deles. Filtrar por conta aqui entregaria os dois, e
+// o termo promete o contrario.
+let pessoaId = null;
 /* Guardado entre pacientes, de proposito: quem prefere lista prefere sempre,
    e faze-lo escolher de novo a cada codigo digitado seria cobrar duas vezes
    pela mesma decisao. Nao e sessao — e so o jeito de olhar. */
@@ -126,6 +131,7 @@ el.abrir.onclick = async () => {
     if (!lib || !lib.paciente_id) throw new Error("CODIGO_INVALIDO");
 
     pacienteId = lib.paciente_id;
+    pessoaId = lib.pessoa_id || null;
     medicoNome = nome;
     el.topoMedico.textContent = "· " + nome;
     /* O NOME DO PACIENTE. Vem por funcao (`nome_do_paciente`, sql/008) e
