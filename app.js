@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-23.1";
+const VERSAO_APP = "2026-09-23.2";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -977,6 +977,27 @@ function horaBR(iso) {
   } catch (e) { return "daqui a pouco"; }
 }
 
+/* MEIA-NOITE NAO E HORA, E O FIM DE UM DIA — e e assim que se diz.
+
+   `abrir_acervo` grava `expira_em` como a meia-noite seguinte no fuso de
+   Brasilia (sql/006), entao horaBR() devolvia "00:00" para TODO acesso
+   vivo. Quem le isso as duas da tarde entende um horario que ja passou, e
+   conclui que o acesso acabou — bem na lista que existe para responder
+   "quem esta vendo meus documentos AGORA". E contradizia, tres centimetros
+   acima, o cartao que ja dizia certo: "o acesso termina sozinho no fim do
+   dia".
+
+   Estreito de proposito: so troca o texto quando a hora E meia-noite E cai
+   noutro dia. Expirando as 15h de amanha, continua dizendo 15h — "fim do
+   dia" ali seria mentira de outro tipo. */
+function ateQuando(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "o fim do dia";
+  const meiaNoite = d.getHours() === 0 && d.getMinutes() === 0;
+  if (meiaNoite && diaLocalDe(iso) !== hojeISO()) return "o fim do dia";
+  return horaBR(iso);
+}
+
 function quandoBR(iso) {
   try {
     const d = new Date(iso);
@@ -1023,7 +1044,7 @@ async function listarAcessos() {
     const div = document.createElement("div");
     div.className = "acesso" + (vivo ? "" : " morto");
     const estado = a.revogado_em ? "acesso cancelado por você"
-      : vivo ? "pode ver até " + horaBR(a.expira_em) : "acesso encerrado";
+      : vivo ? "pode ver até " + ateQuando(a.expira_em) : "acesso encerrado";
     div.innerHTML = `
       <div class="quem">
         <div class="nome">${escaparHTML(a.medico_nome || "Médico não identificado")}${
