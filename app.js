@@ -1983,13 +1983,20 @@ function desenharEsqueletoLista(qtd = 4) {
 }
 
 /* ── Dica do gesto de deslizar ────────────────────────────────────────────
-   Ver o comentário no CSS (.dica-deslizar). Roda toda vez que a lista é
-   desenhada, mas a checagem do localStorage é barata e sai no início — na
-   prática só faz alguma coisa uma única vez, na vida do aparelho. */
+   DUAS marcas de localStorage, não uma: o wiggle (animação) já existia
+   antes do balão de texto, e quem já tivesse essa marca gravada (de uma
+   versão anterior do app) nunca chegaria a ver o balão — a função saía na
+   PRIMEIRA linha antes de sequer olhar para ele, e a marca antiga "gastava"
+   uma permissão que a dica nova nunca teve. Cada uma agora tem sua própria
+   chave e sua própria checagem, então o balão aparece uma vez na vida do
+   aparelho mesmo para quem já viu o wiggle rodar antes desta versão. */
 function dicaDeslizarSeNecessario() {
-  let vista = "1";
-  try { vista = localStorage.getItem("dica-deslizar-vista"); } catch (e) {}
-  if (vista) return;
+  let vistaAnimacao = "1", vistaTexto = "1";
+  try {
+    vistaAnimacao = localStorage.getItem("dica-deslizar-vista");
+    vistaTexto = localStorage.getItem("dica-swipe-texto-vista");
+  } catch (e) { /* janela anônima: os dois ficam "1", nenhuma dica repete */ }
+  if (vistaAnimacao && vistaTexto) return;
 
   // Sem cartão nenhum ainda (lista vazia ou skeleton): tenta de novo na
   // próxima vez que `desenharLista` rodar, então NÃO marca como vista aqui.
@@ -1999,12 +2006,16 @@ function dicaDeslizarSeNecessario() {
   const primeiro = el.lista.querySelector(".doc-deslizar .doc");
   if (!primeiro || primeiro.offsetParent === null) return;
 
-  try { localStorage.setItem("dica-deslizar-vista", "1"); } catch (e) { /* janela anônima */ }
-
   // O balão de texto (#dica-swipe) é a instrução de verdade — o wiggle
   // abaixo só aponta ONDE. Por isso ele aparece mesmo para quem pediu
-  // menos movimento na tela (early return logo depois é só da animação).
-  if (el.dicaSwipe) el.dicaSwipe.classList.remove("escondido");
+  // menos movimento na tela, e é gravado à parte da animação (ver acima).
+  if (!vistaTexto) {
+    if (el.dicaSwipe) el.dicaSwipe.classList.remove("escondido");
+    try { localStorage.setItem("dica-swipe-texto-vista", "1"); } catch (e) { /* janela anônima */ }
+  }
+
+  if (vistaAnimacao) return;
+  try { localStorage.setItem("dica-deslizar-vista", "1"); } catch (e) { /* janela anônima */ }
 
   // Quem pediu menos movimento na tela não ganha a animação — mas já não
   // precisa mais dela rodar de novo, então a marca acima continua valendo.
