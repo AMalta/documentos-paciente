@@ -1629,6 +1629,7 @@ function tornarDeslizavel(wrap, alvo, origem) {
     cartao.style.transition = "transform .2s ease";
     cartao.style.transform = `translateX(${lado === "esq" ? LIMITE : -LIMITE}px)`;
     wrap.dataset.aberto = lado;
+    marcarDicaDeslizarVista();
     if (deslizAberto && deslizAberto !== wrap && deslizAberto._fecharDeslizar) {
       deslizAberto._fecharDeslizar(false);
     }
@@ -1695,6 +1696,54 @@ function comAcoesDeslizar(cartao, alvo, origem) {
   return wrap;
 }
 
+/* ── Balão \"deslize para compartilhar/apagar\" ────────────────────────────
+   Some para sempre ao tocar \"Entendi\" ou na primeira vez que a pessoa
+   desliza um cartão (ver abrirLado). Mesmo padrão de dica-paginas-vista. */
+let dicaDeslizarVista = false;
+try { dicaDeslizarVista = localStorage.getItem("dica-deslizar-vista") === "1"; }
+catch (e) { /* janela anônima */ }
+let empurraoFeito = false;
+
+function marcarDicaDeslizarVista() {
+  if (dicaDeslizarVista) return;
+  dicaDeslizarVista = true;
+  try { localStorage.setItem("dica-deslizar-vista", "1"); } catch (e) { /* janela anônima */ }
+  const b = document.getElementById("dica-deslizar");
+  if (b) b.remove();
+}
+
+function inserirDicaDeslizar() {
+  if (dicaDeslizarVista) return;
+  const d = document.createElement("div");
+  d.className = "dica-deslizar";
+  d.id = "dica-deslizar";
+  d.setAttribute("role", "note");
+  d.innerHTML = `<span class="dica-deslizar-ico">👈👉</span>
+    <span class="dica-deslizar-txt">Deslize um documento para o lado para
+      <b>compartilhar</b> ou <b>apagar</b></span>
+    <button type="button" class="dica-deslizar-ok">Entendi</button>`;
+  d.querySelector("button").onclick = marcarDicaDeslizarVista;
+  el.lista.appendChild(d);
+
+  // Empurrãozinho no primeiro cartão visível: uma vez por sessão.
+  if (empurraoFeito) return;
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  empurraoFeito = true;
+  setTimeout(() => {
+    const cartao = [...el.lista.querySelectorAll(".doc-deslizar .doc")]
+      .find((c) => c.offsetParent);
+    if (!cartao || cartao.closest(".doc-deslizar").dataset.aberto) return;
+    const mover = (x) => {
+      cartao.style.transition = "transform .35s ease";
+      cartao.style.transform = `translateX(${x}px)`;
+    };
+    mover(30);
+    setTimeout(() => mover(0), 450);
+    setTimeout(() => mover(-30), 900);
+    setTimeout(() => mover(0), 1350);
+  }, 700);
+}
+
 let regiaoAtiva = null;
 /* O refino dentro da regiao. SEMPRE se apaga junto com ela — um sub-assunto
    sobrevivente de uma regiao que nao esta mais ligada filtraria sem nada na
@@ -1732,6 +1781,27 @@ function pintarCorpo() {
       alvo.setAttribute("tabindex", tem ? "0" : "-1");
     }
     alvo.setAttribute("aria-pressed", regiaoAtiva === r.id ? "true" : "false");
+    }
+  }
+
+  // Bolhas de contagem no boneco: mesma conta das folhinhas.
+  const BOLHAS = { cabeca: [62, 6], peito: [72, 44], barriga: [71, 78],
+                   pelve: [71, 106], bracos: [9, 58], pernas: [25, 185] };
+  const bolhas = el.corpo.querySelector("#corpo-bolhas");
+  if (bolhas) {
+    while (bolhas.firstChild) bolhas.removeChild(bolhas.firstChild);
+    const NS = "http://www.w3.org/2000/svg";
+    for (const r of REGIOES.filter((x) => x.corpo && conta[x.id] && BOLHAS[x.id])) {
+      const [cx, cy] = BOLHAS[r.id];
+      const g = document.createElementNS(NS, "g");
+      if (regiaoAtiva === r.id) g.setAttribute("class", "ativa");
+      const c = document.createElementNS(NS, "circle");
+      c.setAttribute("cx", cx); c.setAttribute("cy", cy); c.setAttribute("r", "5.5");
+      const t = document.createElementNS(NS, "text");
+      t.setAttribute("x", cx); t.setAttribute("y", cy);
+      t.textContent = conta[r.id] > 99 ? "99+" : String(conta[r.id]);
+      g.appendChild(c); g.appendChild(t);
+      bolhas.appendChild(g);
     }
   }
 
@@ -1871,6 +1941,7 @@ function desenharLista() {
   }
 
   el.lista.innerHTML = "";
+  inserirDicaDeslizar();
 
   // Os que ainda não subiram vêm primeiro e dizem em que pé estão. O aviso é
   // tranquilizador de propósito: não há nada para o paciente fazer, e pedir

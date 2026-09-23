@@ -250,6 +250,25 @@
      de onde esta e o dedo nao ganhar moldura a cada toque. */
   #corpo .regiao:focus{outline:none}
   #corpo .regiao:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+  #corpo-bolhas{pointer-events:none}
+  #corpo-bolhas circle{fill:#fff;stroke:var(--azul);stroke-width:1}
+  #corpo-bolhas text{fill:var(--azul);font-size:7px;font-weight:700;
+                     text-anchor:middle;dominant-baseline:central}
+  #corpo-bolhas .ativa circle{fill:var(--azul);stroke:#fff}
+  #corpo-bolhas .ativa text{fill:#fff}
+
+  /* Balão da dica de deslizar (ver inserirDicaDeslizar em app.js). */
+  .dica-deslizar{position:relative;display:flex;align-items:center;gap:10px;
+       background:var(--azul-escuro);color:#fff;border-radius:12px;
+       padding:10px 12px;margin:0 0 14px;font-size:13.5px;line-height:1.4;
+       box-shadow:var(--sombra-2)}
+  .dica-deslizar::after{content:"";position:absolute;left:28px;bottom:-7px;
+       border:7px solid transparent;border-bottom:0;
+       border-top-color:var(--azul-escuro)}
+  .dica-deslizar-ico{flex:0 0 auto;font-size:16px}
+  .dica-deslizar-txt{flex:1}
+  .dica-deslizar-ok{flex:0 0 auto;background:rgba(255,255,255,.16);color:#fff;
+       border-radius:8px;padding:7px 11px;font-size:13px;font-weight:600}
 
   .folhinhas{flex:1;display:grid;grid-template-columns:1fr;gap:5px}
   /* Folhinha: a palavra ESCRITA junto do desenho. E a diferenca entre o
@@ -900,14 +919,14 @@
             <!-- A virilha (o "V" entre as coxas) precisa ser PELVE, nao
                  pernas: e a dobra do quadril, nao da perna. Por isso a
                  pelve desce e fecha essa cunha por completo — e por isso
-                 ela termina numa ARESTA CURTA (L46 136 L54 136), nao num
+                 ela termina numa CURVA EM "U" (L42 138 Q50 150 58 138), nao num
                  unico ponto: um ponto so encostaria as duas pernas bem no
                  meio dele, e "nao conectadas" pedia uma folga de verdade
                  ali, nao so uma costura sem largura. -->
             <path class="regiao" data-regiao="pelve" tabindex="0" role="button"
                   aria-label="Pelve: bexiga, próstata, útero e ovários"
                   d="M31 102 Q30 107 29 113 Q28 121 31 126
-                     L46 136 L54 136 L69 126 Q72 121 71 113 Q70 107 69 102 Z"/>
+                     L42 138 Q50 150 58 138 L69 126 Q72 121 71 113 Q70 107 69 102 Z"/>
             <!-- Proporcoes de gente: a perna e ~42% da altura e a mao chega
                  ao alto da coxa. Antes a perna era 30% e o tronco 52%, o que
                  dava um boneco de pernas curtas. O preco esta medido e
@@ -920,17 +939,17 @@
                  fechando por cima dele; como essa forma era pintada DEPOIS
                  da pelve, ela cobria por cima o remendo acima e a virilha
                  voltava a parecer perna. Cada perna agora fecha (Z) direto
-                 no seu proprio canto do quadril (46,136 / 54,136) — a MESMA
+                 no seu proprio canto do quadril (42,138 / 58,138) — a MESMA
                  aresta que a pelve acima usa do lado dela — entao as duas
-                 encaixam sem sobrepor E sem buraco, e sobra a folga de 8px
-                 entre 46 e 54 que so a pelve pinta. Só a esquerda recebe
+                 encaixam sem sobrepor E sem buraco, e sobra a folga de 16px
+                 entre 42 e 58 que so a pelve pinta. Só a esquerda recebe
                  foco/label (mesmo padrao dos bracos, logo abaixo): a
                  direita e so o espelho visual. -->
             <path class="regiao" data-regiao="pernas" tabindex="0" role="button"
                   aria-label="Pernas: joelhos, tornozelos, pés e circulação"
-                  d="M31 126 L29 175 L27 214 L38 215 L42 175 L46 136 Z"/>
+                  d="M31 126 L29 175 L27 214 L38 215 L42 175 L42 138 Z"/>
             <path class="regiao" data-regiao="pernas" tabindex="-1" aria-hidden="true"
-                  d="M69 126 L71 175 L73 214 L62 215 L58 175 L54 136 Z"/>
+                  d="M69 126 L71 175 L73 214 L62 215 L58 175 L58 138 Z"/>
             <path class="regiao" data-regiao="bracos" tabindex="0" role="button"
                   aria-label="Braços: ombros, cotovelos, punhos e mãos"
                   d="M26 44 L19 54 L14 96 L12 132 L22 133 L25 97 L26 56 Z"/>
@@ -940,6 +959,9 @@
                   x="1" y="42" width="25" height="92"/>
             <rect class="regiao alcance" data-regiao="bracos" aria-hidden="true"
                   x="74" y="42" width="25" height="92"/>
+            <!-- Bolhas de contagem: desenhadas por pintarCorpo, por cima de
+                 tudo e sem receber toque (pointer-events:none no CSS). -->
+            <g id="corpo-bolhas" aria-hidden="true"></g>
     </svg>
 
       <div class="folhinhas" id="folhinhas"></div>
