@@ -1893,6 +1893,17 @@ function desenharLista() {
    em cima da lista, com a própria faixa de "enviando…" — repeti-lo aqui
    diria a mesma coisa duas vezes em lugares diferentes. */
 function desenharRecentes() {
+  // Guarda defensiva: se este HTML nao tiver o bloco #recentes (por exemplo,
+  // um deploy que atualizou o app.js sem levar junto o index.html mais
+  // recente, ou vice-versa), `el.recentes`/`el.recentesTrilha` vem `null`.
+  // Sem este retorno antecipado, o `.classList` de uma linha abaixo quebra
+  // com uma excecao NAO CAPTURADA — e como esta funcao roda logo no INICIO
+  // de `desenharLista` (antes do corpo, dos filtros e da propria lista),
+  // essa quebra impede TUDO o que vem depois de ser desenhado. Foi
+  // exatamente esse encadeamento que apagou corpo+filtros+lista de uma vez
+  // só, apesar de nenhum dos tres ter, sozinho, nada de errado.
+  if (!el.recentes || !el.recentesTrilha) return;
+
   const N = 3;
   const recentes = documentos.slice()
     .sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)))
