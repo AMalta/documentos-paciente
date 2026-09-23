@@ -304,6 +304,17 @@
      sabotado. No celular nao aparece, porque nao ha cursor. */
   #corpo .regiao.tem:not(.ativa):not(.alcance):hover{fill:#77a6c7}
   #corpo .regiao.ativa:not(.alcance){fill:var(--azul)}
+  /* Bolha de contagem sobre a região — mesmo dado das folhinhas (".n"),
+     só que sobre o próprio desenho. `pointer-events:none` pra nao roubar
+     o toque da região por baixo dela. Contorno branco na bolha pra nao
+     desaparecer nem no cinza claro (sem documento — mas essa nunca
+     aparece nesse estado, ver JS) nem no azul escuro da região ativa. */
+  .contagem-corpo{pointer-events:none}
+  .contagem-corpo circle{fill:var(--azul-vivo);stroke:#fff;stroke-width:1.2}
+  .contagem-corpo.ativa circle{fill:#fff;stroke:var(--azul-escuro)}
+  .contagem-corpo text{font-size:9px;font-weight:700;fill:#fff;
+                        text-anchor:middle;dominant-baseline:central}
+  .contagem-corpo.ativa text{fill:var(--azul-escuro)}
   /* Recebe o toque e nao se ve: o desenho do braco continua fino. */
   #corpo .regiao.alcance{fill:transparent;stroke:none}
   #corpo .regiao.alcance.tem{cursor:pointer}
@@ -1082,6 +1093,41 @@
                   x="1" y="42" width="25" height="92"/>
             <rect class="regiao alcance" data-regiao="bracos" aria-hidden="true"
                   x="74" y="42" width="25" height="92"/>
+
+            <!-- Contador por região, igual ao "n" das folhinhas — só que em
+                 cima do próprio desenho, pra quem já reconhece a silhueta
+                 nem precisar ler o nome embaixo. Nasce escondido (ver o
+                 `escondido` que já é `display:none!important` em todo o
+                 app) e só um por região, mesmo os bracos tendo DOIS
+                 caminhos (o visível e o espelho decorativo do outro lado):
+                 repetir o número nos dois braços diria a mesma contagem
+                 duas vezes por engano, como se fossem regiões separadas.
+                 Coordenadas calculadas a partir do centro de cada path
+                 acima; atualizado em `pintarCorpo`. -->
+            <g class="contagem-corpo escondido" data-contagem="cabeca" aria-hidden="true">
+              <circle cx="50" cy="16" r="7"/>
+              <text x="50" y="16">0</text>
+            </g>
+            <g class="contagem-corpo escondido" data-contagem="peito" aria-hidden="true">
+              <circle cx="50" cy="57" r="7"/>
+              <text x="50" y="57">0</text>
+            </g>
+            <g class="contagem-corpo escondido" data-contagem="barriga" aria-hidden="true">
+              <circle cx="50" cy="88" r="7"/>
+              <text x="50" y="88">0</text>
+            </g>
+            <g class="contagem-corpo escondido" data-contagem="pelve" aria-hidden="true">
+              <circle cx="50" cy="114" r="7"/>
+              <text x="50" y="114">0</text>
+            </g>
+            <g class="contagem-corpo escondido" data-contagem="pernas" aria-hidden="true">
+              <circle cx="50" cy="132" r="7"/>
+              <text x="50" y="132">0</text>
+            </g>
+            <g class="contagem-corpo escondido" data-contagem="bracos" aria-hidden="true">
+              <circle cx="20" cy="88" r="7"/>
+              <text x="20" y="88">0</text>
+            </g>
     </svg>
 
       <div class="folhinhas" id="folhinhas"></div>

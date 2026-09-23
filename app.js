@@ -1871,6 +1871,17 @@ function pintarCorpo() {
     }
     alvo.setAttribute("aria-pressed", regiaoAtiva === r.id ? "true" : "false");
     }
+
+    // A bolha de contagem, sobre o desenho — mesmo número da folhinha, só
+    // que direto em cima da região. Só existe QUANDO tem documento (regiao
+    // apagada nao ganha bolha com "0" flutuando por cima dela) e troca de
+    // cor junto com a regiao ficar "ativa" (ver CSS .contagem-corpo.ativa).
+    const bolha = el.corpo.querySelector(`.contagem-corpo[data-contagem="${r.id}"]`);
+    if (bolha) {
+      bolha.classList.toggle("escondido", !tem);
+      bolha.classList.toggle("ativa", regiaoAtiva === r.id);
+      if (tem) bolha.querySelector("text").textContent = conta[r.id];
+    }
   }
 
   // A dica nomeia o que EXISTE, e muda quando ha filtro. Duas razoes:
