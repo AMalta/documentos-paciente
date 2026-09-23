@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-23.2";
+const VERSAO_APP = "2026-09-23.3";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1983,8 +1983,13 @@ function pintarCorpo() {
   }
 
   // Bolhas de contagem no boneco: mesma conta das folhinhas.
-  const BOLHAS = { cabeca: [62, 6], peito: [72, 44], barriga: [71, 78],
-                   pelve: [71, 106], bracos: [9, 58], pernas: [25, 185] };
+  // Coordenadas do desenho de CORPO_SVG (comum.js). Cada bolha pousa na
+  // BORDA da regiao, nao no meio dela: no meio ela taparia justamente a cor
+  // que diz se a regiao esta acesa. As dos membros caem sobre o retangulo
+  // de alcance, que e transparente — e `pointer-events:none` no CSS impede que
+  // elas roubem o toque da regiao por baixo.
+  const BOLHAS = { cabeca: [63, 9], peito: [71, 48], barriga: [70, 84],
+                   pelve: [72, 114], bracos: [11, 116], pernas: [26, 192] };
   const bolhas = el.corpo.querySelector("#corpo-bolhas");
   if (bolhas) {
     while (bolhas.firstChild) bolhas.removeChild(bolhas.firstChild);

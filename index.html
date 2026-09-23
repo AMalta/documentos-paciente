@@ -1032,96 +1032,13 @@
          segundo, que o recurso nao funciona. -->
     <p class="corpo-dica" id="corpo-dica"></p>
     <div class="corpo-linha">
-    <svg id="corpo" viewBox="0 0 100 222" role="group"
+    <svg id="corpo" viewBox="0 0 100 245" role="group"
          aria-label="Procurar por parte do corpo">
-      <!-- Bracos e pernas sao SO desenho: nao sao regioes e nao respondem ao
-           toque. Ficam num cinza mais apagado que as regioes de proposito —
-           e o unico sinal de que o corpo tem partes tocaveis e partes que
-           nao sao. -->
-            <g class="silhueta" aria-hidden="true">
-              <path d="M43 29 h14 v11 h-14 Z"/>
-            </g>
-            <path class="regiao" data-regiao="cabeca" tabindex="0" role="button"
-                  aria-label="Cabeça: crânio, olhos e ouvidos"
-                  d="M50 1 A15 15 0 0 1 50 31 A15 15 0 0 1 50 1 Z"/>
-            <path class="regiao" data-regiao="peito" tabindex="0" role="button"
-                  aria-label="Tórax: coração, pulmões e mamas"
-                  d="M30 40 h40 l4 10 v24 h-48 v-24 Z"/>
-            <path class="regiao" data-regiao="barriga" tabindex="0" role="button"
-                  aria-label="Abdome: fígado, estômago, intestino e rins"
-                  d="M26 74 h48 l-5 28 h-38 Z"/>
-            <!-- Pelve com curvas, e nao mais um trapezio reto: antes ela so
-                 ESTREITAVA (44 -> 38, seguindo a barriga), e por isso lia
-                 como "mais um pedaco do abdome", sem nenhum sinal de que
-                 mudou de regiao. Aqui a cintura fecha primeiro (barriga
-                 termina em 38 de largura, e nao 44) e so DEPOIS a pelve
-                 alarga para 52 (mais larga que a propria barriga) antes de
-                 afunilar de volta para as pernas — o alargamento e o sinal
-                 anatomico mais forte de "isto e quadril", entao ele vem
-                 antes de qualquer ajuste fino de altura ou proporcao.
-                 As curvas (Q, e nao "h"/"l" retos) arredondam os cantos do
-                 osso do quadril, no lugar dos cantos de bloco geometrico que
-                 o trapezio antigo tinha — mesma familia de curva que a
-                 cabeca (acima) ja usa, entao a pelve para de parecer um
-                 retangulo cortado e passa a parecer parte do mesmo boneco. -->
-            <!-- A virilha (o "V" entre as coxas) precisa ser PELVE, nao
-                 pernas: e a dobra do quadril, nao da perna. Por isso a
-                 pelve desce e fecha essa cunha por completo — e por isso
-                 ela termina numa CURVA EM "U" (L42 138 Q50 150 58 138), nao num
-                 unico ponto: um ponto so encostaria as duas pernas bem no
-                 meio dele, e "nao conectadas" pedia uma folga de verdade
-                 ali, nao so uma costura sem largura. -->
-            <path class="regiao" data-regiao="pelve" tabindex="0" role="button"
-                  aria-label="Pelve: bexiga, próstata, útero e ovários"
-                  d="M31 102 Q30 107 29 113 Q28 121 31 126
-                     L42 138 Q50 150 58 138 L69 126 Q72 121 71 113 Q70 107 69 102 Z"/>
-            <!-- Proporcoes de gente: a perna e ~42% da altura e a mao chega
-                 ao alto da coxa. Antes a perna era 30% e o tronco 52%, o que
-                 dava um boneco de pernas curtas. O preco esta medido e
-                 documentado no teste: as faixas do tronco encolheram, e a
-                 pelve ficou abaixo dos 44px.
-
-                 DUAS pernas, dois <path> — nao um poligono so cruzando o
-                 meio. A versao antiga desenhava as duas coxas como UMA
-                 forma so, encostando no mesmo ponto da virilha (L50 138) e
-                 fechando por cima dele; como essa forma era pintada DEPOIS
-                 da pelve, ela cobria por cima o remendo acima e a virilha
-                 voltava a parecer perna. Cada perna agora fecha (Z) direto
-                 no seu proprio canto do quadril (42,138 / 58,138) — a MESMA
-                 aresta que a pelve acima usa do lado dela — entao as duas
-                 encaixam sem sobrepor E sem buraco, e sobra a folga de 16px
-                 entre 42 e 58 que so a pelve pinta. Só a esquerda recebe
-                 foco/label (mesmo padrao dos bracos, logo abaixo): a
-                 direita e so o espelho visual. -->
-            <path class="regiao" data-regiao="pernas" tabindex="0" role="button"
-                  aria-label="Pernas: joelhos, tornozelos, pés e circulação"
-                  d="M31 126 L29 175 L27 214 L38 215 L42 175 L42 138 Z"/>
-            <path class="regiao" data-regiao="pernas" tabindex="-1" aria-hidden="true"
-                  d="M69 126 L71 175 L73 214 L62 215 L58 175 L58 138 Z"/>
-            <!-- Mesma saida dos bracos, logo abaixo, e pelo mesmo motivo: a
-                 perna ficou com 15 unidades de largura (25px na tela) quando
-                 o desenho abriu a virilha, e 25px de alvo o polegar erra. O
-                 retangulo e TRANSPARENTE — recebe o toque sem engrossar a
-                 perna, que e justamente o que o desenho novo foi buscar.
-                 Comeca em y=145, abaixo da curva em "U" da pelve (que
-                 mergulha ate ~144 entre x=42 e 58): mais acima ele roubaria
-                 da pelve o toque bem na virilha. -->
-            <rect class="regiao alcance" data-regiao="pernas" aria-hidden="true"
-                  x="21" y="145" width="27" height="71"/>
-            <rect class="regiao alcance" data-regiao="pernas" aria-hidden="true"
-                  x="52" y="145" width="27" height="71"/>
-            <path class="regiao" data-regiao="bracos" tabindex="0" role="button"
-                  aria-label="Braços: ombros, cotovelos, punhos e mãos"
-                  d="M26 44 L19 54 L14 96 L12 132 L22 133 L25 97 L26 56 Z"/>
-            <path class="regiao" data-regiao="bracos" tabindex="-1" aria-hidden="true"
-                  d="M74 44 L81 54 L86 96 L88 132 L78 133 L75 97 L74 56 Z"/>
-            <rect class="regiao alcance" data-regiao="bracos" aria-hidden="true"
-                  x="1" y="42" width="25" height="92"/>
-            <rect class="regiao alcance" data-regiao="bracos" aria-hidden="true"
-                  x="74" y="42" width="25" height="92"/>
-            <!-- Bolhas de contagem: desenhadas por pintarCorpo, por cima de
-                 tudo e sem receber toque (pointer-events:none no CSS). -->
-            <g id="corpo-bolhas" aria-hidden="true"></g>
+      <!-- O desenho vem de CORPO_SVG, em comum.js, que o injeta aqui
+           assim que carrega. Ficava escrito por extenso nas DUAS paginas,
+           e elas divergiram: esta aqui passou meses com a pelve em
+           trapezio reto e as pernas num poligono so. Um lugar so, e o
+           problema nao volta. -->
     </svg>
 
       <div class="folhinhas" id="folhinhas"></div>

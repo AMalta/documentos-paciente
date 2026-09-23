@@ -49,6 +49,88 @@ function escaparHTML(t) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+/* ═══ O BONECO ═══════════════════════════════════════════════════════════
+   Mora AQUI, e nao no HTML de cada pagina, pelo mesmo motivo da tabela de
+   palavras-chave la em cima: duas copias divergem. E divergiram — a tela do
+   medico ficou meses com a pelve em trapezio reto e as duas pernas num
+   poligono so, enquanto a do paciente recebeu sete commits de desenho. O
+   paciente e o medico olhavam corpos diferentes para o mesmo acervo.
+
+   PROPORCAO. A figura tem 234 unidades de altura (y 2 a 236) e a perna
+   comeca na virilha, em y=133: 44% do corpo. O canone de desenho manda 53%,
+   e a diferenca nao e desleixo, e o piso de toque: peito, abdome e pelve
+   sao TRES alvos empilhados, e cada um precisa de 44px de altura para o
+   polegar acertar de primeira. A 164px de largura isso custa 27 unidades
+   cada. Encurtar o tronco alem disto quebraria o teste — e com razao.
+
+   O QUE O DESENHO ANTIGO ERRAVA, e que se via de longe:
+
+   - A PERNA AFINAVA AO CONTRARIO. Era 11,5 de largura na coxa e 13 no
+     joelho: mais grossa embaixo. Agora sai de 19 na coxa para 11 no
+     tornozelo, que e o sentido em que perna nenhuma discorda.
+   - A VIRILHA PENDIA. A pelve descia num "U" ate y=144, abaixo do topo das
+     pernas — lia-se como fralda. Agora e um entalhe para CIMA entre as duas
+     coxas, que e o que a virilha e.
+   - O QUADRIL NAO ALARGAVA. O comentario antigo prometia "alarga para 52,
+     mais larga que a propria barriga", e dois commits de ajuste tinham
+     deixado a pelve em 42 contra 38 da cintura: quatro unidades, invisiveis.
+     Agora a cintura fecha em 40 e o quadril abre para 52 — o alargamento e o
+     sinal anatomico mais forte de "isto e quadril", e ou ele se ve, ou nao
+     esta la.
+   - A MAO PARAVA NO QUADRIL. Agora desce ate a meia-coxa, que e onde a mao
+     de gente para.
+
+   Os retangulos `alcance` sao transparentes e existem so para o dedo: braco
+   e perna de pictograma sao finos demais para 44px, e engrossa-los estragaria
+   o desenho. Ver o comentario de `.regiao.alcance` no CSS.                  */
+const CORPO_SVG = `
+  <g class="silhueta" aria-hidden="true">
+    <path d="M44 27 h12 v14 h-12 Z"/>
+  </g>
+  <path class="regiao" data-regiao="cabeca" tabindex="0" role="button"
+        aria-label="Cabeça: crânio, olhos e ouvidos"
+        d="M50 2 A15 15 0 0 1 50 32 A15 15 0 0 1 50 2 Z"/>
+  <path class="regiao" data-regiao="peito" tabindex="0" role="button"
+        aria-label="Tórax: coração, pulmões e mamas"
+        d="M34 41 h32 l10 10 v24 h-52 v-24 Z"/>
+  <path class="regiao" data-regiao="barriga" tabindex="0" role="button"
+        aria-label="Abdome: fígado, estômago, intestino e rins"
+        d="M24 75 h52 l-6 28 h-40 Z"/>
+  <path class="regiao" data-regiao="pelve" tabindex="0" role="button"
+        aria-label="Pelve: bexiga, próstata, útero e ovários"
+        d="M30 103 Q24 109 24 117 Q24 126 27 133
+           L46 133 Q50 128 54 133
+           L73 133 Q76 126 76 117 Q76 109 70 103 Z"/>
+  <path class="regiao" data-regiao="pernas" tabindex="0" role="button"
+        aria-label="Pernas: joelhos, tornozelos, pés e circulação"
+        d="M27 133 L26 160 L29 184 L30 210 L31 236 L40 236 L41 210 L42 184 L45 160 L46 133 Z"/>
+  <path class="regiao" data-regiao="pernas" tabindex="-1" aria-hidden="true"
+        d="M73 133 L74 160 L71 184 L70 210 L69 236 L60 236 L59 210 L58 184 L55 160 L54 133 Z"/>
+  <path class="regiao" data-regiao="bracos" tabindex="0" role="button"
+        aria-label="Braços: ombros, cotovelos, punhos e mãos"
+        d="M24 52 L19 59 L16 104 L15 150 L22 151 L22 105 L24 62 Z"/>
+  <path class="regiao" data-regiao="bracos" tabindex="-1" aria-hidden="true"
+        d="M76 52 L81 59 L84 104 L85 150 L78 151 L78 105 L76 62 Z"/>
+  <rect class="regiao alcance" data-regiao="bracos" aria-hidden="true"
+        x="1" y="47" width="23" height="116"/>
+  <rect class="regiao alcance" data-regiao="bracos" aria-hidden="true"
+        x="76" y="47" width="23" height="116"/>
+  <rect class="regiao alcance" data-regiao="pernas" aria-hidden="true"
+        x="24" y="135" width="22" height="103"/>
+  <rect class="regiao alcance" data-regiao="pernas" aria-hidden="true"
+        x="54" y="135" width="22" height="103"/>
+  <g id="corpo-bolhas" aria-hidden="true"></g>
+`;
+
+/* Desenha assim que o arquivo carrega. As duas paginas deixam o <svg> vazio
+   no HTML, com o viewBox e o aria-label proprios de cada uma, e o conteudo
+   entra aqui — e por isso nao ha como uma delas ficar para tras. */
+(function montarCorpo() {
+  const svg = typeof document !== "undefined" && document.getElementById("corpo");
+  if (svg) svg.innerHTML = CORPO_SVG;
+})();
+
+
 /* ═══ Datas ══════════════════════════════════════════════════════════════
    DUAS COISAS DIFERENTES chegam aqui como texto, e tratá-las igual foi o
    defeito:
