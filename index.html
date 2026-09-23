@@ -898,32 +898,39 @@
                  cabeca (acima) ja usa, entao a pelve para de parecer um
                  retangulo cortado e passa a parecer parte do mesmo boneco. -->
             <!-- A virilha (o "V" entre as coxas) precisa ser PELVE, nao
-                 pernas: e a dobra do quadril, nao da perna. O recorte que
-                 forma esse "V" mora no desenho das PERNAS (o ponto L50,138
-                 logo abaixo), e antes a pelve parava numa linha reta em
-                 y=126 — bem ACIMA desse recorte. Sobrava, entre as duas
-                 formas, um triangulo (de 126 ate 138, no meio) que nenhuma
-                 das duas cobria: nem cor de pelve, nem de perna, so o fundo
-                 da pagina aparecendo — o "buraco" que fazia a virilha
-                 parecer perna (ou nada).
-                 A correcao e a pelve descer e fechar esse MESMO triangulo
-                 (o "L50 138" abaixo repete o ponto exato do recorte das
-                 pernas): como a pelve e desenhada ANTES das pernas no SVG,
-                 ela pinta o fundo desse recorte, e a virilha passa a
-                 aparecer com a cor da pelve, nao um vazio. -->
+                 pernas: e a dobra do quadril, nao da perna. Por isso a
+                 pelve desce e fecha essa cunha por completo — e por isso
+                 ela termina numa ARESTA CURTA (L46 136 L54 136), nao num
+                 unico ponto: um ponto so encostaria as duas pernas bem no
+                 meio dele, e "nao conectadas" pedia uma folga de verdade
+                 ali, nao so uma costura sem largura. -->
             <path class="regiao" data-regiao="pelve" tabindex="0" role="button"
                   aria-label="Pelve: bexiga, próstata, útero e ovários"
                   d="M31 102 Q30 107 29 113 Q28 121 31 126
-                     L50 138 L69 126 Q72 121 71 113 Q70 107 69 102 Z"/>
+                     L46 136 L54 136 L69 126 Q72 121 71 113 Q70 107 69 102 Z"/>
             <!-- Proporcoes de gente: a perna e ~42% da altura e a mao chega
                  ao alto da coxa. Antes a perna era 30% e o tronco 52%, o que
                  dava um boneco de pernas curtas. O preco esta medido e
                  documentado no teste: as faixas do tronco encolheram, e a
-                 pelve ficou abaixo dos 44px. -->
+                 pelve ficou abaixo dos 44px.
+
+                 DUAS pernas, dois <path> — nao um poligono so cruzando o
+                 meio. A versao antiga desenhava as duas coxas como UMA
+                 forma so, encostando no mesmo ponto da virilha (L50 138) e
+                 fechando por cima dele; como essa forma era pintada DEPOIS
+                 da pelve, ela cobria por cima o remendo acima e a virilha
+                 voltava a parecer perna. Cada perna agora fecha (Z) direto
+                 no seu proprio canto do quadril (46,136 / 54,136) — a MESMA
+                 aresta que a pelve acima usa do lado dela — entao as duas
+                 encaixam sem sobrepor E sem buraco, e sobra a folga de 8px
+                 entre 46 e 54 que so a pelve pinta. Só a esquerda recebe
+                 foco/label (mesmo padrao dos bracos, logo abaixo): a
+                 direita e so o espelho visual. -->
             <path class="regiao" data-regiao="pernas" tabindex="0" role="button"
                   aria-label="Pernas: joelhos, tornozelos, pés e circulação"
-                  d="M31 126 L29 175 L27 214 L38 215 L42 175 L50 138
-                     L58 175 L62 215 L73 214 L71 175 L69 126 Z"/>
+                  d="M31 126 L29 175 L27 214 L38 215 L42 175 L46 136 Z"/>
+            <path class="regiao" data-regiao="pernas" tabindex="-1" aria-hidden="true"
+                  d="M69 126 L71 175 L73 214 L62 215 L58 175 L54 136 Z"/>
             <path class="regiao" data-regiao="bracos" tabindex="0" role="button"
                   aria-label="Braços: ombros, cotovelos, punhos e mãos"
                   d="M26 44 L19 54 L14 96 L12 132 L22 133 L25 97 L26 56 Z"/>
