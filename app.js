@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-23.4";
+const VERSAO_APP = "2026-09-23.5";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -262,6 +262,9 @@ function explicar(erro) {
   if (/LIMITE_DOCUMENTOS/.test(cru))
     return "Você chegou ao limite de documentos guardados. Para guardar mais, "
          + "apague algum que não precise mais.";
+  if (/LIMITE_PESSOAS/.test(cru))
+    return "Duas pessoas é o limite gratuito desta conta. Guardar o acervo "
+         + "de uma terceira vai ser um recurso pago, ainda não disponível.";
   if (/LIMITE_PAGINAS/.test(cru))
     return "Este documento já tem páginas demais. Guarde o restante como um "
          + "segundo documento.";
@@ -1056,6 +1059,8 @@ mv.botao.onclick = () => {
   mv.gerar.disabled = false;
   mv.gerar.textContent = "Gerar código para o médico";
   mv.url.textContent = URL_MEDICO.replace(/^https?:\/\//, "");
+  mvPessoa = pessoaAtiva;
+  desenharMvPessoas();
   listarAcessos();
 };
 mv.fechar.onclick = () => { mv.tela.classList.add("escondido"); limparAvisos(); };
@@ -1068,7 +1073,10 @@ mv.gerar.onclick = async () => {
   mv.gerar.disabled = true;
   mv.gerar.textContent = "Gerando…";
   try {
-    const { data, error } = await sb.rpc("gerar_liberacao", { minutos: 15 });
+    // Assinatura de DOIS argumentos: a de um continua no banco como atalho
+    // para a pessoa "eu", e existe para o aplicativo ANTIGO, nao para este.
+    const { data, error } = await sb.rpc("gerar_liberacao",
+      { p_minutos: 15, p_pessoa: mvPessoa || pessoaAtiva });
     if (error) throw error;
     const lib = Array.isArray(data) ? data[0] : data;
     // Espaço no meio: seis dígitos corridos se lêem errado em voz alta, e
@@ -1143,7 +1151,7 @@ function desenharEsqueletoAcessos(qtd = 2) {
 async function listarAcessos() {
   desenharEsqueletoAcessos();
   const { data, error } = await sb.from("liberacoes")
-    .select("id, medico_nome, medico_crm, usado_em, expira_em, revogado_em")
+    .select("id, medico_nome, medico_crm, usado_em, expira_em, revogado_em, pessoa_id")
     .not("usado_em", "is", null)
     .order("usado_em", { ascending: false });
   if (error) {
@@ -1168,6 +1176,9 @@ async function listarAcessos() {
         <div class="nome">${escaparHTML(a.medico_nome || "Médico não identificado")}${
           a.medico_crm ? " · CRM " + escaparHTML(a.medico_crm) : ""}</div>
         <div class="quando">Abriu em ${quandoBR(a.usado_em)} · ${estado}</div>
+        ${pessoas.length > 1
+          ? '<div class="quando">acervo de ' +
+            escaparHTML(nomeDaPessoa(pessoaDe(a.pessoa_id))) + '</div>' : ''}
       </div>`;
     if (vivo) {
       const b = document.createElement("button");
@@ -3104,6 +3115,9 @@ const ct = {
   codigo: $("conta-codigo"), confirmar: $("conta-confirmar"), voltar: $("conta-voltar"),
   emailAtual: $("conta-email-atual"), sair: $("conta-sair"),
   encerrar: $("conta-encerrar"), comoFunciona: $("conta-como-funciona"),
+  pessoasLista: $("conta-pessoas"), pessoaNome: $("pessoa-nome"),
+  pessoaParentesco: $("pessoa-parentesco"), pessoaAdicionar: $("pessoa-adicionar"),
+  pessoaNova: $("pessoa-nova"), pessoaPago: $("pessoa-pago"),
   bvVoltar: $("bv-voltar"),
 };
 
@@ -3117,6 +3131,165 @@ let recuperando = false;
 // mostraria "✅ acesso guardado" para quem ainda não confirmou nada.
 const confirmado = (u) => !!(u?.email && (u.email_confirmed_at || u.confirmed_at));
 const contaAnonima = () => !confirmado(usuario);
+
+
+/* ═══ QUEM ESTÁ NESTA CONTA ═══════════════════════════════════════════════
+   Duas pessoas de graça, a terceira é paga. O teto vive no BANCO
+   (limite_de_pessoas, sql/009) pelo mesmo motivo do teto de documentos: a
+   chave anônima roda no celular de qualquer um, e limite conferido só na
+   tela é sugestão. Aqui o trabalho é outro — avisar ANTES, para a pessoa
+   não digitar um nome e levar uma recusa seca.
+
+   NÃO HÁ COBRANÇA ainda: o aplicativo não tem gateway, assinatura nem
+   webhook, e isso é um projeto próprio. O que existe é a trava e o aviso
+   honesto de que o recurso vai ser pago.                                   */
+const ROTULO_PARENTESCO = { eu: "você", filho: "filho", filha: "filha",
+                            mae: "mãe", pai: "pai", conjuge: "cônjuge",
+                            outro: "" };
+
+function desenharContaPessoas() {
+  if (!ct.pessoasLista) return;
+  ct.pessoasLista.innerHTML = "";
+  for (const p of pessoas) {
+    const n = documentos.filter((d) => (d.pessoa_id || pessoaEuId()) === p.id).length;
+    const linha = document.createElement("div");
+    linha.className = "pessoa-linha";
+
+    const campo = document.createElement("input");
+    campo.type = "text"; campo.maxLength = 60;
+    campo.value = p.nome || "";
+    campo.placeholder = p.parentesco === "eu" ? "Seu nome" : "Nome";
+    // Grava ao SAIR do campo, e não a cada tecla: uma escrita por letra
+    // digitada gasta rede e cota de requisição para nada.
+    campo.onchange = () => renomearPessoa(p, campo.value);
+    linha.appendChild(campo);
+
+    const par = document.createElement("span");
+    par.className = "par";
+    par.textContent = n + (n === 1 ? " doc" : " docs");
+    par.title = ROTULO_PARENTESCO[p.parentesco] || "";
+    linha.appendChild(par);
+
+    // A pessoa "eu" não se apaga: é quem abriu a conta, e sem ela o acervo
+    // ficaria sem dono. Para sair de vez existe "Encerrar conta", que diz
+    // com todas as letras o que faz.
+    if (p.parentesco !== "eu") {
+      const x = document.createElement("button");
+      x.className = "tirar";
+      x.type = "button";
+      x.setAttribute("aria-label", "Remover " + nomeDaPessoa(p));
+      x.textContent = "🗑️";
+      x.onclick = () => removerPessoa(p, n);
+      linha.appendChild(x);
+    }
+    ct.pessoasLista.appendChild(linha);
+  }
+
+  const teto = (consumo && consumo.teto_pessoas) || 2;
+  const cheio = pessoas.length >= teto;
+  ct.pessoaNova.classList.toggle("escondido", cheio);
+  ct.pessoaAdicionar.classList.toggle("escondido", cheio);
+  ct.pessoaPago.classList.toggle("escondido", !cheio);
+  if (cheio) {
+    ct.pessoaPago.innerHTML = "<b>Duas pessoas é o limite gratuito</b>"
+      + "Guardar o acervo de uma terceira pessoa vai ser um recurso pago. "
+      + "Ainda não está disponível — quando estiver, avisamos por aqui.";
+  }
+}
+
+async function renomearPessoa(p, nome) {
+  const limpo = (nome || "").trim().slice(0, 60);
+  if (limpo === (p.nome || "")) return;
+  const { error } = await sb.from("pessoas")
+    .update({ nome: limpo || null }).eq("id", p.id);
+  if (error) { aviso(explicar(error), "erro"); return; }
+  p.nome = limpo || null;
+  // A pessoa "eu" é a mesma gente que pacientes_app.nome descreve, e é de
+  // lá que a tela do médico lia o nome até agora. Renomear uma sem a outra
+  // deixaria dois nomes para a mesma pessoa, e o médico veria o antigo.
+  if (p.parentesco === "eu") {
+    await sb.from("pacientes_app").upsert({ id: usuario.id, nome: limpo || null },
+                                          { onConflict: "id" });
+    usuario.nome = limpo || null;
+    if (ct.nome) ct.nome.value = limpo;
+  }
+  desenharContaPessoas();
+  desenharLista();
+  aviso("Nome guardado.", "ok");
+}
+
+async function adicionarPessoa() {
+  const nome = (ct.pessoaNome.value || "").trim().slice(0, 60);
+  if (!nome) {
+    aviso("Escreva o nome da pessoa.", "erro");
+    ct.pessoaNome.focus();
+    return;
+  }
+  ct.pessoaAdicionar.disabled = true;
+  ct.pessoaAdicionar.textContent = "Adicionando…";
+  try {
+    const { data, error } = await sb.from("pessoas").insert({
+      conta_id: usuario.id, nome,
+      parentesco: ct.pessoaParentesco.value,
+    }).select("id, nome, parentesco, data_nascimento, criado_em").single();
+    if (error) throw error;
+    pessoas.push(data);
+    ct.pessoaNome.value = "";
+    await lerConsumo();
+    desenharContaPessoas();
+    desenharLista();
+    aviso(nome + " entrou na sua conta. Use as abas no alto da tela para "
+        + "escolher de quem é cada documento.", "ok");
+  } catch (e) {
+    aviso(explicar(e), "erro");
+  } finally {
+    ct.pessoaAdicionar.disabled = false;
+    ct.pessoaAdicionar.textContent = "+ Adicionar pessoa";
+  }
+}
+
+/* Remover leva os DOCUMENTOS junto — a chave estrangeira é on delete
+   cascade, e não há para onde mandar exame de quem não está mais na conta.
+   Por isso a pergunta diz o NÚMERO, como a de encerrar conta: "apagar tudo"
+   é abstrato, "apagar os 12 documentos do João" é o que se perde de fato.
+
+   As imagens saem ANTES, pelo cliente, na mesma ordem e pela mesma razão de
+   apagarDocumento: apagar a linha primeiro deixaria os JPEG no servidor
+   sem ninguém que saiba o caminho deles. */
+async function removerPessoa(p, quantos) {
+  if (!navigator.onLine) {
+    return aviso("Remover uma pessoa precisa de internet — os documentos "
+               + "dela estão no servidor.", "info", "Sem conexão");
+  }
+  const nome = nomeDaPessoa(p);
+  const texto = quantos
+    ? "Remover " + nome + " e apagar os " + quantos + " documento(s) dela?"
+    : "Remover " + nome + " desta conta?";
+  if (!await confirmarModal(texto + LINHA + LINHA
+      + "Isto não pode ser desfeito. Se você tem os papéis originais, eles "
+      + "continuam com você.",
+      { textoConfirmar: "Remover", perigo: true })) return;
+  try {
+    const meus = documentos.filter((d) => d.pessoa_id === p.id);
+    const caminhos = meus.flatMap((d) =>
+      (d.documento_paginas || []).map((x) => x.storage_path));
+    if (caminhos.length) {
+      const { error } = await sb.storage.from("documentos").remove(caminhos);
+      if (error) throw error;
+    }
+    const { error: e2 } = await sb.from("pessoas").delete().eq("id", p.id);
+    if (e2) throw e2;
+    pessoas = pessoas.filter((x) => x.id !== p.id);
+    if (pessoaAtiva === p.id) pessoaAtiva = pessoaEuId();
+    await lerConsumo();
+    await carregar();
+    desenharContaPessoas();
+    aviso(nome + " foi removida.", "ok");
+  } catch (e) {
+    console.warn("[pessoa]", e?.message || e);
+    aviso("Não consegui remover agora. Nada foi apagado — tente de novo.", "erro");
+  }
+}
 
 function pintarConta() {
   const rodape = ct.tela.querySelector(".conta-caixa > div:last-child");
@@ -3136,6 +3309,7 @@ function pintarConta() {
       + "você perde o caminho de volta aos documentos.";
   if (protegida) ct.emailAtual.textContent = usuario.email;
 
+  desenharContaPessoas();
   const uso = ct.tela.querySelector("#conta-uso");
   if (uso && consumo.teto) {
     const usados = consumo.documentos + naFila.length;
@@ -3250,6 +3424,7 @@ ct.bvVoltar.onclick = () => { fecharBoasVindas(); abrirConta(true); };
 ct.fechar.onclick = () => ct.tela.classList.add("escondido");
 ct.comoFunciona.onclick = () => abrirBoasVindas(true);
 ct.nomeSalvar.onclick = salvarNome;
+ct.pessoaAdicionar.onclick = adicionarPessoa;
 ct.enviar.onclick = enviarCodigo;
 ct.confirmar.onclick = confirmarCodigo;
 ct.voltar.onclick = () => {

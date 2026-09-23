@@ -137,8 +137,12 @@ el.abrir.onclick = async () => {
        branco e o estado normal de quem ainda nao preencheu, e alarme sobre
        isso, na frente do paciente, so atrapalharia a consulta. */
     try {
-      const { data: nomePac } = await sb.rpc("nome_do_paciente",
-        { p_paciente: pacienteId });
+      // O nome da PESSOA liberada, e nao o do dono da conta: numa consulta
+      // do filho a tela tem de dizer o nome DELE. O atalho antigo fica para
+      // um codigo gerado antes desta versao, que nao carrega pessoa.
+      const { data: nomePac } = pessoaId
+        ? await sb.rpc("nome_da_pessoa", { p_pessoa: pessoaId })
+        : await sb.rpc("nome_do_paciente", { p_paciente: pacienteId });
       const limpo = String(nomePac || "").trim();
       if (limpo) el.topoPaciente.textContent = limpo;
     } catch (e) {
@@ -187,7 +191,10 @@ async function carregar() {
   el.grade.innerHTML = '<div class="carregando">Carregando os documentos…</div>';
   const { data, error } = await sb.from("documentos")
     .select("id, tipo, nome, data_documento, criado_em, documento_paginas(storage_path, ordem)")
-    .eq("paciente_id", pacienteId)
+    // Por PESSOA. O RLS ja recusaria as linhas das outras (ver
+    // tem_liberacao_pessoa, sql/009), mas pedir so o que se pode ver e o
+    // desenho certo: a politica e a ultima trava, nao a primeira.
+    .eq("pessoa_id", pessoaId)
     .order("data_documento", { ascending: false, nullsFirst: false });
   if (error) {
     el.grade.innerHTML = '<div class="vazio"><div class="icone">⚠️</div>'

@@ -529,6 +529,12 @@
   .acesso.morto{opacity:.55}
   .acesso.morto .nome{font-weight:500}
   .mv-nenhum{font-size:13.5px;color:#a8d5c2;line-height:1.55;padding:2px}
+  /* Quem vai ser mostrado. Some com uma pessoa só — ver desenharMvPessoas. */
+  .mv-pessoas{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .mv-pessoa{background:rgba(255,255,255,.12);color:#dff0e8;border-radius:999px;
+             padding:9px 16px;font-size:14px;font-weight:600;
+             border:1px solid rgba(255,255,255,.2)}
+  .mv-pessoa.ativa{background:#fff;color:#0f4c3a;border-color:#fff}
   /* Mesmo padrão do skeleton da lista principal (ver .esqueleto), mas em
      tons claros translúcidos: aqui o fundo é escuro (#0f4c3a), então um
      cinza claro pulsando some contra ele — precisa da própria variante. */
@@ -773,6 +779,28 @@
   .conta-estado .txt{font-size:14px;line-height:1.4;color:var(--tinta)}
   .conta-estado .txt b{display:block}
   .passo-oculto{display:none}
+
+  /* ── Quem está nesta conta ─────────────────────────────────────────────
+     Uma linha por pessoa. O nome é editável no próprio lugar: renomear é o
+     que mais se faz aqui ("Joao" vira "João Pedro"), e mandar a pessoa
+     abrir outra tela para isso custa mais do que o campo. */
+  .pessoa-linha{display:flex;align-items:center;gap:9px;padding:10px 0;
+                border-bottom:1px solid var(--linha)}
+  .pessoa-linha:last-of-type{border-bottom:0}
+  .pessoa-linha input{flex:1;padding:9px 11px;font-size:14.5px}
+  .pessoa-linha .par{font-size:12px;color:var(--tinta-3);flex:0 0 auto;
+                     min-width:44px;text-align:right}
+  .pessoa-linha .tirar{background:none;color:var(--vermelho);font-size:17px;
+                       padding:6px 4px;flex:0 0 auto}
+  .pessoa-nova{display:grid;grid-template-columns:1fr 104px;gap:8px;
+               margin-top:12px}
+  .pessoa-nova input,.pessoa-nova select{padding:11px;font-size:14.5px}
+  /* O aviso da terceira. Âmbar e não vermelho: não houve erro, há um limite
+     — e vermelho aqui faria a pessoa achar que quebrou alguma coisa. */
+  .pessoa-pago{background:var(--ambar-fundo);color:var(--ambar);
+               border-radius:10px;padding:11px 13px;font-size:13.5px;
+               line-height:1.45;margin-top:12px}
+  .pessoa-pago b{display:block;margin-bottom:2px}
 
   .rodape{margin:26px 0 8px;text-align:center;font-size:12px;color:var(--tinta-3);
           line-height:1.6}
@@ -1213,6 +1241,33 @@
                 style="width:100%;margin-top:8px">Guardar nome</button>
       </div>
 
+      <!-- QUEM ESTÁ NESTA CONTA. Fica acima do cartão de acesso porque
+           responde a uma pergunta mais básica — de quem são estes
+           documentos — e porque é aqui que nasce a segunda pessoa, sem a
+           qual as abas da tela principal nem aparecem. -->
+      <div class="conta-cartao" id="conta-pessoas-cartao">
+        <h3>Quem está nesta conta</h3>
+        <p>Você pode guardar os documentos de mais de uma pessoa aqui — os
+          seus e os de um filho, por exemplo. Cada um tem o seu acervo, e o
+          médico vê só o que você liberar.</p>
+        <div id="conta-pessoas"></div>
+        <div class="pessoa-nova" id="pessoa-nova">
+          <input id="pessoa-nome" type="text" maxlength="60"
+                 placeholder="Nome da pessoa" autocomplete="off">
+          <select id="pessoa-parentesco">
+            <option value="filho">Filho</option>
+            <option value="filha">Filha</option>
+            <option value="mae">Mãe</option>
+            <option value="pai">Pai</option>
+            <option value="conjuge">Cônjuge</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <button class="btn-linha" id="pessoa-adicionar"
+                style="width:100%;margin-top:10px">+ Adicionar pessoa</button>
+        <div class="pessoa-pago escondido" id="pessoa-pago"></div>
+      </div>
+
       <div class="conta-estado" id="conta-estado">
         <span class="ico">⚠️</span>
         <span class="txt" id="conta-estado-txt"></span>
@@ -1433,6 +1488,11 @@
   </div>
 
   <div class="mostrar-corpo">
+    <!-- 0. de quem. Nasce vazio e só aparece com duas pessoas ou mais: com
+         uma, não há o que escolher, e um seletor de um item só ensina que o
+         aplicativo tem peças a mais. -->
+    <div id="mv-de-quem" class="escondido"></div>
+
     <!-- 1. o código -->
     <div class="cartao-verde">
       <!-- Três linhas curtas, cada uma com um ícone, no lugar de um
