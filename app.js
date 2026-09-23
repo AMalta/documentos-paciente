@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-23.5";
+const VERSAO_APP = "2026-09-23.6";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -3760,6 +3760,19 @@ const FECHAR_TELA_CHEIA = {
   "tela-mostrar": "mostrar-fechar",
 };
 function fecharTelaAtual() {
+  // O MODAL VEM PRIMEIRO, e a ordem nao e arbitraria: ele esta por CIMA de
+  // tudo (z-index 100) e ESPERA uma resposta. Com ele aberto, o voltar
+  // fechava a tela de TRAS — a pessoa via sumir o visualizador e ficava com
+  // "Apagar este documento?" pairando sobre a lista, agora perguntando
+  // sobre algo que nao esta mais na tela.
+  //
+  // Voltar responde NAO, sempre. Nenhuma pergunta deste aplicativo tem o
+  // "sim" como resposta segura: as que existem apagam documento, removem
+  // pessoa ou encerram conta.
+  if (!el.modalFundo.classList.contains("escondido")) {
+    el.modalCancelar.click();
+    return true;
+  }
   for (const [telaId, botaoId] of Object.entries(FECHAR_TELA_CHEIA)) {
     const tela = document.getElementById(telaId);
     if (tela && !tela.classList.contains("escondido")) {
