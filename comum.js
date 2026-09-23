@@ -26,6 +26,29 @@ function semAcento(t) {
   return String(t || "").normalize("NFD").replace(ACENTOS, "").toLowerCase();
 }
 
+/* ── Texto de gente dentro de innerHTML ───────────────────────────────────
+   As duas telas montam cartao com template string e `innerHTML`, e o que
+   entra ali NAO e so texto do codigo: e o nome que o paciente digitou, o
+   que ele procurou na busca, e — na lista de "quem abriu meu acervo" — o
+   nome que o MEDICO digitou do outro lado. Esse ultimo nao e nem do dono
+   da tela: quem tem o codigo de seis digitos escolhe a string que vai
+   parar dentro do aplicativo do paciente.
+
+   Sem escapar, um nome com "<" ja quebra a linha em silencio (o navegador
+   le como tag e engole o resto), e um nome montado de proposito executa
+   script na origem do app — onde mora a sessao do Supabase do paciente.
+   Nao e hipotese distante: e o unico campo do modulo em que uma pessoa
+   escreve texto que OUTRA le.
+
+   Aqui, e nao em cada chamada: as duas paginas compartilham este arquivo
+   pelo mesmo motivo da tabela de palavras-chave — duas copias divergem, e
+   a que ficar para tras vira a brecha. */
+function escaparHTML(t) {
+  return String(t == null ? "" : t)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 /* ═══ Datas ══════════════════════════════════════════════════════════════
    DUAS COISAS DIFERENTES chegam aqui como texto, e tratá-las igual foi o
    defeito:

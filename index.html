@@ -37,6 +37,13 @@
          box-shadow:0 4px 18px rgba(18,58,86,.25)}
   header h1{margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em}
   header p{margin:4px 0 0;font-size:13.5px;opacity:.88}
+  /* Selo discreto: lembra que os dados estão seguros sem precisar entrar em
+     "Minha conta" para achar essa informação. Fica junto do texto do
+     cabeçalho — sempre visível, sem chamar mais atenção do que o resto. */
+  .selo-seguranca{display:inline-flex;align-items:center;gap:5px;
+                  margin-top:7px;font-size:11.5px;opacity:.75;
+                  letter-spacing:.01em}
+  .selo-seguranca svg{flex:0 0 auto;opacity:.9}
   main{padding:16px;max-width:620px;margin:0 auto}
 
   .aviso{padding:12px 14px;border-radius:8px;font-size:14px;margin-bottom:14px;
@@ -63,6 +70,7 @@
      hierarquia visual que "Guardar" x "Cancelar" já usa no formulário. */
   .linha-captura .btn-grande#btn-pdf{background:var(--superficie);color:var(--azul);
                                       border:1.5px solid var(--azul-claro);box-shadow:var(--sombra-1)}
+  .captura-dica{margin:8px 2px 0;font-size:12.5px;color:var(--tinta-3);text-align:center}
   .btn-linha{background:var(--superficie);border:1px solid var(--linha);
              color:var(--tinta);padding:11px 14px;font-size:15px}
   .btn-linha:disabled{opacity:.4}
@@ -129,6 +137,27 @@
                 padding:6px 12px;display:none}
   .busca.tem-texto #busca-limpar{display:block}
 
+  /* ── Skeleton (carregando a lista) ───────────────────────────────────────
+     Mesma "moldura" do .doc (mesmo padding, mesma altura, mesmo espaçamento
+     entre cartões) para o layout não "pular" quando o skeleton vira cartão
+     de verdade — só o miolo troca, de ícone+texto para blocos cinza. */
+  .esqueleto{background:var(--superficie);border:1px solid var(--linha);
+             border-radius:12px;padding:12px 14px;margin-bottom:10px;
+             display:flex;gap:12px;align-items:center;box-shadow:var(--sombra-1)}
+  .esqueleto .bloco{border-radius:8px;
+                     background:linear-gradient(90deg,var(--linha) 25%,
+                                #eef2f5 37%,var(--linha) 63%);
+                     background-size:400% 100%;
+                     animation:esqueleto-pulso 1.4s ease-in-out infinite}
+  .esqueleto .capa{width:46px;height:46px;flex:0 0 auto;border-radius:8px}
+  .esqueleto .txt{flex:1;min-width:0}
+  .esqueleto .linha1{height:14px;width:62%;margin-bottom:8px}
+  .esqueleto .linha2{height:11px;width:40%}
+  @keyframes esqueleto-pulso{0%{background-position:100% 0}100%{background-position:0 0}}
+  /* Sem animação para quem pediu menos movimento na tela: os blocos ficam
+     parados, só o cinza já basta para avisar "isto ainda está carregando". */
+  @media (prefers-reduced-motion:reduce){ .esqueleto .bloco{animation:none} }
+
   .doc{background:var(--superficie);border:1px solid var(--linha);
        border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;
        gap:12px;align-items:center;box-shadow:var(--sombra-1);cursor:pointer}
@@ -194,6 +223,10 @@
          border-radius:14px}
   .vazio .icone{font-size:44px;margin-bottom:10px;display:block}
   .vazio p{margin:0;font-size:14.5px;line-height:1.5}
+  /* O botão "limpar filtros" some quando não há filtro nenhum (acervo
+     realmente vazio) — só existe margem para separá-lo do texto quando ele
+     está presente, então fica dentro da própria regra do botão. */
+  .vazio .ver-todos{margin:14px 0 0;display:inline-block}
 
   /* ── Corpo e folhinhas ── */
   .corpo-bloco{margin:4px 0 14px;background:var(--superficie);
@@ -370,6 +403,18 @@
      a marca quer dizer "você ainda não olhou isto", não "isto está
      errado". */
   #data.conferir{border-color:var(--ambar);background:var(--ambar-fundo)}
+
+  /* ── Aviso de documento repetido, CEDO ────────────────────────────────
+     Antes só aparecia dentro de uma confirmação ao tocar em "Guardar" —
+     depois de a pessoa já ter fotografado e preenchido tudo. Este aviso
+     mora dentro do próprio formulário e aparece na hora em que nome+data
+     passam a bater com algo já guardado (ver verificarDuplicata em
+     app.js), para dar tempo de corrigir ANTES de continuar. Âmbar, não
+     vermelho: não é um erro, é algo para conferir — mesma lógica de
+     #data.conferir. */
+  .duplicata{margin:12px 0 2px;padding:9px 11px;border-radius:10px;
+             font-size:13px;line-height:1.4;background:var(--ambar-fundo);
+             color:var(--ambar);font-weight:600}
   .sub.ativa{background:var(--azul);border-color:var(--azul);color:#fff}
   .sub.ativa .n{color:#cfe2ef}
   @media (max-width:340px){ .folhinhas{grid-template-columns:1fr} }
@@ -420,6 +465,16 @@
                 border-radius:13px;padding:15px}
   .mv-texto{margin:0 0 14px;font-size:14px;line-height:1.55;color:#dff0e8}
   .mv-texto b{color:#fff}
+  /* Substitui o parágrafo corrido de .mv-texto na tela "Mostrar ao médico":
+     três linhas curtas, cada uma com seu ícone, para dar de escanear rápido
+     com o médico esperando — não para ler com calma. */
+  .mv-passos{margin:0 0 16px;display:flex;flex-direction:column;gap:11px}
+  .mv-passo{display:flex;gap:11px;align-items:flex-start}
+  .mv-passo .ico{width:30px;height:30px;border-radius:9px;flex:0 0 auto;
+                 background:rgba(255,255,255,.14);display:flex;
+                 align-items:center;justify-content:center;font-size:15px}
+  .mv-passo span{font-size:13.5px;line-height:1.45;color:#dff0e8;padding-top:5px}
+  .mv-passo b{color:#fff}
   /* O codigo e lido em voz alta ou mostrado de longe: grande, espacado e
      tabular, para nao confundir 6 com 8 do outro lado da mesa. */
   .mv-codigo{font-size:44px;font-weight:700;letter-spacing:.2em;text-align:center;
@@ -442,6 +497,19 @@
   .acesso.morto{opacity:.55}
   .acesso.morto .nome{font-weight:500}
   .mv-nenhum{font-size:13.5px;color:#a8d5c2;line-height:1.55;padding:2px}
+  /* Mesmo padrão do skeleton da lista principal (ver .esqueleto), mas em
+     tons claros translúcidos: aqui o fundo é escuro (#0f4c3a), então um
+     cinza claro pulsando some contra ele — precisa da própria variante. */
+  .esqueleto-acesso{background:rgba(255,255,255,.08);border-radius:11px;
+                    padding:12px 13px;margin-bottom:8px}
+  .esqueleto-acesso .bloco{border-radius:6px;
+                    background:linear-gradient(90deg,rgba(255,255,255,.12) 25%,
+                               rgba(255,255,255,.24) 37%,rgba(255,255,255,.12) 63%);
+                    background-size:400% 100%;
+                    animation:esqueleto-pulso 1.4s ease-in-out infinite}
+  .esqueleto-acesso .linha1{height:13px;width:55%;margin-bottom:8px}
+  .esqueleto-acesso .linha2{height:10px;width:35%}
+  @media (prefers-reduced-motion:reduce){ .esqueleto-acesso .bloco{animation:none} }
 
   /* ── Telas cheias: recorte e visualização ── */
   .tela-cheia{position:fixed;inset:0;background:#0d1620;z-index:50;display:flex;
@@ -482,14 +550,42 @@
   #recorte-girar{background:rgba(255,255,255,.22);font-weight:600}
   .dica-girar{background:#8a5a12;color:#fff;border-radius:8px;padding:8px 12px;
               margin-bottom:8px;font-size:13px}
-  .marca{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.55);
+  /* A maioria dos documentos fotografados é papel BRANCO — e a marca era
+     branca pura, sem nenhum contorno escuro. Contra o próprio papel, a
+     linha quase desaparecia: a pessoa tentava "controlar" um traço que mal
+     dava para ver. O box-shadow duplo (um anel escuro fora, outro dentro)
+     mantém a linha branca visível em qualquer fundo, claro ou escuro —
+     mesma técnica de contorno que apps de foto já usam para isto. */
+  .marca{position:absolute;border:2px solid #fff;
+         box-shadow:0 0 0 9999px rgba(0,0,0,.55),
+                    0 0 0 1px rgba(0,0,0,.65),
+                    inset 0 0 0 1px rgba(0,0,0,.65);
          cursor:move;touch-action:none}
-  .canto{position:absolute;width:34px;height:34px;touch-action:none}
-  .canto::after{content:"";position:absolute;width:20px;height:20px;border:3px solid #fff}
-  .canto.tl{top:-17px;left:-17px}       .canto.tl::after{top:14px;left:14px;border-right:0;border-bottom:0}
-  .canto.tr{top:-17px;right:-17px}      .canto.tr::after{top:14px;right:14px;border-left:0;border-bottom:0}
-  .canto.bl{bottom:-17px;left:-17px}    .canto.bl::after{bottom:14px;left:14px;border-right:0;border-top:0}
-  .canto.br{bottom:-17px;right:-17px}   .canto.br::after{bottom:14px;right:14px;border-left:0;border-top:0}
+  /* Cantos: alvo de toque maior (era 34px, abaixo do mínimo confortável) e
+     a marca em L ganha uma sombra escura (drop-shadow) pelo mesmo motivo
+     do contorno acima — sem ela, o L branco também sumia no papel claro. */
+  .canto{position:absolute;width:42px;height:42px;touch-action:none}
+  .canto::after{content:"";position:absolute;width:22px;height:22px;border:3px solid #fff;
+                filter:drop-shadow(0 0 1.5px rgba(0,0,0,.8))}
+  .canto.tl{top:-21px;left:-21px}       .canto.tl::after{top:20px;left:20px;border-right:0;border-bottom:0}
+  .canto.tr{top:-21px;right:-21px}      .canto.tr::after{top:20px;right:20px;border-left:0;border-bottom:0}
+  .canto.bl{bottom:-21px;left:-21px}    .canto.bl::after{bottom:20px;left:20px;border-right:0;border-top:0}
+  .canto.br{bottom:-21px;right:-21px}   .canto.br::after{bottom:20px;right:20px;border-left:0;border-top:0}
+
+  /* Lados: antes só dava para ajustar arrastando um CANTO, o que sempre
+     mexe em duas direções ao mesmo tempo — corrigir só a margem esquerda,
+     por exemplo, exigia acertar um alvo pequeno sem "puxar" a altura junto.
+     Estas quatro barras deixam mover UM lado de cada vez, na direção que
+     ele já indica. */
+  .lado{position:absolute;touch-action:none}
+  .lado::after{content:"";position:absolute;background:#fff;border-radius:3px;
+               filter:drop-shadow(0 0 1.5px rgba(0,0,0,.8))}
+  .lado.cima,.lado.baixo{left:50%;transform:translateX(-50%);width:64px;height:26px}
+  .lado.esquerda,.lado.direita{top:50%;transform:translateY(-50%);width:26px;height:64px}
+  .lado.cima{top:-13px}    .lado.cima::after{left:50%;top:50%;margin:-2px 0 0 -18px;width:36px;height:4px}
+  .lado.baixo{bottom:-13px} .lado.baixo::after{left:50%;top:50%;margin:-2px 0 0 -18px;width:36px;height:4px}
+  .lado.esquerda{left:-13px} .lado.esquerda::after{left:50%;top:50%;margin:-18px 0 0 -2px;width:4px;height:36px}
+  .lado.direita{right:-13px} .lado.direita::after{left:50%;top:50%;margin:-18px 0 0 -2px;width:4px;height:36px}
 
   /* Visualizador: a imagem é do dono, então nada de menu do navegador */
   #visu-img{max-width:100%;max-height:100%;object-fit:contain;
@@ -648,7 +744,45 @@
 
   .rodape{margin:26px 0 8px;text-align:center;font-size:12px;color:var(--tinta-3);
           line-height:1.6}
+
+  /* ── Modal de confirmação ─────────────────────────────────────────────
+     Substitui o confirm() nativo do navegador nos pontos onde o app pede
+     "tem certeza?" (apagar, encerrar conta, cancelar acesso...). O confirm()
+     nativo funciona, mas é a caixa cinza do sistema — quebra a identidade
+     visual bem no momento mais delicado, que é decidir apagar algo. z-index
+     acima de tudo (a tela cheia mais alta, #termo, usa 65). */
+  .modal-fundo{position:fixed;inset:0;background:rgba(20,33,43,.55);
+               display:flex;align-items:center;justify-content:center;
+               padding:22px;z-index:100}
+  .modal-cartao{background:var(--superficie);border-radius:14px;padding:20px;
+                max-width:360px;width:100%;
+                box-shadow:0 16px 40px rgba(20,33,43,.32)}
+  .modal-titulo{font-size:16px;font-weight:700;margin:0 0 8px;color:var(--tinta)}
+  .modal-texto{font-size:14.5px;color:var(--tinta-2);line-height:1.55;
+              white-space:pre-line;margin:0}
+  .modal-botoes{display:flex;gap:10px;margin-top:20px}
+  .modal-botoes button{flex:1;padding:12px;font-size:15px;font-weight:600;
+                       border-radius:10px}
+  .modal-cancelar{background:var(--papel);color:var(--tinta)}
+  .modal-confirmar{background:var(--azul);color:#fff}
+  /* Ações que não têm volta (apagar, encerrar conta) ganham o botão
+     vermelho — a mesma cor que o resto do app já usa para "perigo". */
+  .modal-confirmar.perigo{background:var(--vermelho)}
+
   .escondido{display:none!important}
+
+  /* ── Faixa "sem conexão" ──────────────────────────────────────────────
+     Cada botão do app já avisa, na hora, quando falta internet para AQUELA
+     ação específica — mas não existia nada dizendo, de forma persistente,
+     "você está offline agora". Esta faixa fecha essa lacuna: aparece
+     assim que a conexão cai, some assim que volta, e fica grudada no topo
+     (sticky) para continuar visível mesmo com a lista rolada para baixo.
+     Mesma cor "info/âmbar" que o resto do app já usa para avisos que não
+     são erro — só uma condição temporária. */
+  .faixa-offline{position:sticky;top:0;z-index:40;background:var(--ambar-fundo);
+                 color:var(--ambar);font-size:13px;font-weight:600;
+                 text-align:center;padding:9px 14px;
+                 border-bottom:1px solid rgba(138,93,0,.15)}
 </style>
 </head>
 <body>
@@ -661,8 +795,14 @@
           aria-label="Mostrar ao médico">🩺</button>
   <h1>indiDoc</h1>
   <p id="cabecalho-sub">seus exames, laudos e receitas num lugar só</p>
+  <p class="selo-seguranca">🔒 Dados salvos com segurança</p>
   <button class="btn-conta" id="btn-conta" aria-label="Minha conta">👤</button>
 </header>
+
+<!-- Ver o comentário no CSS (.faixa-offline) e o listener em app.js. -->
+<div class="faixa-offline escondido" id="faixa-offline">
+  📴 Sem conexão agora — o que você fizer fica guardado e envia quando a internet voltar
+</div>
 
 <!-- BOAS-VINDAS ---------------------------------------------------------- -->
 <!-- Fica escondido por padrão e só aparece na primeira visita. Assim quem já
@@ -772,6 +912,10 @@
     <button class="btn-grande" id="btn-fotografar">📷 Fotografar documento</button>
     <button class="btn-grande" id="btn-pdf">📄 Enviar PDF de exame</button>
   </div>
+  <!-- Diz o que vem DEPOIS de tocar, antes de a pessoa ser levada para a
+       câmera do celular — sem isto, a tela de ajustar margens que aparece
+       na volta pega de surpresa quem não esperava mais um passo. -->
+  <p class="captura-dica">Depois da foto, você ajusta as bordas antes de guardar.</p>
 
   <!-- Câmera do celular. `capture` abre a traseira direto; sem ele o Android
        oferece a galeria, o que também serve para quem já tem a foto salva. -->
@@ -829,6 +973,10 @@
         <label for="data">Data</label>
         <input id="data" type="date">
       </div>
+    </div>
+
+    <div class="duplicata escondido" id="duplicata">
+      ⚠️ Você já tem <b id="duplicata-nome"></b> guardado com essa data.
     </div>
 
     <!-- Só aparece durante um upload de PDF, e só quando há uma próxima
@@ -950,6 +1098,18 @@
                   d="M31 126 L29 175 L27 214 L38 215 L42 175 L42 138 Z"/>
             <path class="regiao" data-regiao="pernas" tabindex="-1" aria-hidden="true"
                   d="M69 126 L71 175 L73 214 L62 215 L58 175 L58 138 Z"/>
+            <!-- Mesma saida dos bracos, logo abaixo, e pelo mesmo motivo: a
+                 perna ficou com 15 unidades de largura (25px na tela) quando
+                 o desenho abriu a virilha, e 25px de alvo o polegar erra. O
+                 retangulo e TRANSPARENTE — recebe o toque sem engrossar a
+                 perna, que e justamente o que o desenho novo foi buscar.
+                 Comeca em y=145, abaixo da curva em "U" da pelve (que
+                 mergulha ate ~144 entre x=42 e 58): mais acima ele roubaria
+                 da pelve o toque bem na virilha. -->
+            <rect class="regiao alcance" data-regiao="pernas" aria-hidden="true"
+                  x="21" y="145" width="27" height="71"/>
+            <rect class="regiao alcance" data-regiao="pernas" aria-hidden="true"
+                  x="52" y="145" width="27" height="71"/>
             <path class="regiao" data-regiao="bracos" tabindex="0" role="button"
                   aria-label="Braços: ombros, cotovelos, punhos e mãos"
                   d="M26 44 L19 54 L14 96 L12 132 L22 133 L25 97 L26 56 Z"/>
@@ -1139,8 +1299,16 @@
         <button class="btn-linha" id="conta-sair" style="width:100%">Sair desta conta</button>
       </div>
 
+      <!-- Reabre a mesma tela de boas-vindas de quando a conta foi criada.
+           Antes essa explicação só existia na primeira abertura — quem
+           esquecia como o app funciona, ou queria mostrar para outra
+           pessoa, não tinha para onde voltar (ver abrirBoasVindas em
+           app.js, chamado aqui com revisao=true). -->
+      <button class="btn-linha" id="conta-como-funciona"
+              style="width:100%;margin-top:4px">Como o indiDoc funciona</button>
+
       <button class="btn-linha" id="conta-ver-termo"
-              style="width:100%;margin-top:4px">Ver o que eu aceitei</button>
+              style="width:100%;margin-top:8px">Ver o que eu aceitei</button>
 
       <!-- Encerrar fica no fim, separado e discreto. É o que o termo promete
            ("ou a conta inteira"), e tem de estar alcançável sem ajuda de
@@ -1178,6 +1346,10 @@
     <div id="recorte-area">
       <img id="recorte-img" alt="">
       <div class="marca" id="marca">
+        <div class="lado cima" data-lado="cima"></div>
+        <div class="lado baixo" data-lado="baixo"></div>
+        <div class="lado esquerda" data-lado="esquerda"></div>
+        <div class="lado direita" data-lado="direita"></div>
         <div class="canto tl" data-canto="tl"></div>
         <div class="canto tr" data-canto="tr"></div>
         <div class="canto bl" data-canto="bl"></div>
@@ -1193,8 +1365,8 @@
       Documento em pé numa foto deitada? Toque em <b>Girar</b> — a letra
       fica bem maior.
     </div>
-    Arraste os cantos até sobrar só o documento. Cortar a mesa em volta deixa
-    a letra maior e o arquivo menor.
+    Arraste um lado ou um canto até sobrar só o documento. Cortar a mesa em
+    volta deixa a letra maior e o arquivo menor.
     <div class="recorte-acoes">
       <button id="recorte-girar">↻ Girar</button>
       <button id="recorte-tudo">Usar a foto inteira</button>
@@ -1279,6 +1451,19 @@
      fixo e acima de tudo, resolve para as telas de hoje e as de amanha. -->
 <div id="avisos-cheia"></div>
 
+<!-- Modal de confirmação: um só, reaproveitado por toda ação que hoje
+     pergunta "tem certeza?" (ver confirmarModal em app.js). -->
+<div class="modal-fundo escondido" id="modal-fundo">
+  <div class="modal-cartao">
+    <h3 class="modal-titulo escondido" id="modal-titulo"></h3>
+    <p class="modal-texto" id="modal-texto"></p>
+    <div class="modal-botoes">
+      <button class="modal-cancelar" id="modal-cancelar">Cancelar</button>
+      <button class="modal-confirmar" id="modal-confirmar">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MOSTRAR AO MÉDICO ----------------------------------------------------- -->
 <!-- Duas metades da mesma promessa do termo: "você gera um código dentro do
      aplicativo e o entrega a ele" e "você pode ver, a qualquer momento, quem
@@ -1294,11 +1479,26 @@
   <div class="mostrar-corpo">
     <!-- 1. o código -->
     <div class="cartao-verde">
-      <p class="mv-texto" id="mv-explica">
-        Na consulta, toque no botão e mostre o número ao médico.
-        Ele digita numa página e vê seus documentos — <b>sem senha e sem
-        cadastro</b>. O acesso termina no fim do dia.
-      </p>
+      <!-- Três linhas curtas, cada uma com um ícone, no lugar de um
+           parágrafo corrido: isto é lido com o médico esperando do outro
+           lado da mesa, então precisa dar para escanear rápido, não ler
+           com calma. O texto de antes dizia a mesma coisa em menos linhas
+           visuais, mas em bloco só — aqui cada frase é seu próprio "chunk". -->
+      <div class="mv-passos" id="mv-explica">
+        <div class="mv-passo">
+          <div class="ico">👆</div>
+          <span>Toque no botão abaixo e mostre o número ao médico.</span>
+        </div>
+        <div class="mv-passo">
+          <div class="ico">🔓</div>
+          <span>Ele digita numa página e vê seus documentos — <b>sem senha
+            e sem cadastro</b>.</span>
+        </div>
+        <div class="mv-passo">
+          <div class="ico">⏳</div>
+          <span>O acesso termina sozinho no fim do dia.</span>
+        </div>
+      </div>
       <div class="escondido" id="mv-pronto">
         <div class="mv-codigo" id="mv-codigo">000000</div>
         <div class="mv-prazo" id="mv-prazo"></div>

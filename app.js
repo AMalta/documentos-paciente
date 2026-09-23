@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-19.13";
+const VERSAO_APP = "2026-09-23.1";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -23,6 +23,7 @@ const el = {
   leitura: $("leitura"), leituraIcone: $("leitura-icone"),
   leituraTexto: $("leitura-texto"),
   data: $("data"), salvar: $("btn-salvar"), cancelar: $("btn-cancelar"),
+  duplicata: $("duplicata"), duplicataNome: $("duplicata-nome"),
   filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   lista: $("lista"), sub: $("cabecalho-sub"),
   recentes: $("recentes"), recentesTrilha: $("recentes-trilha"),
@@ -45,12 +46,19 @@ const el = {
   pdfNav: $("pdf-nav"), pdfNavAnterior: $("pdf-nav-anterior"),
   pdfNavTexto: $("pdf-nav-texto"), pdfNavProxima: $("pdf-nav-proxima"),
   pdfMaisPagina: $("btn-pdf-mais-pagina"),
+  modalFundo: $("modal-fundo"), modalTitulo: $("modal-titulo"),
+  modalTexto: $("modal-texto"), modalCancelar: $("modal-cancelar"),
+  modalConfirmar: $("modal-confirmar"), faixaOffline: $("faixa-offline"),
 };
 
 let usuario = null;
 let rascunho = [];        // páginas já preparadas, esperando o "Guardar"
 let documentos = [];
 let naFila = [];     // guardados no celular, ainda sem subir
+// Só a PRIMEIRA carga mostra o skeleton. Nas seguintes (depois de guardar,
+// apagar, trocar de conta…) a lista já tem conteúdo na tela — trocá-lo por
+// blocos cinza a cada vez seria a lista "piscando" sem motivo.
+let primeiraCargaLista = true;
 
 const cp = {
   tituloTela: $("comp-titulo-tela"), cancelar: $("comp-cancelar"),
@@ -133,6 +141,53 @@ function aviso(texto, tipo = "info", titulo = "") {
   return d;
 }
 
+/* ── Modal de confirmação ─────────────────────────────────────────────────
+   Substitui o confirm() nativo do navegador: mesma pergunta, mesmo "espera
+   a resposta antes de continuar", mas no visual do app, não na caixa cinza
+   do sistema. `mensagem` aceita quebras de linha soltas (LINHA), como os
+   textos que já existiam para o confirm() nativo — o CSS (white-space:
+   pre-line) cuida de exibi-las.
+
+   `opcoes.perigo` pinta o botão de confirmar em vermelho, para ações que
+   não voltam atrás (apagar, encerrar conta) — o mesmo sinal visual que o
+   resto do app já usa nesses casos.
+
+   Um modal só, reaproveitado por todo mundo: como cada chamada espera a
+   anterior fechar (é sempre `await`), não há disputa por ele. */
+function confirmarModal(mensagem, opcoes = {}) {
+  const { titulo = "", textoConfirmar = "Confirmar",
+          textoCancelar = "Cancelar", perigo = false } = opcoes;
+  return new Promise((resolve) => {
+    el.modalTitulo.classList.toggle("escondido", !titulo);
+    el.modalTitulo.textContent = titulo;
+    el.modalTexto.textContent = mensagem;
+    el.modalCancelar.textContent = textoCancelar;
+    el.modalConfirmar.textContent = textoConfirmar;
+    el.modalConfirmar.classList.toggle("perigo", perigo);
+    el.modalFundo.classList.remove("escondido");
+
+    const fechar = (resultado) => {
+      el.modalFundo.classList.add("escondido");
+      el.modalConfirmar.onclick = null;
+      el.modalCancelar.onclick = null;
+      el.modalFundo.onclick = null;
+      document.removeEventListener("keydown", teclado);
+      resolve(resultado);
+    };
+    const teclado = (e) => {
+      if (e.key === "Escape") fechar(false);
+      else if (e.key === "Enter") fechar(true);
+    };
+    el.modalConfirmar.onclick = () => fechar(true);
+    el.modalCancelar.onclick = () => fechar(false);
+    // Tocar fora do cartão cancela — o mesmo gesto que fecha qualquer
+    // outra caixa flutuante do app.
+    el.modalFundo.onclick = (e) => { if (e.target === el.modalFundo) fechar(false); };
+    document.addEventListener("keydown", teclado);
+  });
+}
+
+
 // Selo de "guardado": o único reforço visual forte do app, e por isso
 // reservado só para o momento que mais precisa de confirmação clara — o
 // documento foi guardado de verdade. `celebrarTimer` corta uma chamada
@@ -180,6 +235,11 @@ function explicar(erro) {
 }
 function limparAvisos() {
   el.avisos.innerHTML = "";
+  // Inclusive o da CONTA: `aviso()` manda para ca quando o painel esta
+  // aberto, e sem limpar aqui cada tentativa de reenviar o codigo
+  // empilhava mais uma linha vermelha sobre a anterior.
+  const c = document.getElementById("avisos-conta");
+  if (c) c.innerHTML = "";
   const m = document.getElementById("avisos-mostrar");
   if (m) m.innerHTML = "";
   const cheia = document.getElementById("avisos-cheia");
@@ -443,7 +503,8 @@ function posicionar(x, y, l, a) {
 
   const comeco = (e) => {
     const canto = e.target.dataset.canto;
-    modo = canto || "mover";
+    const lado = e.target.dataset.lado;
+    modo = canto || lado || "mover";
     const r = el.marca.getBoundingClientRect();
     const area = el.recorteArea.getBoundingClientRect();
     ini = { px: e.clientX, py: e.clientY,
@@ -460,6 +521,13 @@ function posicionar(x, y, l, a) {
     else if (modo === "tr") posicionar(ini.x, ini.y + dy, ini.l + dx, ini.a - dy);
     else if (modo === "bl") posicionar(ini.x + dx, ini.y, ini.l - dx, ini.a + dy);
     else if (modo === "br") posicionar(ini.x, ini.y, ini.l + dx, ini.a + dy);
+    // Lados: mexem em UM eixo só, na direção que a própria barra indica —
+    // é o ajuste fino que faltava, sem "puxar" a dimensão perpendicular
+    // junto (o problema de usar só cantos para tudo).
+    else if (modo === "cima") posicionar(ini.x, ini.y + dy, ini.l, ini.a - dy);
+    else if (modo === "baixo") posicionar(ini.x, ini.y, ini.l, ini.a + dy);
+    else if (modo === "esquerda") posicionar(ini.x + dx, ini.y, ini.l - dx, ini.a);
+    else if (modo === "direita") posicionar(ini.x, ini.y, ini.l + dx, ini.a);
     e.preventDefault();
   };
 
@@ -538,6 +606,7 @@ function desenharRascunho() {
   el.formContagem.textContent = rascunho.length > 1
     ? rascunho.length + " páginas" : "";
   el.formDica.classList.toggle("escondido", dicaPaginasVista);
+  verificarDuplicata();
 }
 
 function cancelar() {
@@ -547,7 +616,16 @@ function cancelar() {
   el.fotografar.classList.remove("escondido");
   el.pdfBotao.classList.remove("escondido");
   el.nome.value = "";
+  // Tipo e data tambem, e nao so o nome: `el.camera.onchange` so escreve
+  // hoje `if (!el.data.value)`, entao a data que sobrasse aqui seria
+  // herdada pelo documento SEGUINTE — apresentada como se a pessoa a
+  // tivesse escolhido para ele. E a data e justamente o campo que este
+  // app ja sabe que ninguem confere quando parece plausivel (ver o
+  // comentario de duas linhas em lerDocumento).
+  el.tipo.value = "exame";
+  el.data.value = "";
   el.camera.value = "";
+  el.duplicata.classList.add("escondido");
   leituraPedido++;          // invalida resposta em voo
   leituraCalar();
 }
@@ -567,9 +645,19 @@ function cancelar() {
       trabalho feito, e é o tipo de coisa que ninguém perdoa duas vezes.
    3. SÓ A PRIMEIRA PÁGINA. Um laudo de dez folhas tem o cabeçalho na
       primeira; ler as dez gastaria dez vezes a cota para repetir a resposta.
-   4. FALHA EM SILÊNCIO. Sem internet, sem cota, função fora do ar: o aviso
-      some e o formulário fica como sempre foi. Erro vermelho transformaria
-      uma comodidade ausente em aplicativo quebrado.
+   4. FALHA SEM ASSUSTAR. Sem internet, sem cota, função fora do ar: a mesma
+      caixa discreta que disse "Lendo o documento…" passa a dizer que não
+      deu, pede os campos e oferece 🔁 Tentar de novo. Nunca o vermelho de
+      `.aviso.erro`, nunca bloqueando o formulário — erro vermelho
+      transformaria uma comodidade ausente em aplicativo quebrado.
+
+      Até 21/09 esta regra dizia SILÊNCIO: o aviso sumia e pronto. Estava
+      errada, e o próprio código já discordava dela logo abaixo, no ramo do
+      offline. Silêncio só é neutro quando nada foi prometido, e aqui a tela
+      ACABOU de anunciar que estava lendo, com o livrinho piscando: some-lo
+      deixa a pessoa sem saber se espera mais ou se começa a digitar. O que
+      a regra protege é contra ASSUSTAR, não contra avisar — e disso cuida
+      o lugar da mensagem (a caixa cinza da leitura), não o silêncio.
 
    A DATA continua sendo a de HOJE quando a leitura não vem — era assim
    antes e continua sendo. A diferença é que agora a sugestão pode
@@ -582,14 +670,49 @@ let leituraPodeEscrever = {};
 let leituraPedido = 0;   // descarta resposta de uma foto já cancelada
 
 function leituraSoltar(campo) { leituraPodeEscrever[campo] = false; }
-el.nome.addEventListener("input", () => leituraSoltar("nome"));
+el.nome.addEventListener("input", () => { leituraSoltar("nome"); verificarDuplicata(); });
 el.data.addEventListener("input", () => {
   leituraSoltar("data");
   // Mexeu na data: a marca some. Ela quer dizer "voce ainda nao olhou
   // isto", nao "isto esta errado" — e quem digitou por cima ja olhou.
   el.data.classList.remove("conferir");
+  verificarDuplicata();
 });
-el.tipo.addEventListener("change", () => leituraSoltar("tipo"));
+el.tipo.addEventListener("change", () => { leituraSoltar("tipo"); verificarDuplicata(); });
+
+/* ── Duplicidade, verificada CEDO ─────────────────────────────────────────
+   Antes, só se sabia que o documento já existia ao tocar em "Guardar" —
+   depois de fotografar tudo e preencher o formulário inteiro. Tarde demais:
+   a pessoa fazia o trabalho todo para descobrir, só no fim, que já tinha
+   aquele exame guardado.
+
+   `encontrarDuplicata` é a mesma checagem de sempre (mesmo nome + mesma
+   data, em qualquer origem — já guardado ou ainda na fila de envio), agora
+   extraída para uma função só, usada tanto aqui quanto no gate final de
+   `guardar()`. Só compara quando há data, pelo mesmo motivo de antes: nome
+   batendo sem data é comum demais para servir de aviso.
+
+   `verificarDuplicata` roda a cada mudança em nome/tipo/data E depois que a
+   leitura automática preenche os campos sozinha (ver `sugerir`) — porque
+   preencher `.value` por código não dispara o evento "input" dos campos, e
+   sem essa chamada extra o aviso nunca apareceria para quem deixou a
+   leitura escrever por ela. */
+function encontrarDuplicata(nome, data) {
+  if (!data) return null;
+  const normalizar = (s) => (s || "").normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  return [...documentos, ...naFila].find((d) =>
+    normalizar(d.nome) === normalizar(nome) && d.data_documento === data) || null;
+}
+
+function verificarDuplicata() {
+  const nome = (el.nome.value || "").trim() || ROTULOS[el.tipo.value];
+  const data = el.data.value || null;
+  const dup = encontrarDuplicata(nome, data);
+  el.duplicataNome.textContent = dup ? `"${dup.nome || nome}"` : "";
+  el.duplicata.classList.toggle("escondido", !dup);
+  return dup;
+}
 
 function leituraDizer(texto, lendo) {
   el.leitura.classList.remove("escondido");
@@ -676,6 +799,8 @@ async function lerDocumento(blob) {
       return;
     }
 
+    verificarDuplicata();   // .value por código não dispara "input" sozinho
+
     const lista = postos.length > 1
       ? postos.slice(0, -1).join(", ") + " e " + postos[postos.length - 1]
       : postos[0];
@@ -717,25 +842,22 @@ async function lerDocumento(blob) {
    As páginas têm FK para o documento, então tentá-las antes só geraria
    pendência solta. Falhando o documento, nada sobe.                          */
 async function guardar() {
-  if (!rascunho.length) return;
+  if (!rascunho.length) return false;
 
   const nomeNovo = (el.nome.value || "").trim() || ROTULOS[el.tipo.value];
   const dataNova = el.data.value || null;
 
-  // Duplicidade: mesmo nome + mesma data, em QUALQUER origem (foto ou PDF),
-  // já guardado (documentos) ou ainda na fila de envio (naFila). Só compara
-  // quando há data — nome batendo sem data é comum demais (dois exames sem
-  // data preenchida) e um aviso ali seria ruído, não ajuda.
-  if (dataNova) {
-    const normalizar = (s) => (s || "").normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-    const jaExiste = [...documentos, ...naFila].some((d) =>
-      normalizar(d.nome) === normalizar(nomeNovo) && d.data_documento === dataNova);
-    if (jaExiste) {
-      const seguir = confirm(`Você já tem um documento chamado "${nomeNovo}" `
-        + `com a data ${dataBR(dataNova)}. Guardar mesmo assim?`);
-      if (!seguir) return;
-    }
+  // Duplicidade: a mesma checagem de `verificarDuplicata` (ver o comentário
+  // lá), agora como confirmação de verdade antes de gravar — não só um
+  // aviso que dava para ignorar sem querer. A pessoa já deve ter visto o
+  // aviso no formulário a esta altura; isto aqui é o último freio, para
+  // quem preencheu tudo rápido sem reparar nele.
+  const duplicata = encontrarDuplicata(nomeNovo, dataNova);
+  if (duplicata) {
+    const seguir = await confirmarModal(`Você já tem um documento chamado "${nomeNovo}" `
+      + `com a data ${dataBR(dataNova)}. Guardar mesmo assim?`,
+      { textoConfirmar: "Guardar mesmo assim" });
+    if (!seguir) return false;
   }
 
   el.salvar.disabled = true;
@@ -765,7 +887,7 @@ async function guardar() {
         + "libere espaço e tente de novo.", "erro", "Documento não guardado");
     el.salvar.disabled = false;
     el.salvar.textContent = "Guardar documento";
-    return;
+    return false;
   }
 
   marcarDicaPaginasVista();
@@ -786,6 +908,7 @@ async function guardar() {
   await carregar();
   await enviarFila();
   convidarAProteger();
+  return true;
 }
 
 
@@ -865,8 +988,21 @@ function quandoBR(iso) {
 /* A lista mostra SÓ quem chegou a abrir. Código gerado e não usado não é
    acesso — é papel rasgado, e enchê-la deles faria a pessoa parar de olhar
    justamente a lista que precisa olhar. */
+/* Mesmo espírito do skeleton da lista principal (ver desenharEsqueletoLista):
+   2 blocos bastam aqui, porque a lista de quem abriu o acervo raramente
+   tem mais que isso, e o card inteiro é pequeno. */
+function desenharEsqueletoAcessos(qtd = 2) {
+  mv.acessos.innerHTML = "";
+  for (let i = 0; i < qtd; i++) {
+    const div = document.createElement("div");
+    div.className = "esqueleto-acesso";
+    div.innerHTML = `<div class="bloco linha1"></div><div class="bloco linha2"></div>`;
+    mv.acessos.appendChild(div);
+  }
+}
+
 async function listarAcessos() {
-  mv.acessos.innerHTML = '<div class="mv-nenhum">Carregando…</div>';
+  desenharEsqueletoAcessos();
   const { data, error } = await sb.from("liberacoes")
     .select("id, medico_nome, medico_crm, usado_em, expira_em, revogado_em")
     .not("usado_em", "is", null)
@@ -890,8 +1026,8 @@ async function listarAcessos() {
       : vivo ? "pode ver até " + horaBR(a.expira_em) : "acesso encerrado";
     div.innerHTML = `
       <div class="quem">
-        <div class="nome">${a.medico_nome || "Médico não identificado"}${
-          a.medico_crm ? " · CRM " + a.medico_crm : ""}</div>
+        <div class="nome">${escaparHTML(a.medico_nome || "Médico não identificado")}${
+          a.medico_crm ? " · CRM " + escaparHTML(a.medico_crm) : ""}</div>
         <div class="quando">Abriu em ${quandoBR(a.usado_em)} · ${estado}</div>
       </div>`;
     if (vivo) {
@@ -906,9 +1042,10 @@ async function listarAcessos() {
 }
 
 async function revogar(a) {
-  if (!confirm(`Cancelar o acesso de ${a.medico_nome || "este médico"}?`
+  if (!await confirmarModal(`Cancelar o acesso de ${a.medico_nome || "este médico"}?`
                + LINHA + LINHA
-               + "Ele deixa de ver seus documentos imediatamente.")) return;
+               + "Ele deixa de ver seus documentos imediatamente.",
+               { textoConfirmar: "Cancelar acesso" })) return;
   // `update`, nunca `delete`: a linha é o registro de consentimento, e a
   // prova de que alguém viu não pode sumir porque o acesso acabou. É por
   // isso que `liberacoes` não tem política de exclusão.
@@ -989,6 +1126,16 @@ async function enviarFila() {
 // é reaberto, e a espera longa com o app na tela.
 window.addEventListener("online", () => { enviarFila(); sincronizarAgenda(); });
 setInterval(() => { if (navigator.onLine) { enviarFila(); sincronizarAgenda(); } }, 60000);
+
+/* ── Faixa "sem conexão" ───────────────────────────────────────────────────
+   `online`/`offline` do navegador cobrem a troca de rede em si; falta o
+   caso de abrir o app já sem internet, por isso a chamada extra na
+   partida (ver a IIFE final do arquivo). */
+function atualizarFaixaOffline() {
+  el.faixaOffline.classList.toggle("escondido", navigator.onLine);
+}
+window.addEventListener("online", atualizarFaixaOffline);
+window.addEventListener("offline", atualizarFaixaOffline);
 
 /* Convite para guardar o acesso, no único momento em que ele faz sentido:
    logo depois do primeiro documento salvo. Aparece uma vez por sessão e
@@ -1089,12 +1236,12 @@ function desenharAgenda() {
     const f = comoFalta(diasAte(c.quando));
     const div = document.createElement("div");
     div.className = "comp " + f.urgencia;
-    const detalhes = [dataBR(c.quando), c.hora || "", c.onde || ""]
+    const detalhes = [dataBR(c.quando), escaparHTML(c.hora || ""), escaparHTML(c.onde || "")]
       .filter(Boolean).join(" · ");
     div.innerHTML = `
       <div class="txt">
         <div class="quando">${f.texto}</div>
-        <div class="nome">${c.titulo}</div>
+        <div class="nome">${escaparHTML(c.titulo)}</div>
         <div class="det">${ROTULO_TIPO[c.tipo] || ""}${detalhes ? " · " + detalhes : ""}</div>
       </div>`;
     // Só o que já passou ou é HOJE ganha "Já foi". A urgência não serve para
@@ -1120,8 +1267,9 @@ async function marcarFeito(c) {
   await salvarCompromisso({ ...c, feito_em: new Date().toISOString() });
   if (!c.repetir_meses) return aviso("Marcado como feito.", "ok");
   const proxima = somarMeses(c.quando, c.repetir_meses);
-  if (confirm(`Marcar o próximo "${c.titulo}" para ${dataBR(proxima)}?`
-              + LINHA + LINHA + "Você pode mudar a data depois.")) {
+  if (await confirmarModal(`Marcar o próximo "${c.titulo}" para ${dataBR(proxima)}?`
+              + LINHA + LINHA + "Você pode mudar a data depois.",
+              { textoConfirmar: "Marcar" })) {
     await salvarCompromisso({
       id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
       paciente_id: usuario.id, tipo: c.tipo, titulo: c.titulo,
@@ -1205,7 +1353,8 @@ cp.salvar.onclick = async () => {
 };
 cp.apagar.onclick = async () => {
   if (!compEditando) return;
-  if (!confirm(`Apagar "${compEditando.titulo}"?`)) return;
+  if (!await confirmarModal(`Apagar "${compEditando.titulo}"?`,
+      { textoConfirmar: "Apagar", perigo: true })) return;
   await apagarCompromisso(compEditando.id);
   fecharCompromisso();
 };
@@ -1396,7 +1545,8 @@ async function apagarDocumento(doc) {
   const aviso1 = `Apagar "${nome}"${quantas > 1 ? ` e suas ${quantas} páginas` : ""}?`;
   const aviso2 = `Isto não pode ser desfeito. Se você tem o papel original, `
     + `ele continua com você — some apenas a cópia guardada aqui.`;
-  if (!confirm(aviso1 + LINHA + LINHA + aviso2)) return false;
+  if (!await confirmarModal(aviso1 + LINHA + LINHA + aviso2,
+      { textoConfirmar: "Apagar", perigo: true })) return false;
 
   if (!navigator.onLine) {
     aviso("Apagar um documento guardado precisa de internet — ele "
@@ -1436,7 +1586,8 @@ async function apagarDocumento(doc) {
    guardado tem. */
 async function apagarEntradaPendente(entrada) {
   const nome = entrada.nome || ROTULOS[entrada.tipo] || "este documento";
-  if (!confirm(`Apagar "${nome}"? Ainda não terminou de enviar.`)) return false;
+  if (!await confirmarModal(`Apagar "${nome}"? Ainda não terminou de enviar.`,
+      { textoConfirmar: "Apagar", perigo: true })) return false;
   await FilaDB.remover(entrada.id);
   if (visuOrigem === "pendente" && visuEntrada && visuEntrada.id === entrada.id) {
     el.visuFechar.click();
@@ -1546,6 +1697,12 @@ function abrirPendente(entrada) {
 
 /* ── Lista ────────────────────────────────────────────────────────────── */
 async function carregar() {
+  // Skeleton só entra ANTES da primeira resposta chegar, e só na primeira
+  // carga (ver `primeiraCargaLista`) — é a única vez que a lista está
+  // realmente vazia na tela, então é a única vez que blocos cinza substituem
+  // "nada" em vez de substituir documentos que a pessoa já via.
+  if (primeiraCargaLista) desenharEsqueletoLista();
+
   // A FILA PRIMEIRO, e sem depender da rede. Lendo o servidor antes e
   // desistindo no erro, era exatamente sem internet — quando a fila importa —
   // que ela deixava de ser desenhada: a tela congelava no estado anterior e o
@@ -1565,6 +1722,7 @@ async function carregar() {
   else documentos = data || [];
 
   await lerConsumo();
+  primeiraCargaLista = false;
   desenharLista();
   // A agenda anda junto da lista, e nao numa chamada propria: sao os mesmos
   // tres momentos (abrir, voltar a conexao, o minuto) e um so lugar para
@@ -1642,6 +1800,10 @@ function tornarDeslizavel(wrap, alvo, origem) {
     inicioX = e.clientX;
     inicioTranslado = wrap.dataset.aberto === "esq" ? LIMITE
                     : wrap.dataset.aberto === "dir" ? -LIMITE : 0;
+    // Comeca de onde o cartao esta, e nao de onde o dedo ANTERIOR parou:
+    // `soltar` le `atual`, e um toque limpo (sem pointermove nenhum, como
+    // o de tocar nos botoes de tras) decidia com o resto do gesto passado.
+    atual = inicioTranslado;
     cartao.style.transition = "none";
     try { wrap.setPointerCapture(e.pointerId); } catch (err) { /* ignora */ }
   });
@@ -1713,7 +1875,7 @@ function marcarDicaDeslizarVista() {
 }
 
 function inserirDicaDeslizar() {
-  if (dicaDeslizarVista) return;
+  if (dicaDeslizarVista || document.getElementById("dica-deslizar")) return;
   const d = document.createElement("div");
   d.className = "dica-deslizar";
   d.id = "dica-deslizar";
@@ -1723,7 +1885,13 @@ function inserirDicaDeslizar() {
       <b>compartilhar</b> ou <b>apagar</b></span>
     <button type="button" class="dica-deslizar-ok">Entendi</button>`;
   d.querySelector("button").onclick = marcarDicaDeslizarVista;
-  el.lista.appendChild(d);
+  // FORA de `#lista`, e nao como primeiro filho dela. `#lista` e a lista de
+  // DOCUMENTOS, e quem a percorre — aqui e nos testes — espera achar um
+  // cartao em cada filho; um balao no meio rebenta no primeiro
+  // `.querySelector('.nome')` que voltar nulo. Na tela nao muda nada: ela
+  // fica encostada logo acima, com a seta do balao apontando pra baixo.
+  // Era assim que a dica anterior vivia, declarada no proprio HTML.
+  el.lista.parentNode.insertBefore(d, el.lista);
 
   // Empurrãozinho no primeiro cartão visível: uma vez por sessão.
   if (empurraoFeito) return;
@@ -1776,7 +1944,16 @@ function pintarCorpo() {
     alvo.classList.toggle("ativa", regiaoAtiva === r.id);
     // Regiao sem documento sai do alcance do toque e do leitor de tela:
     // botao que nao faz nada e pior que botao ausente.
-    if (alvo.getAttribute("aria-hidden") !== "true" || alvos.length === 1) {
+    //
+    // Quem manda aqui e o `role="button"` do HTML, e nao o aria-hidden do
+    // momento: os espelhos (o outro braco, a outra perna) e os retangulos
+    // de alcance nascem sem role e nunca devem ganhar foco. Testar o
+    // aria-hidden ATUAL travava o elemento de verdade — bastava a regiao
+    // ficar sem documento uma vez (aria-hidden passa a "true") para a
+    // volta dela cair no mesmo teste e ser tratada como espelho. Ela
+    // acendia e respondia ao toque, mas ficava invisivel para o teclado e
+    // para o leitor de tela, sem nada na tela denunciando.
+    if (alvo.getAttribute("role") === "button") {
       alvo.setAttribute("aria-hidden", tem ? "false" : "true");
       alvo.setAttribute("tabindex", tem ? "0" : "-1");
     }
@@ -1893,6 +2070,27 @@ function alternarRegiao(id) {
   desenharLista();
 }
 
+/* ── Skeleton da lista (só na primeira carga) ─────────────────────────────
+   Blocos cinza pulsando no lugar dos cartões de documento, com a mesma
+   moldura do `.doc` (ver CSS), enquanto a primeira resposta do servidor não
+   chega. O objetivo é só a sensação de "já está acontecendo algo" — troca
+   pelo conteúdo de verdade assim que `desenharLista` roda pela primeira
+   vez, sem esperar nada além disso. */
+function desenharEsqueletoLista(qtd = 4) {
+  el.lista.innerHTML = "";
+  for (let i = 0; i < qtd; i++) {
+    const div = document.createElement("div");
+    div.className = "esqueleto";
+    div.innerHTML = `
+      <div class="bloco capa"></div>
+      <div class="txt">
+        <div class="bloco linha1"></div>
+        <div class="bloco linha2"></div>
+      </div>`;
+    el.lista.appendChild(div);
+  }
+}
+
 function desenharLista() {
   const tipo = el.filtroTipo.value;
   const ordem = el.filtroOrdem.value;
@@ -1923,20 +2121,65 @@ function desenharLista() {
     (!tipo || e.tipo === tipo) && casaBusca(e, termos) && naRegiao(e));
 
   if (!lista.length && !pend.length) {
-    // Tres situacoes diferentes, tres respostas. Dizer "nenhum documento"
-    // para quem acabou de digitar uma palavra faz pensar que o acervo sumiu.
+    // Nomes legiveis de cada filtro LIGADO agora, na ordem em que aparecem
+    // na tela: tipo, depois regiao do corpo (com sub-assunto junto, se
+    // houver). A busca por texto entra separada, porque ja tem frase
+    // propria ("Nada encontrado para X") — aqui ela so soma ao combinado
+    // quando outro filtro tambem esta ligado.
+    const nomesFiltro = [];
+    if (tipo) nomesFiltro.push(ROTULOS[tipo]);
+    if (regiaoAtiva) {
+      const r = REGIOES.find((x) => x.id === regiaoAtiva);
+      let rotulo = (r && r.rotulo) || "";
+      const s = subAtivo && r && r.sub && r.sub.find((x) => x.id === subAtivo);
+      if (s) rotulo += " › " + s.rotulo;
+      if (rotulo) nomesFiltro.push(rotulo);
+    }
+    const combinados = termos.length
+      ? [`“${escaparHTML(el.busca.value)}”`, ...nomesFiltro] : nomesFiltro.slice();
+
+    // Duas situacoes diferentes, tres respostas — mas quando DOIS FILTROS OU
+    // MAIS estao ligados ao mesmo tempo (ex.: tipo "Receita" + regiao
+    // "Tórax"), a frase antiga so citava a busca de texto e ignorava o
+    // resto, ou caia no generico "esse filtro" (singular) sem dizer QUAIS.
+    // Quem via aquilo nao sabia se soltava o tipo, a regiao ou os dois.
+    // Agora cada filtro ligado entra na frase, entao a pessoa sabe
+    // exatamente o que esta zerando a lista.
     let texto;
-    if (termos.length) {
-      texto = `Nada encontrado para <b>${el.busca.value}</b>.`
+    if (combinados.length >= 2) {
+      texto = `Nada encontrado para ${combinados.map((n) => `<b>${n}</b>`).join(" + ")}.`
+            + `<br><span style="font-size:13px">Tente soltar um dos filtros.</span>`;
+    } else if (termos.length) {
+      texto = `Nada encontrado para <b>${escaparHTML(el.busca.value)}</b>.`
             + `<br><span style="font-size:13px">Procure por parte do nome, `
             + `pelo tipo (“receita”) ou pelo ano.</span>`;
+    } else if (nomesFiltro.length) {
+      texto = `Nenhum documento em <b>${nomesFiltro[0]}</b>.`;
     } else if (documentos.length || naFila.length) {
       texto = "Nenhum documento com esse filtro.";
     } else {
       texto = "Ainda não há nada guardado.<br>Comece fotografando um exame.";
     }
+
+    // So mostra "limpar filtros" quando ha o que limpar — na lista
+    // realmente vazia (acervo zerado) o botao nao teria o que fazer.
+    const temFiltro = combinados.length > 0;
+    // A dica agora mora FORA de `#lista` (ver inserirDicaDeslizar), entao
+    // limpar a lista nao a leva junto: sem isto ela sobreviveria a uma
+    // busca sem resultado, ensinando a deslizar cartao que nao existe.
+    const dicaAberta = document.getElementById("dica-deslizar");
+    if (dicaAberta) dicaAberta.remove();
     el.lista.innerHTML = `<div class="vazio"><div class="icone">${
-      termos.length ? "🔎" : "🗂️"}</div><p>${texto}</p></div>`;
+      termos.length ? "🔎" : "🗂️"}</div><p>${texto}</p>${
+      temFiltro ? `<button class="ver-todos" id="vazio-limpar">✕ limpar filtros</button>` : ""}</div>`;
+    if (temFiltro) {
+      document.getElementById("vazio-limpar").onclick = () => {
+        el.filtroTipo.value = "";
+        el.busca.value = "";
+        regiaoAtiva = null; subAtivo = null;
+        desenharLista();
+      };
+    }
     return;
   }
 
@@ -1948,9 +2191,9 @@ function desenharLista() {
   // ação a quem não pode agir só gera ansiedade.
   for (const e of pend) el.lista.appendChild(cartaoPendente(e));
 
-  if (ordem === "exame") { desenharAgrupadoApp(lista); return; }
-  if (ordem === "tipo") { desenharPorTipoApp(lista); return; }
-  for (const d of lista) el.lista.appendChild(cartaoDoc(d));
+  if (ordem === "exame") desenharAgrupadoApp(lista);
+  else if (ordem === "tipo") desenharPorTipoApp(lista);
+  else for (const d of lista) el.lista.appendChild(cartaoDoc(d));
 }
 
 /* ── "Recentes", fixo em cima, IGNORANDO filtro/busca/corpo ─────────────────
@@ -1962,7 +2205,14 @@ function desenharLista() {
 
    Só documentos JÁ guardados (não os pendentes): o pendente já aparece bem
    em cima da lista, com a própria faixa de "enviando…" — repeti-lo aqui
-   diria a mesma coisa duas vezes em lugares diferentes. */
+   diria a mesma coisa duas vezes em lugares diferentes.
+
+   MAS só vale a pena existir quando ela DIVERGE do topo da lista — com tudo
+   em "Todos os tipos" / "Mais recentes" e sem busca nem região tocada (o
+   estado em que a pessoa abre o app), os 3 documentos daqui são os MESMOS
+   3 que já nascem no topo da lista, na mesma ordem: a faixa duplicava o
+   que a pessoa já estava vendo um dedo abaixo. Some nesse caso; volta a
+   aparecer assim que algum filtro muda o que a lista mostra primeiro. */
 function desenharRecentes() {
   // Guarda defensiva: se este HTML nao tiver o bloco #recentes (por exemplo,
   // um deploy que atualizou o app.js sem levar junto o index.html mais
@@ -1974,6 +2224,10 @@ function desenharRecentes() {
   // exatamente esse encadeamento que apagou corpo+filtros+lista de uma vez
   // só, apesar de nenhum dos tres ter, sozinho, nada de errado.
   if (!el.recentes || !el.recentesTrilha) return;
+
+  const semFiltro = !el.filtroTipo.value && !regiaoAtiva
+    && el.filtroOrdem.value === "recente" && !termosDaBusca().length;
+  if (semFiltro) { el.recentes.classList.add("escondido"); return; }
 
   const N = 3;
   const recentes = documentos.slice()
@@ -1991,7 +2245,7 @@ function desenharRecentes() {
     b.className = "recente";
     b.innerHTML = `
       <div class="capa">${ICONES[d.tipo] || "📎"}</div>
-      <div class="nome">${d.nome || ROTULOS[d.tipo]}</div>
+      <div class="nome">${escaparHTML(d.nome || ROTULOS[d.tipo])}</div>
       <div class="meta">${dataBR(d.data_documento || d.criado_em)}
         ${paginas.length > 1 ? " · " + paginas.length + " pág." : ""}</div>
       <div class="selo">✓ guardado</div>`;
@@ -2013,7 +2267,7 @@ function cartaoDoc(d) {
     div.innerHTML = `
       <div class="capa">${ICONES[d.tipo] || "📎"}</div>
       <div class="txt">
-        <div class="nome">${d.nome || ROTULOS[d.tipo]}</div>
+        <div class="nome">${escaparHTML(d.nome || ROTULOS[d.tipo])}</div>
         <div class="meta">${ROTULOS[d.tipo]} · ${dataBR(d.data_documento || d.criado_em)}
           ${paginas.length > 1 ? " · " + paginas.length + " páginas" : ""}</div>
       </div>
@@ -2032,7 +2286,7 @@ function cartaoPendente(e) {
   div.innerHTML = `
     <div class="capa">${ICONES[e.tipo] || "📎"}</div>
     <div class="txt">
-      <div class="nome">${e.nome || ROTULOS[e.tipo]}</div>
+      <div class="nome">${escaparHTML(e.nome || ROTULOS[e.tipo])}</div>
       <div class="meta">${ROTULOS[e.tipo]} · ${dataBR(e.data_documento || e.criado_em)}
         ${e.paginas.length > 1 ? " · " + e.paginas.length + " páginas" : ""}</div>
       <div class="fila">${navigator.onLine ? "⏳ enviando…"
@@ -2068,7 +2322,7 @@ function desenharAgrupadoApp(lista) {
       <div class="grupo-seta" aria-hidden="true">▸</div>
       <div class="capa">${ICONES[g.docs[0].tipo] || "📎"}</div>
       <div class="txt">
-        <div class="nome">${g.nome}</div>
+        <div class="nome">${escaparHTML(g.nome)}</div>
         <div class="meta">${resumoDoGrupo(g)}</div>
       </div>`;
     el.lista.appendChild(cab);
@@ -2099,8 +2353,15 @@ function desenharAgrupadoApp(lista) {
    espécie acaba e a outra começa.
 
    Faixa e não grupo que abre: são quatro ou cinco espécies, e fechá-las
-   esconderia o acervo inteiro atrás de cinco linhas. */
+   esconderia o acervo inteiro atrás de cinco linhas.
+
+   EXCEÇÃO: com o filtro de tipo já travado numa categoria (select
+   "filtro-tipo" em "Receitas", por exemplo), `lista` só tem receita — e
+   pintar aqui uma faixa "Receitas (n)" repetiria, uma linha abaixo, o que o
+   próprio select já diz. A faixa some só nesse caso; com "Todos os tipos"
+   ela continua separando as espécies como sempre. */
 function desenharPorTipoApp(lista) {
+  const pularFaixa = !!el.filtroTipo.value;
   const ORDEM_TIPOS = ["exame", "laudo", "receita", "relatorio", "outro"];
   const porTipo = new Map();
   for (const d of lista) {
@@ -2115,12 +2376,14 @@ function desenharPorTipoApp(lista) {
     const docs = porTipo.get(t).sort((a, b) =>
       String(b.data_documento || b.criado_em)
         .localeCompare(String(a.data_documento || a.criado_em)));
-    const faixa = document.createElement("div");
-    faixa.className = "secao";
-    faixa.innerHTML = `<span class="secao-nome">${(ROTULOS[t] || t)}`
-                    + `${docs.length > 1 ? "s" : ""}</span>`
-                    + `<span class="secao-n">${docs.length}</span>`;
-    el.lista.appendChild(faixa);
+    if (!pularFaixa) {
+      const faixa = document.createElement("div");
+      faixa.className = "secao";
+      faixa.innerHTML = `<span class="secao-nome">${(ROTULOS[t] || t)}`
+                      + `${docs.length > 1 ? "s" : ""}</span>`
+                      + `<span class="secao-n">${docs.length}</span>`;
+      el.lista.appendChild(faixa);
+    }
     for (const d of docs) el.lista.appendChild(cartaoDoc(d));
   }
 }
@@ -2363,6 +2626,7 @@ async function abrirPaginaPdf(indice) {
     el.pdfBotao.classList.add("escondido");
     el.data.value = hojeISO();
     el.nome.value = "";
+    el.tipo.value = "exame";
     desenharRascunho();
     atualizarBotaoMaisPagina();
     leituraPodeEscrever = { nome: true, data: true, tipo: true };
@@ -2533,8 +2797,16 @@ function mostrarFaixa() {
   bv.faixa.classList.remove("escondido");
 }
 
-function abrirBoasVindas() {
+/* `revisao=true` é como a tela abre a partir de "Minha conta" (ver
+   ct.comoFunciona.onclick), fora da primeira visita: a pessoa já tem
+   conta, então "Já usei antes em outro celular" — que dispara a
+   recuperação de acesso — não faz sentido aqui e some; o botão de
+   fechar troca de "Começar agora" para "Entendi", porque não há nada
+   para começar, só para rever. */
+function abrirBoasVindas(revisao = false) {
   bv.tela.classList.remove("escondido");
+  bv.comecar.textContent = revisao ? "Entendi" : "Começar agora";
+  $("bv-voltar").classList.toggle("escondido", revisao);
   /* TRÊS CAMINHOS, e o terceiro faltava.
 
      Com o convite do navegador, o botão. No iPhone, que nunca oferece, as
@@ -2669,7 +2941,7 @@ const ct = {
   email: $("conta-email"), enviar: $("conta-enviar"), eco: $("conta-email-eco"),
   codigo: $("conta-codigo"), confirmar: $("conta-confirmar"), voltar: $("conta-voltar"),
   emailAtual: $("conta-email-atual"), sair: $("conta-sair"),
-  encerrar: $("conta-encerrar"),
+  encerrar: $("conta-encerrar"), comoFunciona: $("conta-como-funciona"),
   bvVoltar: $("bv-voltar"),
 };
 
@@ -2746,9 +3018,10 @@ async function enviarCodigo() {
       // Trazer de volta um acervo que já existe. Se houver documentos nesta
       // sessão anônima, eles ficam para trás — avisa antes, não depois.
       if (documentos.length) {
-        const ok = confirm(`Você tem ${documentos.length} documento(s) guardado(s) `
+        const ok = await confirmarModal(`Você tem ${documentos.length} documento(s) guardado(s) `
           + "neste celular que ainda não estão ligados a e-mail nenhum. Ao entrar "
-          + "com outra conta, eles deixam de aparecer aqui. Deseja continuar?");
+          + "com outra conta, eles deixam de aparecer aqui. Deseja continuar?",
+          { textoConfirmar: "Continuar" });
         if (!ok) throw new Error("cancelado");
       }
       // Com CAPTCHA ligado no Supabase, TODA porta de entrada passa a exigir
@@ -2813,6 +3086,7 @@ async function confirmarCodigo() {
 ct.botao.onclick = () => abrirConta(false);
 ct.bvVoltar.onclick = () => { fecharBoasVindas(); abrirConta(true); };
 ct.fechar.onclick = () => ct.tela.classList.add("escondido");
+ct.comoFunciona.onclick = () => abrirBoasVindas(true);
 ct.nomeSalvar.onclick = salvarNome;
 ct.enviar.onclick = enviarCodigo;
 ct.confirmar.onclick = confirmarCodigo;
@@ -2821,8 +3095,9 @@ ct.voltar.onclick = () => {
   ct.passo1.classList.remove("passo-oculto");
 };
 ct.sair.onclick = async () => {
-  if (!confirm("Sair da conta neste celular? Seus documentos continuam "
-             + "guardados e voltam quando você entrar de novo.")) return;
+  if (!await confirmarModal("Sair da conta neste celular? Seus documentos continuam "
+             + "guardados e voltam quando você entrar de novo.",
+             { textoConfirmar: "Sair" })) return;
   await sb.auth.signOut();
   location.reload();
 };
@@ -2849,10 +3124,11 @@ async function encerrarConta() {
     return aviso("Encerrar a conta precisa de internet: seus documentos estão "
                  + "no servidor.", "info", "Sem conexão");
   }
-  if (!confirm("Encerrar sua conta e apagar tudo o que está guardado?"
+  if (!await confirmarModal("Encerrar sua conta e apagar tudo o que está guardado?"
                + LINHA + LINHA
                + "Isto NÃO é o mesmo que sair do aplicativo. Não dá para "
-               + "desfazer, e os documentos não voltam em nenhum celular.")) return;
+               + "desfazer, e os documentos não voltam em nenhum celular.",
+               { textoConfirmar: "Encerrar conta", perigo: true })) return;
 
   // Conta de verdade, do servidor e da fila: a segunda pergunta precisa
   // dizer o que se perde, não "tudo".
@@ -2860,8 +3136,9 @@ async function encerrarConta() {
   const aviso2 = quantos
     ? `Confirmar: apagar ${quantos} documento(s) e encerrar a conta?`
     : "Confirmar: encerrar a conta?";
-  if (!confirm(aviso2 + LINHA + LINHA
-               + "Se você tem os papéis originais, eles continuam com você.")) return;
+  if (!await confirmarModal(aviso2 + LINHA + LINHA
+               + "Se você tem os papéis originais, eles continuam com você.",
+               { textoConfirmar: "Confirmar", perigo: true })) return;
 
   ct.encerrar.disabled = true;
   ct.encerrar.textContent = "Encerrando…";
@@ -2944,7 +3221,12 @@ el.cancelar.onclick = cancelar;
 // atual, a próxima da fila abre sozinha — "uma de cada vez" vira realidade
 // sem o paciente precisar apertar "Enviar PDF" de novo a cada exame.
 const guardarBase = el.salvar.onclick;
-el.salvar.onclick = async () => { await guardarBase(); avancarPdf(); };
+// SO anda se guardou de verdade. `guardar()` desiste em silencio em tres
+// casos — sem paginas, duplicata recusada no modal, e IndexedDB que nao
+// aceitou a gravacao — e avancar neles DESCARTA a pagina do PDF que a
+// pessoa acabou de recortar, abrindo a seguinte por cima do aviso de erro.
+// Quem recusa a duplicata quer voltar ao formulario, nao pular o exame.
+el.salvar.onclick = async () => { if (await guardarBase()) avancarPdf(); };
 const cancelarBase = el.cancelar.onclick;
 el.cancelar.onclick = () => { cancelarBase(); avancarPdf(); };
 el.filtroTipo.onchange = desenharLista;
@@ -3021,6 +3303,7 @@ for (const b of botoesTextoOpcao) {
 
 /* ── Partida ──────────────────────────────────────────────────────────── */
 (async () => {
+  atualizarFaixaOffline();
   if (!CONFIG.SUPABASE_URL.includes("supabase.co") || CONFIG.SUPABASE_ANON_KEY.length < 40) {
     aviso("Preencha <b>config.js</b> com a URL e a chave anônima do projeto.",
           "erro", "Falta configurar");

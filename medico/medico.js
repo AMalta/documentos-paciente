@@ -277,7 +277,7 @@ function cartaoDocumento(d) {
   b.innerHTML = `
     <div class="capa">${ICONES[d.tipo] || "📎"}</div>
     <div class="txt">
-      <div class="nome">${d.nome || ROTULOS[d.tipo]}</div>
+      <div class="nome">${escaparHTML(d.nome || ROTULOS[d.tipo])}</div>
       <div class="meta">${ROTULOS[d.tipo]} · ${dataBRmed(d.data_documento || d.criado_em)}</div>
       ${paginas.length > 1 ? `<div class="paginas">${paginas.length} páginas</div>` : ""}
     </div>`;
@@ -406,7 +406,7 @@ function desenharAgrupado(lista) {
       <span class="grupo-seta" aria-hidden="true">▸</span>
       <span class="capa">${ICONES[g.docs[0].tipo] || "📎"}</span>
       <span class="txt">
-        <span class="nome">${g.nome}</span>
+        <span class="nome">${escaparHTML(g.nome)}</span>
         <span class="meta">${resumoDoGrupo(g)}</span>
       </span>`;
     el.grade.appendChild(cab);
