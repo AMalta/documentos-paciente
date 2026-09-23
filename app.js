@@ -3052,7 +3052,16 @@ async function lerConsumo() {
     const { data, error } = await sb.rpc("meu_consumo");
     if (error) throw error;
     const l = Array.isArray(data) ? data[0] : data;
-    if (l) consumo = { documentos: l.documentos, teto: l.teto, bytes: l.bytes };
+    // CAMPO A CAMPO, e nao `consumo = l`: o retorno do Supabase carrega
+    // prototipo e chaves que nao sao nossas, e copiar o objeto inteiro
+    // faria o resto do aplicativo depender do formato dele.
+    //
+    // `teto_pessoas` entrou aqui junto com sql/009 e QUASE ficou de fora:
+    // sem ele, desenharContaPessoas caia no `|| 2` e o teto virava um
+    // numero cravado no aplicativo — o contrario do que o resto do modulo
+    // faz, que e perguntar ao banco. Nada quebrava; so parava de obedecer.
+    if (l) consumo = { documentos: l.documentos, teto: l.teto, bytes: l.bytes,
+                       pessoas: l.pessoas, teto_pessoas: l.teto_pessoas };
   } catch (e) {
     console.warn("[consumo]", e.message || e);
   }
@@ -3200,6 +3209,8 @@ function desenharContaPessoas() {
     ct.pessoasLista.appendChild(linha);
   }
 
+  // Do BANCO. O `|| 2` e para o caso de meu_consumo ainda ser a versao de
+  // tres colunas (banco sem sql/009), nao para o dia a dia.
   const teto = (consumo && consumo.teto_pessoas) || 2;
   const cheio = pessoas.length >= teto;
   ct.pessoaNova.classList.toggle("escondido", cheio);
