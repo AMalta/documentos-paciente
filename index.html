@@ -119,6 +119,38 @@
              font-size:12px;display:flex;flex-direction:column;align-items:center;
              justify-content:center;gap:3px}
 
+  /* ── De quem são os documentos ───────────────────────────────────────
+     Fica ACIMA de tudo o que governa — inclusive do botão de fotografar —
+     porque ele não escolhe só o que se VÊ: escolhe sob quem a próxima foto
+     é arquivada. Fazer a pessoa escolher duas vezes, uma para ver e outra
+     para guardar, é o tipo de coisa que ninguém acerta na segunda semana.
+
+     Abas e não lista suspensa: com duas pessoas é um toque, e a escolha
+     atual fica LEGÍVEL o tempo todo. Numa lista suspensa o estado se
+     esconde atrás do controle, e "de quem é este exame" é justamente a
+     pergunta que não pode ficar escondida.
+
+     Some com uma pessoa só (ver desenharPessoas), que é o caso de toda
+     conta que existe hoje: controle que não tem o que escolher ensina, em
+     um segundo, que o app tem peças a mais. */
+  .pessoas{display:flex;gap:7px;margin:0 0 14px;overflow-x:auto;
+           padding:1px;scrollbar-width:none}
+  .pessoas::-webkit-scrollbar{display:none}
+  .pessoa-chip{flex:0 0 auto;display:flex;align-items:center;gap:6px;
+               background:var(--superficie);border:1px solid var(--linha);
+               border-radius:999px;padding:8px 14px;font-size:14px;
+               font-weight:500;color:var(--tinta);box-shadow:var(--sombra-1)}
+  .pessoa-chip.ativa{background:var(--azul);border-color:var(--azul);
+                     color:#fff;font-weight:600}
+  .pessoa-chip .n{font-size:12px;color:var(--tinta-3)}
+  .pessoa-chip.ativa .n{color:#cfe2ef}
+
+  /* No formulário: de quem é o que está sendo guardado. Só aparece quando
+     há mais de uma pessoa — com uma, a resposta é óbvia e a linha seria
+     ruído fixo no topo do card. */
+  .form-pessoa{font-size:12.5px;color:var(--azul);font-weight:600;
+               margin-top:2px}
+
   .filtros{display:flex;gap:8px;margin:0 0 12px}
   .filtros select{flex:1;padding:9px 30px 9px 10px;font-size:14px;
                   background:var(--superficie) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M0 0 L5 6 L10 0 Z" fill="%235b6b78"/></svg>') no-repeat right 11px center;
@@ -895,6 +927,12 @@
   </div>
 
   <div id="avisos"></div>
+
+  <!-- DE QUEM SÃO OS DOCUMENTOS. Acima da agenda e do botão de fotografar
+       de propósito: ver mais sobre isso no comentário de .pessoas no CSS.
+       Preenchido por desenharPessoas(), e escondido com uma pessoa só. -->
+  <div class="pessoas escondido" id="pessoas-barra" role="tablist"
+       aria-label="De quem são os documentos"></div>
   <div class="celebrar" id="celebrar" aria-hidden="true">✓</div>
 
   <!-- AGENDA ------------------------------------------------------------ -->
@@ -936,6 +974,7 @@
     <!-- Some sozinha depois que a pessoa guarda o primeiro documento (ver
          marcarDicaPaginasVista em app.js) — mesmo padrão de bemvindo-visto e
          corpo-recolhido: explica uma vez, não repete a cada exame novo. -->
+    <div class="form-pessoa escondido" id="form-pessoa"></div>
     <div class="form-dica" id="form-dica">
       Um laudo de várias folhas é <b>um</b> documento — vá adicionando as páginas.
     </div>

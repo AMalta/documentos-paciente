@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-23.3";
+const VERSAO_APP = "2026-09-23.4";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -27,6 +27,7 @@ const el = {
   filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   lista: $("lista"), sub: $("cabecalho-sub"),
   recentes: $("recentes"), recentesTrilha: $("recentes-trilha"),
+  pessoasBarra: $("pessoas-barra"), formPessoa: $("form-pessoa"),
   busca: $("busca"), buscaCaixa: $("busca-caixa"), buscaLimpar: $("busca-limpar"),
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"), folhinhas: $("folhinhas"),
   corpoCabecalho: $("corpo-cabecalho"), corpoSeta: $("corpo-seta"),
@@ -55,6 +56,50 @@ let usuario = null;
 let rascunho = [];        // páginas já preparadas, esperando o "Guardar"
 let documentos = [];
 let naFila = [];     // guardados no celular, ainda sem subir
+
+/* ═══ DE QUEM SÃO OS DOCUMENTOS ═══════════════════════════════════════════
+   Uma conta pode guardar o acervo de mais de uma pessoa — a mãe com os
+   exames dela e os do filho. No banco isso é a tabela `pessoas` (sql/009);
+   aqui são duas variáveis e um punhado de filtros.
+
+   `documentos` e `naFila` continuam com o acervo INTEIRO da conta, e não
+   só o da pessoa escolhida. Não é descuido: a cota de 100 documentos é da
+   CONTA — as duas pessoas dividem os mesmos 100 —, e o rodapé, o aviso de
+   teto e o encerramento de conta falam do total. Quem recorta por pessoa é
+   quem DESENHA: lista, boneco, folhinhas, recentes e a checagem de
+   duplicata. Assim as duas contas ficam certas ao mesmo tempo, em vez de
+   uma delas mentir por tabela.                                             */
+let pessoas = [];
+let pessoaAtiva = null;
+// De QUEM sao as pessoas que estao em memoria. Sem isto, entrar com outro
+// e-mail no mesmo celular (recuperar acervo, ou sair e voltar) seguiria
+// desenhando as abas da conta anterior — e `pessoaAtiva` apontaria para uma
+// pessoa que o RLS nem deixa mais ler.
+let pessoasDaConta = null;
+
+const pessoaEuId = () =>
+  (pessoas.find((p) => p.parentesco === "eu") || {}).id || null;
+
+/* Documento SEM pessoa é da "eu", e não de ninguém.
+
+   No servidor a coluna é NOT NULL, então isto nunca fala de documento
+   guardado — fala da FILA: entradas gravadas no IndexedDB por uma versão
+   anterior do aplicativo não têm o campo. Com uma comparação estrita elas
+   sumiriam da lista, e "guardei a foto ontem e hoje ela não está lá" é o
+   pior defeito que este módulo sabe produzir.
+
+   Cair na "eu" não é chute: é exatamente o que o gatilho
+   `documento_pessoa_padrao` (sql/009) vai fazer quando essa entrada subir.
+   A tela e o banco contam a mesma história. */
+const daPessoa = (d) => {
+  const dele = d.pessoa_id || pessoaEuId();
+  return !pessoaAtiva || dele === pessoaAtiva;
+};
+const docsDaPessoa = () => documentos.filter(daPessoa);
+const filaDaPessoa = () => naFila.filter(daPessoa);
+const pessoaDe = (id) => pessoas.find((p) => p.id === id) || null;
+const nomeDaPessoa = (p) =>
+  (p && (p.nome || "").trim()) || (p && p.parentesco === "eu" ? "Eu" : "Sem nome");
 // Só a PRIMEIRA carga mostra o skeleton. Nas seguintes (depois de guardar,
 // apagar, trocar de conta…) a lista já tem conteúdo na tela — trocá-lo por
 // blocos cinza a cada vez seria a lista "piscando" sem motivo.
@@ -414,6 +459,63 @@ async function carregarPerfil() {
   usuario.termo_aceito_em = data?.termo_aceito_em || null;
   usuario.termo_versao = data?.termo_versao || null;
   usuario.nome = data?.nome || null;
+  await carregarPessoas();
+}
+
+/* As pessoas da conta, com a "eu" SEMPRE em primeiro: é o acervo de quem
+   abriu a conta, e é onde o app deve abrir. A ordem do resto é a de
+   cadastro, que é a ordem em que a pessoa pensa neles. */
+async function carregarPessoas() {
+  const { data, error } = await sb.from("pessoas")
+    .select("id, nome, parentesco, data_nascimento, criado_em")
+    .order("criado_em", { ascending: true });
+  if (error) { console.warn("[pessoas]", error.message); return; }
+  pessoas = (data || []).slice()
+    .sort((a, b) => (b.parentesco === "eu") - (a.parentesco === "eu"));
+  pessoasDaConta = usuario.id;
+
+  // A escolha da visita anterior, se a pessoa ainda existir. Guardada por
+  // CONTA: entrar com outro e-mail no mesmo celular não pode herdar a
+  // escolha de quem usava antes.
+  let salva = null;
+  try { salva = localStorage.getItem("pessoa-ativa-" + usuario.id); }
+  catch (e) { /* janela anônima */ }
+  pessoaAtiva = (salva && pessoas.some((p) => p.id === salva))
+    ? salva : (pessoas[0] && pessoas[0].id) || null;
+}
+
+function trocarPessoa(id) {
+  if (id === pessoaAtiva) return;
+  pessoaAtiva = id;
+  try { localStorage.setItem("pessoa-ativa-" + usuario.id, id); }
+  catch (e) { /* janela anônima */ }
+  // Os filtros eram sobre o acervo da OUTRA pessoa: uma região do corpo que
+  // fazia sentido lá pode devolver lista vazia aqui, e "sumiu tudo" é a
+  // leitura mais rápida que este aplicativo já produziu.
+  regiaoAtiva = null; subAtivo = null;
+  el.busca.value = ""; el.filtroTipo.value = "";
+  desenharLista();
+}
+
+/* As abas. Some com uma pessoa só — que é o caso de toda conta existente. */
+function desenharPessoas() {
+  if (!el.pessoasBarra) return;
+  el.pessoasBarra.classList.toggle("escondido", pessoas.length < 2);
+  if (pessoas.length < 2) return;
+  el.pessoasBarra.innerHTML = "";
+  for (const p of pessoas) {
+    const n = documentos.filter((d) => d.pessoa_id === p.id).length
+            + naFila.filter((d) => d.pessoa_id === p.id).length;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pessoa-chip" + (p.id === pessoaAtiva ? " ativa" : "");
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", p.id === pessoaAtiva ? "true" : "false");
+    b.innerHTML = `<span>${escaparHTML(nomeDaPessoa(p))}</span>`
+                + `<span class="n">${n}</span>`;
+    b.onclick = () => trocarPessoa(p.id);
+    el.pessoasBarra.appendChild(b);
+  }
 }
 
 /* ═══ Recorte de margens ══════════════════════════════════════════════════
@@ -606,6 +708,18 @@ function desenharRascunho() {
   el.formContagem.textContent = rascunho.length > 1
     ? rascunho.length + " páginas" : "";
   el.formDica.classList.toggle("escondido", dicaPaginasVista);
+  // Sob quem este documento vai ser arquivado. So com duas pessoas ou mais:
+  // com uma, a resposta e obvia e a linha vira ruido fixo no topo do card.
+  // Existe porque o seletor la em cima pode estar fora da tela na hora de
+  // guardar, e arquivar o exame do filho no acervo da mae e um erro que so
+  // aparece meses depois, quando o medico olha a evolucao e nao fecha.
+  if (el.formPessoa) {
+    const p = pessoaDe(pessoaAtiva);
+    el.formPessoa.classList.toggle("escondido", pessoas.length < 2 || !p);
+    if (p && pessoas.length > 1) {
+      el.formPessoa.textContent = "Documento de " + nomeDaPessoa(p);
+    }
+  }
   verificarDuplicata();
 }
 
@@ -701,7 +815,7 @@ function encontrarDuplicata(nome, data) {
   if (!data) return null;
   const normalizar = (s) => (s || "").normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-  return [...documentos, ...naFila].find((d) =>
+  return [...docsDaPessoa(), ...filaDaPessoa()].find((d) =>
     normalizar(d.nome) === normalizar(nome) && d.data_documento === data) || null;
 }
 
@@ -869,6 +983,10 @@ async function guardar() {
   const entrada = {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
     paciente_id: usuario.id,
+    // Sob QUEM este documento é arquivado. Viaja na fila, e não é resolvido
+    // na hora de subir: entre guardar e a internet voltar a pessoa pode ter
+    // trocado de aba, e o documento iria para o acervo errado — calado.
+    pessoa_id: pessoaAtiva,
     tipo: el.tipo.value,
     nome: nomeNovo,
     data_documento: dataNova,
@@ -1101,6 +1219,11 @@ async function enviarFila() {
         if (!entrada.documento_id) {
           const { data, error } = await sb.from("documentos").insert({
             paciente_id: usuario.id,
+            // `|| pessoaAtiva` cobre a fila ANTIGA: entradas gravadas antes
+            // desta versão não têm o campo, e nasceram quando a conta só
+            // tinha a pessoa "eu" — que é a que está ativa numa conta de
+            // uma pessoa só.
+            pessoa_id: entrada.pessoa_id || pessoaAtiva,
             tipo: entrada.tipo,
             nome: entrada.nome,
             data_documento: entrada.data_documento,
@@ -1734,8 +1857,12 @@ async function carregar() {
     naFila = [];
   }
 
+  // Pessoas da conta que esta logada AGORA. Barato quando ja estao certas,
+  // e e o unico ponto por onde passam todos os caminhos que trocam de conta.
+  if (usuario && pessoasDaConta !== usuario.id) await carregarPessoas();
+
   const { data, error } = await sb.from("documentos")
-    .select("id, tipo, nome, data_documento, criado_em, documento_paginas(storage_path, ordem)")
+    .select("id, tipo, nome, data_documento, criado_em, pessoa_id, documento_paginas(storage_path, ordem)")
     .order("criado_em", { ascending: false });
   // Falhou a leitura: mantém o que já estava carregado em vez de esvaziar a
   // lista. Sumir com o acervo por causa de um sinal ruim assusta sem motivo.
@@ -1945,7 +2072,11 @@ let subAtivo = null;
    senao a regiao ativa se apagaria sozinha ao filtrar, e o paciente veria o
    proprio toque desaparecer. */
 function pintarCorpo() {
-  const todos = [...documentos, ...naFila];
+  // Da PESSOA, e nao da conta. O boneco existe para retratar quem usa —
+  // "quem tem cardiopatia ve o peito aceso" — e misturar mae e filho na
+  // mesma figura destrói exatamente isso: o peito acenderia por um exame
+  // que nao e do corpo que esta sendo olhado.
+  const todos = [...docsDaPessoa(), ...filaDaPessoa()];
   const conta = {};
   for (const d of todos) {
     for (const id of regioesDoDocumento(d)) conta[id] = (conta[id] || 0) + 1;
@@ -2125,16 +2256,18 @@ function desenharLista() {
   // A caixa aparece pelo TOTAL do acervo, nao pelo que sobrou do filtro:
   // senao ela sumiria no meio de uma busca que nao achou nada, levando
   // embora o campo com o texto digitado.
-  const total = documentos.length + naFila.length;
+  const meus = docsDaPessoa(), minhaFila = filaDaPessoa();
+  const total = meus.length + minhaFila.length;
   el.buscaCaixa.classList.toggle("escondido",
     total < MINIMO_BUSCA && !termos.length);
   el.buscaCaixa.classList.toggle("tem-texto", !!el.busca.value);
+  desenharPessoas();
   pintarCorpo();
   desenharRecentes();
 
   const naRegiao = (d) => (!regiaoAtiva || regioesDoDocumento(d).has(regiaoAtiva))
     && (!subAtivo || noSubAssunto(d, regiaoAtiva, subAtivo));
-  let lista = documentos.filter((d) =>
+  let lista = meus.filter((d) =>
     (!tipo || d.tipo === tipo) && casaBusca(d, termos) && naRegiao(d));
 
   const quando = (d) => d.data_documento || d.criado_em;
@@ -2143,7 +2276,7 @@ function desenharLista() {
       || String(quando(b)).localeCompare(String(quando(a))));
   else lista.sort((a, b) => String(quando(b)).localeCompare(String(quando(a))));
 
-  const pend = naFila.filter((e) =>
+  const pend = minhaFila.filter((e) =>
     (!tipo || e.tipo === tipo) && casaBusca(e, termos) && naRegiao(e));
 
   if (!lista.length && !pend.length) {
@@ -2181,10 +2314,13 @@ function desenharLista() {
             + `pelo tipo (“receita”) ou pelo ano.</span>`;
     } else if (nomesFiltro.length) {
       texto = `Nenhum documento em <b>${nomesFiltro[0]}</b>.`;
-    } else if (documentos.length || naFila.length) {
+    } else if (meus.length || minhaFila.length) {
       texto = "Nenhum documento com esse filtro.";
     } else {
-      texto = "Ainda não há nada guardado.<br>Comece fotografando um exame.";
+      texto = pessoas.length > 1
+        ? `Ainda não há nada guardado de <b>${escaparHTML(nomeDaPessoa(pessoaDe(pessoaAtiva)))}</b>.`
+          + "<br>Comece fotografando um exame."
+        : "Ainda não há nada guardado.<br>Comece fotografando um exame.";
     }
 
     // So mostra "limpar filtros" quando ha o que limpar — na lista
@@ -2256,7 +2392,7 @@ function desenharRecentes() {
   if (semFiltro) { el.recentes.classList.add("escondido"); return; }
 
   const N = 3;
-  const recentes = documentos.slice()
+  const recentes = docsDaPessoa()
     .sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)))
     .slice(0, N);
 
