@@ -1231,16 +1231,6 @@
            Fica aqui, e não no cadastro inicial, porque pedir nome antes da
            primeira foto é uma barreira a mais entre o paciente e o que ele
            veio fazer. -->
-      <div class="conta-cartao" id="conta-nome-cartao">
-        <h3>Seu nome</h3>
-        <p>É o que o médico vê no alto da tela quando
-          você mostra seus documentos. Só ele, e só enquanto o acesso vale.</p>
-        <input id="conta-nome" type="text" autocomplete="name"
-               placeholder="Como o médico deve te chamar" maxlength="60">
-        <button class="btn-salvar" id="conta-nome-salvar"
-                style="width:100%;margin-top:8px">Guardar nome</button>
-      </div>
-
       <!-- QUEM ESTÁ NESTA CONTA. Fica acima do cartão de acesso porque
            responde a uma pergunta mais básica — de quem são estes
            documentos — e porque é aqui que nasce a segunda pessoa, sem a
@@ -1250,6 +1240,14 @@
         <p>Você pode guardar os documentos de mais de uma pessoa aqui — os
           seus e os de um filho, por exemplo. Cada um tem o seu acervo, e o
           médico vê só o que você liberar.</p>
+        <!-- O PORQUÊ DO NOME vinha do card "Seu nome", que era esta mesma
+             linha da pessoa "eu" em outro lugar da tela. O card saiu; a
+             explicação não podia sair junto, senão sobra um campo "Nome"
+             solto — e ninguém preenche o que não sabe para que serve. Sem
+             nome preenchido, a tela do médico volta a dizer "Acervo do
+             paciente", que foi o problema que criou este campo. -->
+        <p>O nome é o que o médico vê no alto da tela durante a consulta —
+          só ele, e só enquanto o acesso vale.</p>
         <div id="conta-pessoas"></div>
         <div class="pessoa-nova" id="pessoa-nova">
           <input id="pessoa-nome" type="text" maxlength="60"

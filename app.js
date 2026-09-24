@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-23.6";
+const VERSAO_APP = "2026-09-23.7";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -3107,34 +3107,11 @@ function avisarSeApertando() {
    foto é uma barreira entre o paciente e o que ele veio fazer. E não é
    obrigatório em lugar nenhum — em branco, a tela do médico continua
    dizendo "Acervo do paciente", como sempre disse. */
-async function salvarNome() {
-  const nome = (ct.nome.value || "").trim().slice(0, 60);
-  ct.nomeSalvar.disabled = true;
-  ct.nomeSalvar.textContent = "Guardando…";
-  try {
-    // upsert, e não update: a linha em `pacientes_app` pode não existir
-    // ainda — update sem linha afeta zero e volta em silêncio, que foi
-    // exatamente como um aceite de termo já "deu certo" sem gravar nada.
-    const { error } = await sb.from("pacientes_app")
-      .upsert({ id: usuario.id, nome: nome || null }, { onConflict: "id" });
-    if (error) throw error;
-    usuario.nome = nome || null;
-    aviso(nome ? "Nome guardado." : "Nome apagado.", "ok");
-  } catch (e) {
-    console.warn("[nome]", e?.message || e);
-    aviso(explicar(e), "erro");
-  } finally {
-    ct.nomeSalvar.disabled = false;
-    ct.nomeSalvar.textContent = "Guardar nome";
-  }
-}
-
 const ct = {
   botao: $("btn-conta"), tela: $("tela-conta"), fechar: $("conta-fechar"),
   estado: $("conta-estado"), estadoTxt: $("conta-estado-txt"),
   proteger: $("conta-proteger"), pronta: $("conta-pronta"),
   passo1: $("proteger-passo1"), passo2: $("proteger-passo2"),
-  nome: $("conta-nome"), nomeSalvar: $("conta-nome-salvar"),
   email: $("conta-email"), enviar: $("conta-enviar"), eco: $("conta-email-eco"),
   codigo: $("conta-codigo"), confirmar: $("conta-confirmar"), voltar: $("conta-voltar"),
   emailAtual: $("conta-email-atual"), sair: $("conta-sair"),
@@ -3237,7 +3214,6 @@ async function renomearPessoa(p, nome) {
     await sb.from("pacientes_app").upsert({ id: usuario.id, nome: limpo || null },
                                           { onConflict: "id" });
     usuario.nome = limpo || null;
-    if (ct.nome) ct.nome.value = limpo;
   }
   desenharContaPessoas();
   desenharLista();
@@ -3349,8 +3325,6 @@ function abrirConta(paraRecuperar = false) {
   ct.passo1.classList.remove("passo-oculto");
   ct.passo2.classList.add("passo-oculto");
   ct.codigo.value = "";
-  // O que ja esta gravado, e nao o que sobrou da digitacao anterior.
-  ct.nome.value = usuario?.nome || "";
   pintarConta();
   if (paraRecuperar) {
     ct.proteger.classList.remove("escondido");
@@ -3449,7 +3423,6 @@ ct.botao.onclick = () => abrirConta(false);
 ct.bvVoltar.onclick = () => { fecharBoasVindas(); abrirConta(true); };
 ct.fechar.onclick = () => ct.tela.classList.add("escondido");
 ct.comoFunciona.onclick = () => abrirBoasVindas(true);
-ct.nomeSalvar.onclick = salvarNome;
 ct.pessoaAdicionar.onclick = adicionarPessoa;
 ct.enviar.onclick = enviarCodigo;
 ct.confirmar.onclick = confirmarCodigo;
