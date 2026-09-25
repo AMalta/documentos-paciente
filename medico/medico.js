@@ -60,6 +60,17 @@ const el = {
 
 let documentos = [];
 let medicoNome = "";
+
+// Meses → "8 meses", "1 ano e 3 meses", "54 anos". Até dois anos os meses
+// mudam a leitura do exame; depois disso são ruído.
+function textoIdade(meses) {
+  if (meses === null || meses === undefined || meses < 0) return "";
+  if (meses < 12) return meses + (meses === 1 ? " mês" : " meses");
+  const anos = Math.floor(meses / 12), resto = meses % 12;
+  const a = anos + (anos === 1 ? " ano" : " anos");
+  if (anos >= 2 || !resto) return a;
+  return a + " e " + resto + (resto === 1 ? " mês" : " meses");
+}
 let regiaoAtiva = null;
 // O refino dentro da regiao. Apaga-se junto com ela, sempre.
 let subAtivo = null;
@@ -153,6 +164,23 @@ el.abrir.onclick = async () => {
       if (limpo) el.topoPaciente.textContent = limpo;
     } catch (e) {
       console.warn("[nome]", e?.message || e);
+    }
+    /* A IDADE (sql/010). Só a idade, nunca a data — mesmo motivo do nome.
+       Vem em meses porque abaixo de dois anos é assim que se conta. Sem
+       data preenchida, ou num banco sem o 010, a tela segue só com o nome. */
+    try {
+      const { data: meses, error: eIdade } = pessoaId
+        ? await sb.rpc("idade_da_pessoa", { p_pessoa: pessoaId })
+        : await sb.rpc("idade_do_paciente", { p_paciente: pacienteId });
+      if (eIdade) throw eIdade;
+      const idade = textoIdade(meses);
+      if (idade) {
+        const base = el.topoPaciente.textContent;
+        el.topoPaciente.textContent = base === "Acervo do paciente"
+          ? "Paciente de " + idade : base + ", " + idade;
+      }
+    } catch (e) {
+      console.warn("[idade]", e?.message || e);
     }
     // "ate 00:00" e literalmente correto e confunde: o prazo e a meia-noite
     // SEGUINTE, e o numero lido de relance parece dizer que ja venceu. A

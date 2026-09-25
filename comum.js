@@ -731,7 +731,13 @@ async function tokenCaptcha() {
     document.body.appendChild(caixa);
     const token = await new Promise((ok) => {
       window.turnstile.render(caixa, { sitekey: chave, callback: ok,
-                                       "error-callback": () => ok(null) });
+                                       "error-callback": (cod) => {
+                                         // Guardado para a tela de erro: sem o
+                                         // código, "domínio fora da lista" e
+                                         // "navegador reprovado" são iguais.
+                                         window.ultimoErroCaptcha = String(cod || "?");
+                                         ok(null);
+                                       } });
     });
     caixa.remove();
     return token;
@@ -740,6 +746,7 @@ async function tokenCaptcha() {
     // um script de terceiro que não abriu seria trocar abuso por exclusão.
     // Quem recusa de verdade é o Supabase, do outro lado.
     console.warn("[captcha]", e.message || e);
+    window.ultimoErroCaptcha = "script";
     return null;
   }
 }

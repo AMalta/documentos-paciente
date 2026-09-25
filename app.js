@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-23.7";
+const VERSAO_APP = "2026-09-24.1";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -438,9 +438,20 @@ async function entrar() {
     const { data, error } = await sb.auth.signInAnonymously(
       captcha ? { options: { captchaToken: captcha } } : undefined);
     if (error) {
-      aviso("Ligue <b>Anonymous Sign-ins</b> em Authentication → Providers no "
-          + "painel do Supabase e recarregue a página.", "erro",
-          "Não consegui abrir sua conta");
+      // Um texto só para todo erro mandava ligar o login anônimo quando o
+      // que falhava era o CAPTCHA — domínio novo fora da lista do Turnstile.
+      console.warn("[entrar]", error.code, error.message);
+      const cod = error.code || "";
+      const texto = cod === "anonymous_provider_disabled"
+        ? "Ligue <b>Anonymous Sign-ins</b> em Authentication → Providers no "
+          + "painel do Supabase e recarregue a página."
+        : cod === "captcha_failed"
+        ? "A verificação de segurança não passou. Recarregue a página e tente "
+          + "de novo. Se continuar, avise a clínica."
+          + (window.ultimoErroCaptcha
+             ? ` <small>(código ${window.ultimoErroCaptcha})</small>` : "")
+        : "Confira a internet e recarregue a página. Se continuar, avise a clínica.";
+      aviso(texto, "erro", "Não consegui abrir sua conta");
       return false;
     }
     usuario = data.user;
@@ -3118,6 +3129,7 @@ const ct = {
   encerrar: $("conta-encerrar"), comoFunciona: $("conta-como-funciona"),
   pessoasLista: $("conta-pessoas"), pessoaNome: $("pessoa-nome"),
   pessoaParentesco: $("pessoa-parentesco"), pessoaAdicionar: $("pessoa-adicionar"),
+  pessoaNascimento: $("pessoa-nascimento"),
   pessoaNova: $("pessoa-nova"), pessoaPago: $("pessoa-pago"),
   bvVoltar: $("bv-voltar"),
 };
@@ -3163,7 +3175,22 @@ function desenharContaPessoas() {
     // Grava ao SAIR do campo, e não a cada tecla: uma escrita por letra
     // digitada gasta rede e cota de requisição para nada.
     campo.onchange = () => renomearPessoa(p, campo.value);
-    linha.appendChild(campo);
+
+    // Nascimento embaixo do nome. Vazio é permitido: é dado a mais, e
+    // exigi-lo travaria quem só quer guardar um exame.
+    const nasc = document.createElement("label");
+    nasc.className = "pessoa-nasc";
+    nasc.textContent = "Nascimento";
+    const data = document.createElement("input");
+    data.type = "date"; data.min = "1900-01-01"; data.max = hojeISO();
+    data.value = p.data_nascimento || "";
+    data.onchange = () => mudarNascimento(p, data);
+    nasc.appendChild(data);
+
+    const campos = document.createElement("div");
+    campos.className = "pessoa-campos";
+    campos.append(campo, nasc);
+    linha.appendChild(campos);
 
     const par = document.createElement("span");
     par.className = "par";
@@ -3220,6 +3247,34 @@ async function renomearPessoa(p, nome) {
   aviso("Nome guardado.", "ok");
 }
 
+// O teclado de data aceita digitar qualquer coisa em alguns celulares; o
+// min/max do campo não segura isso sozinho.
+function nascimentoValido(v) {
+  return !v || (v >= "1900-01-01" && v <= hojeISO());
+}
+
+async function mudarNascimento(p, campo) {
+  const v = campo.value || null;
+  if (v === (p.data_nascimento || null)) return;
+  if (!nascimentoValido(v)) {
+    campo.value = p.data_nascimento || "";
+    return aviso("Essa data de nascimento não parece certa.", "erro");
+  }
+  const { error } = await sb.from("pessoas")
+    .update({ data_nascimento: v }).eq("id", p.id);
+  if (error) {
+    campo.value = p.data_nascimento || "";
+    return aviso(explicar(error), "erro");
+  }
+  p.data_nascimento = v;
+  // Mesmo espelho do nome: pacientes_app descreve a pessoa "eu".
+  if (p.parentesco === "eu") {
+    await sb.from("pacientes_app").upsert({ id: usuario.id, data_nascimento: v },
+                                          { onConflict: "id" });
+  }
+  aviso("Data de nascimento guardada.", "ok");
+}
+
 async function adicionarPessoa() {
   const nome = (ct.pessoaNome.value || "").trim().slice(0, 60);
   if (!nome) {
@@ -3227,16 +3282,23 @@ async function adicionarPessoa() {
     ct.pessoaNome.focus();
     return;
   }
+  const nascimento = ct.pessoaNascimento.value || null;
+  if (!nascimentoValido(nascimento)) {
+    aviso("Essa data de nascimento não parece certa.", "erro");
+    ct.pessoaNascimento.focus();
+    return;
+  }
   ct.pessoaAdicionar.disabled = true;
   ct.pessoaAdicionar.textContent = "Adicionando…";
   try {
     const { data, error } = await sb.from("pessoas").insert({
-      conta_id: usuario.id, nome,
+      conta_id: usuario.id, nome, data_nascimento: nascimento,
       parentesco: ct.pessoaParentesco.value,
     }).select("id, nome, parentesco, data_nascimento, criado_em").single();
     if (error) throw error;
     pessoas.push(data);
     ct.pessoaNome.value = "";
+    ct.pessoaNascimento.value = "";
     await lerConsumo();
     desenharContaPessoas();
     desenharLista();
