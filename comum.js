@@ -434,7 +434,17 @@ const REGIOES = [
              "=psa", "antigeno prostatico",   // PSA e dosagem no sangue
              "sorologia", "anticorpo", "pcr", "vhs", "coagulograma", "tap",
              "protrombina", "fosfatase", "gama gt", "tgo", "tgp",
-             "bilirrubina", "eletroforese", "tipagem", "dosagem"] },
+             "bilirrubina", "eletroforese", "tipagem", "dosagem",
+             // Dosagens que o laudo nomeia SEM dizer "sérico": saiam em
+             // "Todos" e em regiao nenhuma (homocisteina foi a que apareceu).
+             // "=sodio" por palavra inteira: por pedaco casa em "episodio".
+             "homociste", "acido folico", "folato", "=b12", "cobalamina",
+             "=sodio", "potassio", "magnesio", "fosforo", "zinco",
+             "eletrolit", "=cpk", "=ck", "creatinoquinase", "=ldh",
+             "desidrogenase latica", "fibrinogenio", "dimero", "=inr",
+             "reticulocit", "eritrograma", "leucograma", "transferrina",
+             "gasometria", "lactato", "=vdrl", "=hiv", "hepatite b",
+             "hepatite c", "=hbsag"] },
   // Urina e fezes sao MATERIAL COLHIDO, como sangue — e e assim que a pessoa
   // procura: "exame de urina", nunca "exame da bexiga". Continuam acendendo
   // tambem a regiao do corpo, porque um documento cabe em varias: quem pensa

@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-25.2";
+const VERSAO_APP = "2026-09-25.4";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -42,7 +42,10 @@ const el = {
   recorteDicaGirar: $("recorte-dica-girar"),
   telaVisu: $("tela-visu"), visuImg: $("visu-img"), visuTitulo: $("visu-titulo"),
   visuConta: $("visu-conta"), visuAntes: $("visu-antes"),
-  visuDepois: $("visu-depois"), visuGirar: $("visu-girar"), visuApagar: $("visu-apagar"), visuFechar: $("visu-fechar"),
+  visuDepois: $("visu-depois"), visuGirar: $("visu-girar"), visuApagar: $("visu-apagar"), visuEditar: $("visu-editar"),
+  editarFundo: $("editar-fundo"), editarNome: $("editar-nome"),
+  editarTipo: $("editar-tipo"), editarData: $("editar-data"),
+  editarSalvar: $("editar-salvar"), editarCancelar: $("editar-cancelar"), visuFechar: $("visu-fechar"),
   pdf: $("input-pdf"), pdfBotao: $("btn-pdf"),
   pdfNav: $("pdf-nav"), pdfNavAnterior: $("pdf-nav-anterior"),
   pdfNavTexto: $("pdf-nav-texto"), pdfNavProxima: $("pdf-nav-proxima"),
@@ -1587,6 +1590,7 @@ async function abrirDocumento(doc) {
   visuDoc = doc;
   visuEntrada = null;
   visuOriginal.clear();
+  el.visuEditar.classList.remove("escondido");
   if (!visuPaginas.length) {
     el.telaVisu.classList.add("escondido");
     console.warn("[visualizador]", error?.message || "sem urls");
@@ -1781,6 +1785,62 @@ async function apagarEntradaPendente(entrada) {
   return true;
 }
 
+/* ── Editar nome, tipo e data de um documento guardado ─────────────────
+   Existe por causa da leitura automatica: ela erra, e o erro so aparece
+   quando o documento ja esta guardado. O banco sempre permitiu (politica
+   doc_dono_all); faltava a tela. */
+function fecharEdicao() { el.editarFundo.classList.add("escondido"); }
+
+el.visuEditar.onclick = () => {
+  if (visuOrigem !== "documento" || !visuDoc) return;
+  el.editarNome.value = visuDoc.nome || "";
+  el.editarTipo.value = visuDoc.tipo || "exame";
+  el.editarData.value = visuDoc.data_documento || "";
+  el.editarData.max = hojeISO();
+  el.editarFundo.classList.remove("escondido");
+  el.editarNome.focus();
+};
+el.editarCancelar.onclick = fecharEdicao;
+el.editarFundo.onclick = (e) => { if (e.target === el.editarFundo) fecharEdicao(); };
+
+el.editarSalvar.onclick = async () => {
+  const doc = visuDoc;
+  if (!doc) return fecharEdicao();
+  const tipo = el.editarTipo.value;
+  // Nome vazio vira o rotulo do tipo, a mesma regra de guardar().
+  const nome = (el.editarNome.value || "").trim().slice(0, 120) || ROTULOS[tipo];
+  const data = el.editarData.value || null;
+  if (data && (data < "1900-01-01" || data > hojeISO())) {
+    return aviso("Essa data não parece certa. Confira no papel.", "erro");
+  }
+  if (!navigator.onLine) {
+    return aviso("Editar precisa de internet — o documento está guardado na "
+               + "nuvem.", "info", "Sem conexão");
+  }
+  // Mesmo aviso de guardar(): outro documento com esse nome e essa data.
+  const outro = data && [...docsDaPessoa(), ...filaDaPessoa()].find((d) =>
+    d.id !== doc.id && semAcento((d.nome || "").trim().toLowerCase())
+      === semAcento(nome.toLowerCase()) && d.data_documento === data);
+  if (outro && !await confirmarModal(`Você já tem "${outro.nome}" com essa `
+      + "data. Salvar assim mesmo?", { textoConfirmar: "Salvar" })) return;
+
+  el.editarSalvar.disabled = true;
+  try {
+    const { error } = await sb.from("documentos")
+      .update({ nome, tipo, data_documento: data }).eq("id", doc.id);
+    if (error) throw error;
+    doc.nome = nome; doc.tipo = tipo; doc.data_documento = data;
+    visuTitulo(doc);
+    fecharEdicao();
+    desenharLista();   // a ordem, o boneco e as folhinhas dependem disso
+    aviso("Documento atualizado.", "ok");
+  } catch (e) {
+    aviso(explicar(e), "erro");
+  } finally {
+    el.editarSalvar.disabled = false;
+  }
+};
+
 el.visuApagar.onclick = async () => {
   if (!visuOrigem) return;
   el.visuApagar.disabled = true;
@@ -1873,6 +1933,8 @@ function abrirPendente(entrada) {
   visuOrigem = "pendente";
   visuEntrada = entrada;
   visuDoc = null;
+  // O pendente ainda mora so no celular; editar e depois de ele subir.
+  el.visuEditar.classList.add("escondido");
   visuCaminhos = [];
   visuOriginal.clear();
   visuIndice = 0;
@@ -3806,6 +3868,10 @@ function fecharTelaAtual() {
   // pessoa ou encerram conta.
   if (!el.modalFundo.classList.contains("escondido")) {
     el.modalCancelar.click();
+    return true;
+  }
+  if (!el.editarFundo.classList.contains("escondido")) {
+    fecharEdicao();
     return true;
   }
   for (const [telaId, botaoId] of Object.entries(FECHAR_TELA_CHEIA)) {

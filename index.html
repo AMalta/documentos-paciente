@@ -555,7 +555,11 @@
   .tela-cheia .barra{display:flex;align-items:center;justify-content:space-between;
                      padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top));
                      gap:12px;background:rgba(0,0,0,.35)}
-  .tela-cheia .barra .titulo{font-size:15px;font-weight:600}
+  /* O titulo cede espaco, os botoes nao: com Editar na barra do
+     visualizador, um nome longo empurrava Fechar para fora da tela. */
+  .tela-cheia .barra .titulo{font-size:15px;font-weight:600;flex:1;min-width:0;
+                             overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tela-cheia .barra button{flex:0 0 auto}
   .tela-cheia .barra button{background:none;color:#fff;font-size:15px;padding:8px 10px}
   .tela-cheia .barra .confirmar{background:#1c6b4a;border-radius:9px;font-weight:600;
                                 padding:10px 16px}
@@ -1400,6 +1404,10 @@
          paginacao: ‹ › ↻ agem sobre a PAGINA, apagar age sobre o DOCUMENTO
          inteiro. Junto dos outros, alguem apagaria o laudo de seis folhas
          achando que estava tirando uma. -->
+    <!-- Editar: a leitura automatica acerta o nome em menos da metade das
+         fotos e a data bem menos. Sem isto, corrigir depois de guardado
+         era apagar e fotografar de novo. -->
+    <button id="visu-editar">Editar</button>
     <button id="visu-apagar" class="perigo">Apagar</button>
     <button id="visu-fechar">Fechar</button>
   </div>
@@ -1478,6 +1486,38 @@
     <div class="modal-botoes">
       <button class="modal-cancelar" id="modal-cancelar">Cancelar</button>
       <button class="modal-confirmar" id="modal-confirmar">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDITAR DOCUMENTO GUARDADO -------------------------------------------- -->
+<!-- Os mesmos tres campos do formulario de guardar, na mesma ordem. Modal e
+     nao tela cheia: a pagina continua visivel atras, e e nela que a pessoa
+     confere a data que esta digitando. -->
+<div class="modal-fundo escondido" id="editar-fundo">
+  <div class="modal-cartao">
+    <h3 class="modal-titulo">Editar documento</h3>
+    <label for="editar-nome">Nome <span style="color:var(--tinta-3)">(ex.: Hemograma)</span></label>
+    <input id="editar-nome" type="text" autocomplete="off" maxlength="120">
+    <div class="form-linha2">
+      <div>
+        <label for="editar-tipo">Tipo</label>
+        <select id="editar-tipo">
+          <option value="exame">Exame</option>
+          <option value="laudo">Laudo</option>
+          <option value="receita">Receita</option>
+          <option value="relatorio">Relatório</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div>
+        <label for="editar-data">Data</label>
+        <input id="editar-data" type="date">
+      </div>
+    </div>
+    <div class="modal-botoes">
+      <button class="modal-cancelar" id="editar-cancelar">Cancelar</button>
+      <button class="modal-confirmar" id="editar-salvar">Salvar</button>
     </div>
   </div>
 </div>
