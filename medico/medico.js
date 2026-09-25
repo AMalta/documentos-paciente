@@ -56,6 +56,9 @@ const el = {
   visuConta: $("visu-conta"), visuAntes: $("visu-antes"),
   visuDepois: $("visu-depois"), visuFechar: $("visu-fechar"),
   visuImprimir: $("visu-imprimir"),
+  anotar: $("anotar"), anotarNome: $("anotar-nome"), anotarData: $("anotar-data"),
+  anotarTexto: $("anotar-texto"), anotarEnviar: $("anotar-enviar"),
+  anotarEstado: $("anotar-estado"),
 };
 
 let documentos = [];
@@ -627,6 +630,7 @@ let visuPaginas = [], visuIndice = 0;
 
 async function abrirDocumento(doc, paginas) {
   if (!paginas.length) return;
+  prepararAnotacao(doc);
   el.visuTitulo.textContent = (doc.nome || ROTULOS[doc.tipo])
     + " · " + dataBRmed(doc.data_documento || doc.criado_em);
   el.visuImg.removeAttribute("src");
@@ -720,6 +724,73 @@ function imprimirDocumento() {
 }
 el.visuImprimir.onclick = imprimirDocumento;
 
+/* ── Anotar no prontuário (integração Indiclin, etapa 3) ────────────────
+   Em vez de anexar a imagem, o médico escreve o resultado que interessa e
+   ele entra como UMA linha no prontuário da consulta — é o que os médicos
+   já faziam à mão no texto livre ("HOLTER FEV/26 4% ECT VENTRI"), agora
+   com nome, data e procedência preenchidos.
+
+   Quem escreve no prontuário é o Indiclin: esta página só manda o texto
+   (postMessage, só para a origem declarada) e espera a resposta dele, que
+   diz se entrou ou por que não. Aberta fora do Indiclin, o bloco nem
+   aparece — não há prontuário do outro lado. */
+let docAnotando = null;
+
+function prepararAnotacao(doc) {
+  docAnotando = doc;
+  const doIndiclin = !!(origemIndiclin && origemIndiclin.po && pessoaId
+                        && window.parent !== window);
+  el.anotar.classList.toggle("escondido", !doIndiclin);
+  if (!doIndiclin) return;
+  el.anotarNome.value = doc.nome || ROTULOS[doc.tipo] || "";
+  el.anotarData.value = (doc.data_documento || "").slice(0, 10);
+  el.anotarTexto.value = "";
+  el.anotarEstado.textContent = "";
+  el.anotarEstado.classList.remove("erro");
+  el.anotarEnviar.disabled = false;
+}
+
+el.anotarEnviar.onclick = () => {
+  const texto = (el.anotarTexto.value || "").trim();
+  if (!texto) {
+    el.anotarEstado.textContent = "Escreva o resultado que interessa.";
+    el.anotarEstado.classList.add("erro");
+    el.anotarTexto.focus();
+    return;
+  }
+  el.anotarEnviar.disabled = true;
+  el.anotarEstado.classList.remove("erro");
+  el.anotarEstado.textContent = "Enviando…";
+  try {
+    window.parent.postMessage({
+      tipo: "indidoc-nota", pessoa_id: pessoaId,
+      documento_id: docAnotando && docAnotando.id,
+      nome: (el.anotarNome.value || "").trim().slice(0, 120),
+      data: el.anotarData.value || "",
+      texto: texto.slice(0, 1000),
+    }, origemIndiclin.po);
+  } catch (e) {
+    el.anotarEstado.textContent = "Não consegui falar com o prontuário.";
+    el.anotarEstado.classList.add("erro");
+    el.anotarEnviar.disabled = false;
+  }
+};
+
+// A resposta do Indiclin. Só da origem que o abriu.
+window.addEventListener("message", (e) => {
+  if (!origemIndiclin || e.origin !== origemIndiclin.po) return;
+  const d = e.data || {};
+  if (d.tipo !== "indidoc-nota-resposta") return;
+  if (d.ok) {
+    el.anotarEstado.textContent = "✓ Anotado no prontuário da consulta.";
+    el.anotarTexto.value = "";
+  } else {
+    el.anotarEstado.textContent = d.erro || "Não entrou no prontuário.";
+    el.anotarEstado.classList.add("erro");
+  }
+  el.anotarEnviar.disabled = false;
+});
+
 el.visuFechar.onclick = () => {
   el.telaVisu.classList.add("escondido");
   el.visuImg.removeAttribute("src");
@@ -729,6 +800,9 @@ el.visuFechar.onclick = () => {
 // página com o mouse a cada folha de um laudo de seis é atrito à toa.
 document.addEventListener("keydown", (e) => {
   if (el.telaVisu.classList.contains("escondido")) return;
+  // Digitando a anotação, as setas movem o cursor e o Esc não fecha o
+  // documento com o texto pela metade.
+  if (e.target && e.target.closest && e.target.closest(".anotar")) return;
   if (e.key === "ArrowLeft") el.visuAntes.click();
   if (e.key === "ArrowRight") el.visuDepois.click();
   if (e.key === "Escape") el.visuFechar.click();
