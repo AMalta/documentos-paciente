@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-24.1";
+const VERSAO_APP = "2026-09-25.1";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -268,7 +268,13 @@ function explicar(erro) {
   if (/LIMITE_PAGINAS/.test(cru))
     return "Este documento já tem páginas demais. Guarde o restante como um "
          + "segundo documento.";
-  if (/sending|smtp|mail/i.test(cru))
+  // Antes do SMTP, e pelo CÓDIGO: "A user with this email address has
+  // already been registered" contém "email", e o /mail/ que havia aqui
+  // transformava "e-mail já tem conta" em "problema do nosso lado".
+  if (erro?.code === "email_exists" || /already registered|already exists/i.test(cru))
+    return "Este e-mail já está ligado a outra conta.";
+  // A falha real de envio vem como "Error sending ... email".
+  if (/error sending|smtp/i.test(cru))
     return "Não consegui enviar o e-mail agora. Isso é um problema do nosso "
          + "lado — tente de novo em alguns minutos.";
   // "rate limit" e não só "limit", pela mesma razão.
@@ -276,9 +282,6 @@ function explicar(erro) {
     return "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.";
   if (/invalid|expired|token/i.test(cru))
     return "Código inválido ou vencido. Peça um novo código.";
-  if (/already registered|already exists/i.test(cru))
-    return "Este e-mail já está em uso. Toque em “Já usei antes” para entrar "
-         + "com ele.";
   return "Não consegui concluir agora. Tente de novo em alguns minutos.";
 }
 function limparAvisos() {
@@ -3439,6 +3442,26 @@ async function enviarCodigo() {
     ct.passo2.classList.remove("passo-oculto");
     ct.codigo.focus();
   } catch (e) {
+    // E-mail que já tem conta, ao GUARDAR o acesso: quase sempre é a mesma
+    // pessoa, que abriu uma sessão nova neste celular (cache limpo, app
+    // reinstalado) e está tentando religar o e-mail de sempre. O caminho
+    // dela é entrar na conta antiga — oferecido aqui, porque o botão
+    // "Já usei antes" só existe na tela de boas-vindas.
+    if (!recuperando && (e.code === "email_exists"
+                         || /already registered/i.test(e.message || ""))) {
+      const ok = await confirmarModal("Este e-mail já tem uma conta no indiDoc."
+        + LINHA + LINHA + "Quer abrir os documentos dessa conta? Enviamos um "
+        + "código para o e-mail para confirmar que é você.",
+        { textoConfirmar: "Abrir essa conta" });
+      ct.enviar.disabled = false;
+      ct.enviar.textContent = "Enviar código";
+      if (ok) {
+        recuperando = true;
+        ct.proteger.querySelector("h3").textContent = "Voltar ao meu acervo";
+        return enviarCodigo();
+      }
+      return;
+    }
     if (e.message !== "cancelado") aviso(explicar(e), "erro");
   } finally {
     ct.enviar.disabled = false;
