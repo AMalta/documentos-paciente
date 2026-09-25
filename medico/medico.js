@@ -113,6 +113,16 @@ el.codigo.onkeydown = (e) => {
 };
 el.abrir.disabled = true;
 
+// Aberta pela aba 📱 indiDoc do prontuário do Indiclin, a página recebe nome
+// e CRM na URL: o médico só digita o código. Continuam editáveis, e entram
+// por .value (nunca como HTML) — a URL é de quem a montou, não confiável.
+try {
+  const q = new URLSearchParams(location.search);
+  if (q.get("nome")) el.nome.value = q.get("nome").slice(0, 120);
+  if (q.get("crm")) el.crm.value = q.get("crm").slice(0, 30);
+  if (q.get("nome")) el.codigo.focus();
+} catch (e) { /* URL estranha: segue com os campos vazios */ }
+
 el.abrir.onclick = async () => {
   const nome = (el.nome.value || "").trim();
   if (!nome) {
