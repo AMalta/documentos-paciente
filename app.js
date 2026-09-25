@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-25.6";
+const VERSAO_APP = "2026-09-25.7";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1085,6 +1085,46 @@ const mv = {
 // O endereço que o médico digita. Sai do próprio endereço do aplicativo:
 // cravá-lo aqui faria a tela mentir no dia em que o site mudar de lugar.
 const URL_MEDICO = new URL("medico/", location.href.replace(/[^/]*$/, "")).href;
+
+/* De quem é o acervo que vai ser mostrado. Com uma pessoa só na conta não
+   há o que escolher e o seletor some; com duas ou mais, cada uma é um botão.
+   O código gerado vale para UMA pessoa (sql/009), então trocar de pessoa
+   esconde o código já na tela — ele liberaria o acervo da outra.
+
+   A chamada a esta função existia desde 23/09 sem a função: abrir a tela
+   estourava nessa linha, e "Quem abriu" só aparecia depois de gerar um
+   código, que listava por outro caminho. */
+let mvPessoa = null;
+
+function desenharMvPessoas() {
+  const caixa = document.getElementById("mv-de-quem");
+  if (!caixa) return;
+  if (pessoas.length < 2) {
+    caixa.classList.add("escondido");
+    caixa.innerHTML = "";
+    return;
+  }
+  caixa.classList.remove("escondido");
+  caixa.innerHTML = "";
+  const linha = document.createElement("div");
+  linha.className = "mv-pessoas";
+  for (const p of pessoas) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "mv-pessoa" + (p.id === mvPessoa ? " ativa" : "");
+    b.setAttribute("aria-pressed", p.id === mvPessoa ? "true" : "false");
+    b.textContent = nomeDaPessoa(p);
+    b.onclick = () => {
+      if (p.id === mvPessoa) return;
+      mvPessoa = p.id;
+      mv.pronto.classList.add("escondido");
+      mv.gerar.textContent = "Gerar código para o médico";
+      desenharMvPessoas();
+    };
+    linha.appendChild(b);
+  }
+  caixa.appendChild(linha);
+}
 
 mv.botao.onclick = () => {
   mv.tela.classList.remove("escondido");
