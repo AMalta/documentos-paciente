@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-25.5";
+const VERSAO_APP = "2026-09-25.6";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1079,6 +1079,7 @@ const mv = {
   botao: $("btn-mostrar"), tela: $("tela-mostrar"), fechar: $("mostrar-fechar"),
   gerar: $("mv-gerar"), pronto: $("mv-pronto"), codigo: $("mv-codigo"),
   prazo: $("mv-prazo"), url: $("mv-url"), acessos: $("mv-acessos"),
+  autorizados: $("mv-autorizados"),
 };
 
 // O endereço que o médico digita. Sai do próprio endereço do aplicativo:
@@ -1182,8 +1183,9 @@ function desenharEsqueletoAcessos(qtd = 2) {
 
 async function listarAcessos() {
   desenharEsqueletoAcessos();
+  listarAutorizados();
   const { data, error } = await sb.from("liberacoes")
-    .select("id, medico_nome, medico_crm, usado_em, expira_em, revogado_em, pessoa_id")
+    .select("id, medico_nome, medico_crm, usado_em, expira_em, revogado_em, pessoa_id, tipo")
     .not("usado_em", "is", null)
     .order("usado_em", { ascending: false });
   if (error) {
@@ -1203,11 +1205,14 @@ async function listarAcessos() {
     div.className = "acesso" + (vivo ? "" : " morto");
     const estado = a.revogado_em ? "acesso cancelado por você"
       : vivo ? "pode ver até " + ateQuando(a.expira_em) : "acesso encerrado";
+    // Aberto sem código, pela autorização: dizer isso é o que liga esta
+    // linha à lista de cima, onde a autorização se cancela.
+    const semCodigo = a.tipo === "autorizacao" ? " · sem código" : "";
     div.innerHTML = `
       <div class="quem">
         <div class="nome">${escaparHTML(a.medico_nome || "Médico não identificado")}${
           a.medico_crm ? " · CRM " + escaparHTML(a.medico_crm) : ""}</div>
-        <div class="quando">Abriu em ${quandoBR(a.usado_em)} · ${estado}</div>
+        <div class="quando">Abriu em ${quandoBR(a.usado_em)}${semCodigo} · ${estado}</div>
         ${pessoas.length > 1
           ? '<div class="quando">acervo de ' +
             escaparHTML(nomeDaPessoa(pessoaDe(a.pessoa_id))) + '</div>' : ''}
@@ -1220,6 +1225,114 @@ async function listarAcessos() {
       div.appendChild(b);
     }
     mv.acessos.appendChild(div);
+  }
+}
+
+/* ═══ "Manter liberado" (integração Indiclin, etapa 2) ════════════════════
+   Depois de liberar por código a um médico que usa o Indiclin, o paciente
+   pode deixá-lo ver nas próximas consultas sem código. A autorização é por
+   médico e por pessoa da conta, vale 12 meses e se renova a cada consulta.
+   Quem cria e revoga é o banco (sql/011): aqui só se pergunta e se lista.
+
+   A resposta padrão é NÃO: fechar a pergunta, tocar fora ou o voltar do
+   celular contam como "agora não", e a mesma consulta não pergunta de
+   novo. Consentimento para acesso permanente a dado de saúde tem de ser um
+   toque deliberado em "Manter liberado", nunca um descuido. */
+async function listarAutorizados() {
+  if (!mv.autorizados) return;
+  const { data, error } = await sb.from("autorizacoes")
+    .select("id, medico_nome, medico_crm, pessoa_id, expira_em, ultimo_acesso_em")
+    .is("revogado_em", null)
+    .gt("expira_em", new Date().toISOString())
+    .order("criado_em", { ascending: false });
+  if (error) {
+    mv.autorizados.innerHTML = '<div class="mv-nenhum">Não consegui ler agora.</div>';
+    return;
+  }
+  const lista = data || [];
+  if (!lista.length) {
+    mv.autorizados.innerHTML = '<div class="mv-nenhum">Nenhum médico.<br>Quando '
+      + "um médico que usa o Indiclin abrir seus documentos pelo código, você "
+      + "pode escolher deixá-lo ver nas próximas consultas.</div>";
+    return;
+  }
+  mv.autorizados.innerHTML = "";
+  for (const a of lista) {
+    const div = document.createElement("div");
+    div.className = "acesso";
+    const ultimo = a.ultimo_acesso_em ? " · última vez " + quandoBR(a.ultimo_acesso_em) : "";
+    div.innerHTML = `
+      <div class="quem">
+        <div class="nome">${escaparHTML(a.medico_nome || "Médico não identificado")}${
+          a.medico_crm ? " · CRM " + escaparHTML(a.medico_crm) : ""}</div>
+        <div class="quando">Até ${dataBR(a.expira_em.slice(0, 10))}${ultimo}</div>
+        ${pessoas.length > 1
+          ? '<div class="quando">acervo de ' +
+            escaparHTML(nomeDaPessoa(pessoaDe(a.pessoa_id))) + '</div>' : ''}
+      </div>`;
+    const b = document.createElement("button");
+    b.className = "revogar";
+    b.textContent = "Cancelar";
+    b.onclick = () => revogarAutorizacao(a);
+    div.appendChild(b);
+    mv.autorizados.appendChild(div);
+  }
+}
+
+async function revogarAutorizacao(a) {
+  if (!await confirmarModal(`Cancelar a autorização de ${a.medico_nome || "este médico"}?`
+      + LINHA + LINHA + "Nas próximas consultas ele volta a precisar do código.",
+      { textoConfirmar: "Cancelar autorização", perigo: true })) return;
+  const { error } = await sb.rpc("revogar_autorizacao", { p_id: a.id });
+  if (error) {
+    console.warn("[autorizacao]", error.message);
+    return aviso("Não consegui cancelar agora. Tente de novo.", "erro");
+  }
+  aviso("Autorização cancelada.", "ok");
+  listarAcessos();
+}
+
+const perguntadasNestaSessao = new Set();
+let perguntandoAutorizacao = false;
+
+async function perguntarAutorizacoes() {
+  if (perguntandoAutorizacao || !usuario || !navigator.onLine || !jaAceitou()) return;
+  // Nunca por cima de outra coisa: foto no meio, formulário aberto ou
+  // qualquer tela cheia. A pergunta espera a próxima carga da lista.
+  if (document.querySelector(".tela-cheia:not(.escondido)")
+      || !el.form.classList.contains("escondido")
+      || !el.modalFundo.classList.contains("escondido")) return;
+  perguntandoAutorizacao = true;
+  try {
+    const { data, error } = await sb.rpc("autorizacoes_a_perguntar");
+    if (error) { console.warn("[autorizacao]", error.message); return; }
+    for (const p of data || []) {
+      if (perguntadasNestaSessao.has(p.liberacao_id)) continue;
+      perguntadasNestaSessao.add(p.liberacao_id);
+      const quem = p.medico_nome || "O médico";
+      const deQuem = pessoas.length > 1
+        ? " de " + nomeDaPessoa(pessoaDe(p.pessoa_id)) : "";
+      const sim = await confirmarModal(
+        `${quem} abriu os documentos${deQuem} em ${quandoBR(p.usado_em)}, `
+        + "com o código que você mostrou." + LINHA + LINHA
+        + "Deixar este médico ver nas próximas consultas, sem precisar de "
+        + "código?" + LINHA + LINHA
+        + "Vale por 12 meses e se renova a cada consulta. Você cancela quando "
+        + "quiser, em 🩺 Mostrar ao médico.",
+        { titulo: "Manter liberado?", textoConfirmar: "Manter liberado",
+          textoCancelar: "Agora não" });
+      const { error: e2 } = await sb.rpc("responder_autorizacao",
+        { p_liberacao: p.liberacao_id, p_aceita: sim });
+      if (e2) {
+        console.warn("[autorizacao]", e2.message);
+        aviso("Não consegui guardar sua resposta. A pergunta volta depois.", "erro");
+        perguntadasNestaSessao.delete(p.liberacao_id);
+        continue;
+      }
+      if (sim) aviso(`${quem} poderá ver nas próximas consultas, sem código.`, "ok");
+    }
+  } finally {
+    perguntandoAutorizacao = false;
   }
 }
 
@@ -1983,6 +2096,8 @@ async function carregar() {
     ? `${total} documento${total > 1 ? "s" : ""} guardado${total > 1 ? "s" : ""}`
       + (naFila.length ? ` · ${naFila.length} aguardando envio` : "")
     : "exames, laudos e receitas num lugar só";
+  // Depois da lista, sem esperar: a pergunta não pode atrasar a tela.
+  perguntarAutorizacoes();
 }
 
 // dataBR vive em comum.js: as duas paginas mostram a mesma data, e a

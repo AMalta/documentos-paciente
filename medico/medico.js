@@ -116,12 +116,47 @@ el.abrir.disabled = true;
 // Aberta pela aba 📱 indiDoc do prontuário do Indiclin, a página recebe nome
 // e CRM na URL: o médico só digita o código. Continuam editáveis, e entram
 // por .value (nunca como HTML) — a URL é de quem a montou, não confiável.
+//
+// Etapa 2 da integração, também pela URL:
+//   oc, om, cn  clínica e médico no Indiclin, e o nome da clínica. Vão para
+//               abrir_acervo, que marca o acesso como vindo do Indiclin — é
+//               o que permite ao paciente responder "manter liberado".
+//               Forjá-los não dá nada: usar a autorização exige a senha da
+//               integração, que só o servidor do Indiclin tem.
+//   acesso      a senha de 32 dígitos emitida pela autorização do paciente.
+//               Com ela a página abre sozinha, sem código.
+//   po          a origem da página do Indiclin, para avisá-la (postMessage)
+//               de quem é o acervo aberto. Só para ela, nunca para "*".
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+let origemIndiclin = null;
+let senhaAcesso = null;
 try {
   const q = new URLSearchParams(location.search);
   if (q.get("nome")) el.nome.value = q.get("nome").slice(0, 120);
   if (q.get("crm")) el.crm.value = q.get("crm").slice(0, 30);
   if (q.get("nome")) el.codigo.focus();
+  if (UUID_RE.test(q.get("oc") || "") && UUID_RE.test(q.get("om") || "")) {
+    let po = null;
+    try { po = q.get("po") ? new URL(q.get("po")).origin : null; } catch (e) { po = null; }
+    origemIndiclin = { clinica: q.get("oc"), medico: q.get("om"),
+                       clinicaNome: (q.get("cn") || "").slice(0, 120), po };
+  }
+  if (/^\d{32}$/.test(q.get("acesso") || "")) senhaAcesso = q.get("acesso");
 } catch (e) { /* URL estranha: segue com os campos vazios */ }
+
+// Conta à página do Indiclin de quem é o acervo aberto: é com isso que ela
+// oferece ao médico vincular este acervo ao paciente do prontuário. Só
+// quando veio do Indiclin, e só para a origem que ele declarou.
+function avisarIndiclin(via) {
+  if (!origemIndiclin || !origemIndiclin.po || window.parent === window) return;
+  try {
+    window.parent.postMessage({
+      tipo: "indidoc-aberto", via,
+      pessoa_id: pessoaId,
+      nome: el.topoPaciente.textContent || "",
+    }, origemIndiclin.po);
+  } catch (e) { /* sem o aviso, só não oferece o vínculo */ }
+}
 
 el.abrir.onclick = async () => {
   const nome = (el.nome.value || "").trim();
@@ -134,6 +169,10 @@ el.abrir.onclick = async () => {
   el.abrir.disabled = true;
   el.abrir.textContent = "Abrindo…";
   erro("");
+  // Uso único: a senha sai daqui antes de qualquer chamada. Se a abertura
+  // falhar em qualquer ponto, o próximo clique usa o código digitado.
+  const senhaUsada = senhaAcesso;
+  senhaAcesso = null;
   try {
     // Sessão anônima nova a cada abertura: o crachá é a liberação, não a
     // sessão. Reaproveitar uma sessão antiga faria o acesso de ontem
@@ -143,9 +182,13 @@ el.abrir.onclick = async () => {
       captcha ? { options: { captchaToken: captcha } } : undefined);
     if (eLogin) throw eLogin;
 
+    const via = senhaUsada ? "autorizacao" : "codigo";
     const { data, error } = await sb.rpc("abrir_acervo", {
-      p_codigo: el.codigo.value, p_nome: nome,
+      p_codigo: senhaUsada || el.codigo.value, p_nome: nome,
       p_crm: (el.crm.value || "").trim() || null,
+      p_origem_clinica: origemIndiclin ? origemIndiclin.clinica : null,
+      p_origem_medico: origemIndiclin ? origemIndiclin.medico : null,
+      p_clinica_nome: origemIndiclin ? origemIndiclin.clinicaNome || null : null,
     });
     if (error) throw error;
     const lib = Array.isArray(data) ? data[0] : data;
@@ -198,6 +241,7 @@ el.abrir.onclick = async () => {
     el.prazo.textContent = "🔓 acesso liberado até o fim do dia";
     el.entrada.classList.add("escondido");
     el.acervo.classList.remove("escondido");
+    avisarIndiclin(via);
     await carregar();
   } catch (e) {
     const msg = String(e?.message || e);
@@ -209,6 +253,19 @@ el.abrir.onclick = async () => {
     el.abrir.textContent = "Abrir acervo";
   }
 };
+
+// Senha de autorização na URL: abre sozinha. Falhou (vencida, revogada no
+// meio do caminho), cai na tela do código com o motivo — o médico pede o
+// código ao paciente como sempre.
+if (senhaAcesso) {
+  el.abrir.disabled = false;
+  el.abrir.onclick().then(() => {
+    if (!el.entrada.classList.contains("escondido")) {
+      erro("O acesso sem código não valeu agora. Peça ao paciente o código "
+         + "de 6 dígitos.");
+    }
+  });
+}
 
 el.sair.onclick = async () => {
   // Encerrar aqui é sair DESTE aparelho. Não revoga a liberação — quem

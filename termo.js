@@ -50,8 +50,12 @@ window.TERMO = {
 
      2026-09-19: a foto passou a ser enviada a um serviço de leitura
      automática fora do Brasil. Isso muda o que o paciente está permitindo,
-     então o aceite anterior não vale para isto. */
-  versao: "2026-09-19",
+     então o aceite anterior não vale para isto.
+
+     2026-09-25: o paciente pode deixar um médico ver nas próximas consultas
+     sem código ("manter liberado"). É acesso que continua depois do dia da
+     consulta — o termo anterior dizia que todo acesso vencia no mesmo dia. */
+  versao: "2026-09-25",
 
   // As seis frases da tela. Cada uma responde uma pergunta da LGPD sem
   // usar a palavra da LGPD.
@@ -62,7 +66,8 @@ window.TERMO = {
     ["🔒", "Ninguém vê sem você liberar",
      "Nem médico, nem clínica, nem laboratório. Para mostrar a um médico, "
      + "você gera um código na hora da consulta, e o acesso dele vence no "
-     + "mesmo dia."],
+     + "mesmo dia. Se quiser, pode deixar um médico ver nas próximas "
+     + "consultas sem código — por 12 meses, e você cancela quando quiser."],
     // A frase que faltava. Fica ENTRE o cadeado e o servidor no Brasil, de
     // propósito: é exatamente ali que a pessoa está formando a ideia de
     // "então nada sai daqui" — e uma coisa sai.
@@ -109,6 +114,21 @@ Quando você quiser mostrar seus documentos a um médico, será você quem gera
 um código dentro do aplicativo e o entrega a ele. Esse código vale por poucos
 minutos e o acesso do médico termina no mesmo dia. Você pode ver, a qualquer
 momento, quem abriu seu acervo e quando, e pode cancelar acessos.
+
+Autorização para as próximas consultas. Depois de mostrar seus documentos por
+código a um médico que usa o sistema Indiclin, o aplicativo pergunta se você
+quer deixar esse médico vê-los nas próximas consultas sem precisar de código.
+A resposta é sua, e o padrão é não. Se você aceitar:
+
+- vale só para aquele médico, e não para os outros médicos da mesma clínica;
+- vale só para a pessoa cujo acervo foi mostrado (numa conta com você e seu
+  filho, autorizar os seus documentos não abre os dele);
+- dura 12 meses e se renova a cada consulta em que o médico abrir o acervo;
+- o médico só consegue abrir pelo sistema da clínica dele, no atendimento;
+- cada abertura aparece para você em "Quem abriu meu acervo", marcada como
+  "sem código";
+- você cancela quando quiser, em "Mostrar ao médico", e a partir daí ele
+  volta a precisar do código.
 
 4. A LEITURA AUTOMÁTICA DA FOTO
 Quando você guarda um documento, a foto da primeira página é enviada a um
