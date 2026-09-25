@@ -3,7 +3,7 @@
    elas vêm por URL assinada que expira, e cache de dado de saúde no disco do
    navegador é risco sem ganho — quem precisa do acervo offline é o dono, e
    isso é assunto da fila de envio, não deste arquivo. */
-const VERSAO = "casca-v77";
+const VERSAO = "casca-v78";
 const CASCA = ["./", "./index.html", "./app.js", "./config.js",
                 "./manifest.webmanifest", "./worker.js", "./comum.js", "./fila.js", "./agenda.js", "./termo.js",
                 // Sem esta linha o aplicativo NAO ABRE sem rede: e a
@@ -40,8 +40,12 @@ self.addEventListener("fetch", (e) => {
   // tela errada, sem erro nenhum.
   if (url.pathname.includes("/medico")) return;
 
+  // `no-cache` = sempre pergunta ao servidor (responde 304 se nada mudou,
+  // quase de graça). Sem ele, o max-age=600 do GitHub Pages deixava o
+  // navegador devolver o app.js antigo por até 10 minutos depois de cada
+  // publicação — "rede primeiro" que na prática era cache primeiro.
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: "no-cache" })
       .then((resposta) => {
         const copia = resposta.clone();
         caches.open(VERSAO).then((c) => c.put(e.request, copia)).catch(() => {});
