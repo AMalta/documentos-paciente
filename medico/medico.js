@@ -131,6 +131,17 @@ el.abrir.disabled = true;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 let origemIndiclin = null;
 let senhaAcesso = null;
+// "desde": a última consulta, mandada pelo Indiclin. O que o paciente
+// guardou DEPOIS dela é o que o médico quer ver primeiro — é o que ele
+// trouxe de novo.
+let desdeUltima = null;
+let soNovos = false;
+function ehNovo(d) {
+  if (!desdeUltima || !d.criado_em) return false;
+  // Fim do dia da consulta, em Brasília: o que foi guardado na mesma tarde
+  // da consulta anterior não é novidade para a de hoje.
+  return new Date(d.criado_em) > new Date(desdeUltima + "T23:59:59-03:00");
+}
 try {
   const q = new URLSearchParams(location.search);
   if (q.get("nome")) el.nome.value = q.get("nome").slice(0, 120);
@@ -143,6 +154,7 @@ try {
                        clinicaNome: (q.get("cn") || "").slice(0, 120), po };
   }
   if (/^\d{32}$/.test(q.get("acesso") || "")) senhaAcesso = q.get("acesso");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(q.get("desde") || "")) desdeUltima = q.get("desde");
 } catch (e) { /* URL estranha: segue com os campos vazios */ }
 
 // Conta à página do Indiclin de quem é o acervo aberto: é com isso que ela
@@ -339,7 +351,8 @@ function desenhar() {
     (!tipo || d.tipo === tipo)
     && casaBusca(d, termos)
     && (!regiaoAtiva || regioesDoDocumento(d).has(regiaoAtiva))
-    && (!subAtivo || noSubAssunto(d, regiaoAtiva, subAtivo)));
+    && (!subAtivo || noSubAssunto(d, regiaoAtiva, subAtivo))
+    && (!soNovos || ehNovo(d)));
 
   // A data do DOCUMENTO manda, e a de guardado e so o desempate: o medico
   // pensa em "o exame de fevereiro", nao em "o que ela fotografou terca".
@@ -356,11 +369,16 @@ function desenhar() {
     lista.sort((a, b) => String(quando(b)).localeCompare(String(quando(a))));
   }
 
+  const novos = documentos.filter(ehNovo).length;
   el.contaDocs.innerHTML = documentos.length
     ? `<b>${lista.length}</b> de ${documentos.length} documento`
       + `${documentos.length > 1 ? "s" : ""}`
-      + (regiaoAtiva || tipo || termos.length ? " · filtrando" : "")
+      + (regiaoAtiva || tipo || termos.length || soNovos ? " · filtrando" : "")
+      + (novos ? ` · <button type="button" class="so-novos${soNovos ? " ativo" : ""}" id="so-novos">`
+          + `🆕 ${novos} novo${novos > 1 ? "s" : ""} desde ${dataBRmed(desdeUltima)}</button>` : "")
     : "";
+  const bNovos = document.getElementById("so-novos");
+  if (bNovos) bNovos.onclick = () => { soNovos = !soNovos; desenhar(); };
 
   if (!lista.length) {
     el.grade.innerHTML = '<div class="vazio"><div class="icone">'
@@ -386,7 +404,7 @@ function cartaoDocumento(d) {
   b.innerHTML = `
     <div class="capa">${ICONES[d.tipo] || "📎"}</div>
     <div class="txt">
-      <div class="nome">${escaparHTML(d.nome || ROTULOS[d.tipo])}</div>
+      <div class="nome">${ehNovo(d) ? '<span class="novo">🆕</span> ' : ""}${escaparHTML(d.nome || ROTULOS[d.tipo])}</div>
       <div class="meta">${ROTULOS[d.tipo]} · ${dataBRmed(d.data_documento || d.criado_em)}</div>
       ${paginas.length > 1 ? `<div class="paginas">${paginas.length} páginas</div>` : ""}
     </div>`;
