@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-25.1";
+const VERSAO_APP = "2026-09-25.2";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -2153,31 +2153,8 @@ function pintarCorpo() {
     }
   }
 
-  // Bolhas de contagem no boneco: mesma conta das folhinhas.
-  // Coordenadas do desenho de CORPO_SVG (comum.js). Cada bolha pousa na
-  // BORDA da regiao, nao no meio dela: no meio ela taparia justamente a cor
-  // que diz se a regiao esta acesa. As dos membros caem sobre o retangulo
-  // de alcance, que e transparente — e `pointer-events:none` no CSS impede que
-  // elas roubem o toque da regiao por baixo.
-  const BOLHAS = { cabeca: [63, 9], peito: [71, 48], barriga: [70, 84],
-                   pelve: [72, 114], bracos: [11, 116], pernas: [26, 192] };
-  const bolhas = el.corpo.querySelector("#corpo-bolhas");
-  if (bolhas) {
-    while (bolhas.firstChild) bolhas.removeChild(bolhas.firstChild);
-    const NS = "http://www.w3.org/2000/svg";
-    for (const r of REGIOES.filter((x) => x.corpo && conta[x.id] && BOLHAS[x.id])) {
-      const [cx, cy] = BOLHAS[r.id];
-      const g = document.createElementNS(NS, "g");
-      if (regiaoAtiva === r.id) g.setAttribute("class", "ativa");
-      const c = document.createElementNS(NS, "circle");
-      c.setAttribute("cx", cx); c.setAttribute("cy", cy); c.setAttribute("r", "5.5");
-      const t = document.createElementNS(NS, "text");
-      t.setAttribute("x", cx); t.setAttribute("y", cy);
-      t.textContent = conta[r.id] > 99 ? "99+" : String(conta[r.id]);
-      g.appendChild(c); g.appendChild(t);
-      bolhas.appendChild(g);
-    }
-  }
+  // Bolhas de contagem: mesma conta das folhinhas (pintarBolhas, comum.js).
+  pintarBolhas(el.corpo, conta, regiaoAtiva);
 
   // A dica nomeia o que EXISTE, e muda quando ha filtro. Duas razoes:
   // mandar tocar numa regiao apagada ensina em um segundo que o recurso nao

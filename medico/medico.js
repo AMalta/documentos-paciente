@@ -494,6 +494,9 @@ function pintarCorpo() {
     }
   }
 
+  // O mesmo número que o paciente vê no boneco dele.
+  pintarBolhas(el.corpo, conta, regiaoAtiva);
+
   el.folhinhas.innerHTML = "";
   for (const r of REGIOES.filter((x) => !x.corpo && conta[x.id])) {
     const b = document.createElement("button");

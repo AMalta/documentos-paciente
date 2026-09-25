@@ -125,6 +125,12 @@
      sabotado. No celular nao aparece, porque nao ha cursor. */
   #corpo .regiao.tem:not(.ativa):not(.alcance):hover{fill:#74ab97}
   #corpo .regiao.ativa:not(.alcance){fill:var(--verde)}
+  #corpo-bolhas{pointer-events:none}
+  #corpo-bolhas circle{fill:#fff;stroke:var(--verde);stroke-width:1}
+  #corpo-bolhas text{fill:var(--verde);font-size:7px;font-weight:700;
+                     text-anchor:middle;dominant-baseline:central}
+  #corpo-bolhas .ativa circle{fill:var(--verde);stroke:#fff}
+  #corpo-bolhas .ativa text{fill:#fff}
   /* Recebe o toque e nao se ve: o desenho do braco continua fino. */
   #corpo .regiao.alcance{fill:transparent;stroke:none}
   #corpo .regiao.alcance.tem{cursor:pointer}

@@ -556,6 +556,35 @@ function casaChave(texto, chave) {
   return false;
 }
 
+/* Bolhas de contagem no boneco — do paciente E do médico. Moravam só em
+   app.js, e a tela do médico, que monta o mesmo CORPO_SVG com o grupo
+   #corpo-bolhas vazio, nunca as desenhava.
+   Coordenadas do desenho de CORPO_SVG. Cada bolha pousa na BORDA da
+   regiao, nao no meio: no meio ela taparia justamente a cor que diz se a
+   regiao esta acesa. As dos membros caem sobre o retangulo de alcance, que
+   e transparente — e `pointer-events:none` no CSS impede que roubem o toque
+   da regiao por baixo. */
+const BOLHAS_CORPO = { cabeca: [63, 9], peito: [71, 48], barriga: [70, 84],
+                       pelve: [72, 114], bracos: [11, 116], pernas: [26, 192] };
+function pintarBolhas(raiz, conta, ativa) {
+  const bolhas = raiz && raiz.querySelector("#corpo-bolhas");
+  if (!bolhas) return;
+  while (bolhas.firstChild) bolhas.removeChild(bolhas.firstChild);
+  const NS = "http://www.w3.org/2000/svg";
+  for (const r of REGIOES.filter((x) => x.corpo && conta[x.id] && BOLHAS_CORPO[x.id])) {
+    const [cx, cy] = BOLHAS_CORPO[r.id];
+    const g = document.createElementNS(NS, "g");
+    if (ativa === r.id) g.setAttribute("class", "ativa");
+    const c = document.createElementNS(NS, "circle");
+    c.setAttribute("cx", cx); c.setAttribute("cy", cy); c.setAttribute("r", "5.5");
+    const t = document.createElementNS(NS, "text");
+    t.setAttribute("x", cx); t.setAttribute("y", cy);
+    t.textContent = conta[r.id] > 99 ? "99+" : String(conta[r.id]);
+    g.appendChild(c); g.appendChild(t);
+    bolhas.appendChild(g);
+  }
+}
+
 function regioesDoDocumento(d) {
   const texto = semAcento((d.nome || "") + " " + (ROTULOS[d.tipo] || ""));
   const achadas = new Set();
