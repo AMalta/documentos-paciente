@@ -254,27 +254,56 @@
                              overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tela-cheia .barra button{background:rgba(255,255,255,.14);color:#fff;
                             border-radius:9px;padding:9px 15px;font-size:14px}
-  .tela-cheia .palco-img{flex:1;display:flex;align-items:center;justify-content:center;
-                         padding:10px;overflow:auto}
+  .tela-cheia .barra{flex-wrap:wrap;row-gap:6px}
+  .tela-cheia .barra .controles{display:flex;align-items:center;gap:6px}
+  .tela-cheia .barra .controles button{padding:7px 12px;font-size:16px}
+  .tela-cheia .barra .controles button:disabled{opacity:.3}
+  .tela-cheia .barra .controles #visu-conta{font-size:13px;min-width:44px;text-align:center}
+  .tela-cheia .barra .controles .sep{width:10px}
+  .visu-corpo{flex:1;min-height:0;display:flex}
+  .tela-cheia .palco-img{flex:1;min-width:0;display:flex;align-items:center;
+                         justify-content:center;padding:4px;overflow:auto}
   .tela-cheia img{max-width:100%;max-height:100%;object-fit:contain}
   .paginacao{display:flex;align-items:center;justify-content:center;gap:18px;
              padding:12px;background:rgba(0,0,0,.4)}
   .paginacao button{background:rgba(255,255,255,.14);color:#fff;border-radius:9px;
                     padding:10px 20px;font-size:17px}
   .paginacao button:disabled{opacity:.3}
+  /* ZOOM. Ampliada, a imagem sai do "caber na tela" e ganha largura em px;
+     o palco rola. Sem flex no palco ampliado: flex centralizado corta a
+     borda esquerda de um conteúdo mais largo que ele, e não dá para rolar
+     até lá. */
+  .tela-cheia .palco-img.ampliado{display:block;cursor:grab}
+  .tela-cheia .palco-img.ampliado.arrastando{cursor:grabbing}
+  .tela-cheia .palco-img.ampliado img{max-width:none;max-height:none;display:block;
+                                      margin:0 auto}
+  /* Ajustada, a imagem ESTICA até a borda do palco (mantendo a proporção):
+     foto menor que a tela também aparece no maior tamanho possível. */
+  .tela-cheia .palco-img:not(.ampliado) img{cursor:zoom-in;width:100%;height:100%;
+                                            object-fit:contain}
+  .zoom-valor{min-width:52px;text-align:center;font-size:12.5px;color:#9fb3c1}
   .carregando{color:var(--fraco);font-size:14px;text-align:center;padding:40px}
   /* Anotar no prontuário (só aberta pelo Indiclin). Embaixo da imagem, e
      não num modal: o médico escreve OLHANDO o documento. */
-  .anotar{background:#16222b;border-top:1px solid rgba(255,255,255,.12);
-          padding:12px 15px;display:grid;gap:8px;
-          grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+  /* Coluna à direita: a imagem fica com toda a altura. Em tela estreita
+     (celular, quadro pequeno) volta para baixo dela. */
+  .anotar{background:#16222b;border-left:1px solid rgba(255,255,255,.12);
+          padding:12px 14px;display:flex;flex-direction:column;gap:8px;
+          width:300px;flex:0 0 300px;overflow-y:auto}
+  .anotar textarea{flex:1;min-height:110px}
+  @media (max-width: 760px){
+    .visu-corpo{flex-direction:column}
+    .anotar{width:auto;flex:0 0 auto;border-left:0;
+            border-top:1px solid rgba(255,255,255,.12)}
+    .anotar textarea{flex:0 0 auto;min-height:54px}
+  }
   .anotar label{font-size:12px;color:#9fb3c1;display:block;margin-bottom:3px}
   .anotar input,.anotar textarea{width:100%;background:#0b1319;color:#fff;
           border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:8px 10px;
           font-size:14px;font-family:inherit}
   .anotar textarea{resize:vertical;min-height:54px}
-  .anotar .inteira{grid-column:1 / -1}
-  .anotar .acao{display:flex;align-items:center;gap:12px;grid-column:1 / -1}
+  .anotar .inteira{display:flex;flex-direction:column;flex:1}
+  .anotar .acao{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .anotar .acao button{background:#1c6b4a;color:#fff;border-radius:9px;
           padding:9px 16px;font-size:14px;font-weight:600}
   .anotar .acao button:disabled{opacity:.5}
@@ -402,18 +431,27 @@
 </div>
 
 <!-- VISUALIZADOR ----------------------------------------------------------- -->
+<!-- A IMAGEM É O QUE IMPORTA: tudo o que não é ela fica numa barra só em
+     cima (páginas, zoom, imprimir, fechar) e a anotação vai para uma coluna
+     ao lado. Antes eram três faixas empilhadas — barra, paginação e
+     anotação — e o laudo ficava com metade da altura. -->
 <div class="tela-cheia escondido" id="tela-visu">
   <div class="barra">
     <span class="titulo" id="visu-titulo"></span>
-    <button id="visu-imprimir">🖨️ Imprimir</button>
+    <div class="controles">
+      <button id="visu-antes" aria-label="Página anterior">‹</button>
+      <span id="visu-conta">1 / 1</span>
+      <button id="visu-depois" aria-label="Próxima página">›</button>
+      <span class="sep"></span>
+      <button id="visu-menos" aria-label="Diminuir">−</button>
+      <span id="visu-zoom" class="zoom-valor">ajustar</span>
+      <button id="visu-mais" aria-label="Ampliar">+</button>
+    </div>
+    <button id="visu-imprimir">🖨️</button>
     <button id="visu-fechar">Fechar</button>
   </div>
+  <div class="visu-corpo">
   <div class="palco-img"><img id="visu-img" alt=""></div>
-  <div class="paginacao">
-    <button id="visu-antes" aria-label="Página anterior">‹</button>
-    <span id="visu-conta">1 / 1</span>
-    <button id="visu-depois" aria-label="Próxima página">›</button>
-  </div>
   <!-- ANOTAR NO PRONTUÁRIO. Só existe quando a página foi aberta pela aba
        📱 indiDoc do Indiclin. Nome e data vêm do que o paciente guardou —
        editáveis, porque a data é o que a leitura automática mais erra. -->
@@ -436,6 +474,7 @@
       <span class="estado" id="anotar-estado"></span>
     </div>
   </div>
+  </div>
 </div>
 
 <!-- De dentro do site, como no aplicativo. Aqui a pagina nem e cacheada
@@ -445,9 +484,9 @@
      GitHub Pages manda guardar cada arquivo por 10 min, e esta pagina fica
      FORA do service worker: sem a versao no endereco, o navegador do medico
      seguia com o medico.js antigo ate 10 min depois de publicar. -->
-<script src="../supabase.min.js?v=2026-09-25.8"></script>
-<script src="../config.js?v=2026-09-25.8"></script>
-<script src="../comum.js?v=2026-09-25.8"></script>
-<script src="medico.js?v=2026-09-25.8"></script>
+<script src="../supabase.min.js?v=2026-09-25.10"></script>
+<script src="../config.js?v=2026-09-25.10"></script>
+<script src="../comum.js?v=2026-09-25.10"></script>
+<script src="medico.js?v=2026-09-25.10"></script>
 </body>
 </html>

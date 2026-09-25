@@ -54,6 +54,7 @@ const el = {
   modoGrade: $("modo-grade"), modoLista: $("modo-lista"),
   telaVisu: $("tela-visu"), visuImg: $("visu-img"), visuTitulo: $("visu-titulo"),
   visuConta: $("visu-conta"), visuAntes: $("visu-antes"),
+  visuMenos: $("visu-menos"), visuMais: $("visu-mais"), visuZoom: $("visu-zoom"),
   visuDepois: $("visu-depois"), visuFechar: $("visu-fechar"),
   visuImprimir: $("visu-imprimir"),
   anotar: $("anotar"), anotarNome: $("anotar-nome"), anotarData: $("anotar-data"),
@@ -647,7 +648,85 @@ async function abrirDocumento(doc, paginas) {
   mostrarPagina();
 }
 
+/* ── Zoom ──────────────────────────────────────────────────────────────
+   Laudo fotografado tem letra miúda, e "caber na tela" num monitor de
+   consultório deixa a folha ilegível. Níveis fixos, e não contínuos: o
+   médico quer "maior", não 137%. 0 = ajustar à tela; os outros são a
+   largura em relação à do palco. Clique na imagem amplia NAQUELE ponto;
+   Ctrl + roda também; arrastar com o mouse anda pela folha. */
+const NIVEIS_ZOOM = [0, 1.5, 2, 3, 4];
+let nivelZoom = 0;
+const palco = el.visuImg.parentElement;
+
+function aplicarZoom(pontoX, pontoY) {
+  const z = NIVEIS_ZOOM[nivelZoom];
+  // O ponto (em fração da imagem) que deve continuar sob o cursor.
+  const r = el.visuImg.getBoundingClientRect();
+  const fx = pontoX == null ? 0.5 : (pontoX - r.left) / (r.width || 1);
+  const fy = pontoY == null ? 0.5 : (pontoY - r.top) / (r.height || 1);
+  palco.classList.toggle("ampliado", z > 0);
+  el.visuImg.style.width = z > 0 ? Math.round(palco.clientWidth * z) + "px" : "";
+  el.visuZoom.textContent = z > 0 ? Math.round(z * 100) + "%" : "ajustar";
+  el.visuMenos.disabled = nivelZoom === 0;
+  el.visuMais.disabled = nivelZoom === NIVEIS_ZOOM.length - 1;
+  if (z > 0) {
+    const alvoX = el.visuImg.offsetLeft + fx * el.visuImg.offsetWidth;
+    const alvoY = el.visuImg.offsetTop + fy * el.visuImg.offsetHeight;
+    const cx = pontoX == null ? palco.clientWidth / 2 : pontoX - palco.getBoundingClientRect().left;
+    const cy = pontoY == null ? palco.clientHeight / 2 : pontoY - palco.getBoundingClientRect().top;
+    palco.scrollLeft = alvoX - cx;
+    palco.scrollTop = alvoY - cy;
+  }
+}
+
+function mudarZoom(passo, x, y) {
+  const novo = Math.min(NIVEIS_ZOOM.length - 1, Math.max(0, nivelZoom + passo));
+  if (novo === nivelZoom) return;
+  nivelZoom = novo;
+  aplicarZoom(x, y);
+}
+
+el.visuMais.onclick = () => mudarZoom(1);
+el.visuMenos.onclick = () => mudarZoom(-1);
+
+// Clique: ajustada, amplia no ponto; ampliada, só volta se não foi arrasto.
+let arrastou = false;
+el.visuImg.addEventListener("click", (e) => {
+  if (arrastou) { arrastou = false; return; }
+  if (nivelZoom === 0) mudarZoom(2, e.clientX, e.clientY);
+});
+palco.addEventListener("wheel", (e) => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  mudarZoom(e.deltaY < 0 ? 1 : -1, e.clientX, e.clientY);
+}, { passive: false });
+
+// Arrastar para andar pela folha ampliada.
+let arrasto = null;
+palco.addEventListener("mousedown", (e) => {
+  if (nivelZoom === 0 || e.button !== 0) return;
+  arrasto = { x: e.clientX, y: e.clientY, l: palco.scrollLeft, t: palco.scrollTop };
+  arrastou = false;
+  palco.classList.add("arrastando");
+  e.preventDefault();
+});
+window.addEventListener("mousemove", (e) => {
+  if (!arrasto) return;
+  const dx = e.clientX - arrasto.x, dy = e.clientY - arrasto.y;
+  if (Math.abs(dx) + Math.abs(dy) > 4) arrastou = true;
+  palco.scrollLeft = arrasto.l - dx;
+  palco.scrollTop = arrasto.t - dy;
+});
+window.addEventListener("mouseup", () => {
+  arrasto = null;
+  palco.classList.remove("arrastando");
+});
+
 function mostrarPagina() {
+  // Página nova começa ajustada: o zoom da folha anterior, noutro ponto,
+  // mostraria um pedaço aleatório desta.
+  nivelZoom = 0;
+  aplicarZoom();
   el.visuImg.src = visuPaginas[visuIndice];
   el.visuConta.textContent = `${visuIndice + 1} / ${visuPaginas.length}`;
   el.visuAntes.disabled = visuIndice === 0;
@@ -803,6 +882,8 @@ document.addEventListener("keydown", (e) => {
   // Digitando a anotação, as setas movem o cursor e o Esc não fecha o
   // documento com o texto pela metade.
   if (e.target && e.target.closest && e.target.closest(".anotar")) return;
+  if (e.key === "+" || e.key === "=") mudarZoom(1);
+  if (e.key === "-") mudarZoom(-1);
   if (e.key === "ArrowLeft") el.visuAntes.click();
   if (e.key === "ArrowRight") el.visuDepois.click();
   if (e.key === "Escape") el.visuFechar.click();
