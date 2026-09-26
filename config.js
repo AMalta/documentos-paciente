@@ -32,7 +32,7 @@ window.CONFIG = {
   // NOTIFICAÇÕES: a chave PÚBLICA do par VAPID (a privada fica só nos
   // segredos da Edge Function). Vazia, o app não oferece avisos — e nada
   // quebra. Gerar com exames_externos/testes/gerar_chaves_push.py.
-  VAPID_PUBLIC_KEY: "",
+  VAPID_PUBLIC_KEY: "BDqcAP9CZioNxpw5MGEEr1Ai10bvn5vOzk3MSaQ9mpH56cl9qf6s8ugKzX59vHwZdqICRvY8tgkP12UJmlHpSzs",
 
   // Compressão antes de subir. Não é ajuste fino: é o que decide o custo do
   // produto. A 250 KB por imagem, 1 GB guarda ~4.000 documentos; sem comprimir,
