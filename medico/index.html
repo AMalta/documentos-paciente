@@ -70,6 +70,11 @@
         display:flex;align-items:center;gap:14px}
   .topo .marca b{font-weight:700}
   .topo .marca{font-size:15px;font-weight:600}
+  /* A logo: grande no cartão de entrada, pequena na barra do acervo (ali o
+     espaço é do documento, sobretudo dentro do prontuário do Indiclin). */
+  .logo-idoc{display:block;width:210px;max-width:70%;height:auto;margin:0 0 14px}
+  .logo-idoc-mini{height:26px;width:auto;flex:0 0 auto;margin-right:10px}
+  @media (max-width:520px){ .logo-idoc-mini{display:none} }
   .topo .marca span{color:var(--suave);font-weight:400}
   .prazo{margin-left:auto;display:flex;align-items:center;gap:6px;
          background:var(--verde-claro);border:1px solid var(--verde-borda);
@@ -295,6 +300,7 @@
 <!-- ENTRADA ---------------------------------------------------------------- -->
 <div class="entrada" id="tela-entrada">
   <div class="cartao">
+    <img class="logo-idoc" src="../logo_indidoc_480.png" alt="IndiDoc — seu portal de documentos médicos">
     <div class="chapeu">Acervo do paciente</div>
     <h1 class="serif">O paciente mostra o código. O senhor vê os documentos.</h1>
     <div class="sub">
@@ -337,6 +343,7 @@
          lista de exames sem dono — e uma tela que nao afirma nada nao pode
          estar errada, o que soa bom e nao e: erro visivel se corrige, e
          ausencia de afirmacao, nao. -->
+    <img class="logo-idoc-mini" src="../logo_indidoc_480.png" alt="IndiDoc">
     <div class="marca"><b id="topo-paciente">Acervo do paciente</b>
       <span id="topo-medico"></span></div>
     <div class="prazo" id="prazo"></div>
@@ -440,9 +447,9 @@
      GitHub Pages manda guardar cada arquivo por 10 min, e esta pagina fica
      FORA do service worker: sem a versao no endereco, o navegador do medico
      seguia com o medico.js antigo ate 10 min depois de publicar. -->
-<script src="../supabase.min.js?v=2026-09-26.7"></script>
-<script src="../config.js?v=2026-09-26.7"></script>
-<script src="../comum.js?v=2026-09-26.7"></script>
-<script src="medico.js?v=2026-09-26.7"></script>
+<script src="../supabase.min.js?v=2026-09-26.8"></script>
+<script src="../config.js?v=2026-09-26.8"></script>
+<script src="../comum.js?v=2026-09-26.8"></script>
+<script src="medico.js?v=2026-09-26.8"></script>
 </body>
 </html>
