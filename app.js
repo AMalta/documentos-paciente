@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-26.6";
+const VERSAO_APP = "2026-09-26.7";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1457,23 +1457,55 @@ async function ativarAvisos(silencioso = false) {
   }
   let perm = Notification.permission;
   if (perm === "default" && !silencioso) {
+    // AVISA ANTES de o Android perguntar. A caixa do celular aparece uma vez
+    // só: fechada sem resposta algumas vezes, o Chrome BLOQUEIA o site
+    // ("bloqueado automaticamente") e não deixa mudar pela tela de
+    // permissões — destravar exige apagar os dados do site. Foi o que
+    // aconteceu no primeiro teste. Com a explicação, a caixa não pega
+    // ninguém de surpresa; e em "Agora não" nada é pedido, então nada fica
+    // bloqueado — o botão continua lá para depois.
+    const seguir = await confirmarModal(
+      "Na próxima tela o celular vai perguntar se o indiDoc pode mandar avisos."
+      + LINHA + LINHA + "Toque em “Permitir” para ele avisar quando chegar um documento "
+      + "e na véspera das suas consultas.",
+      { titulo: "🔔 Avisos no celular", textoConfirmar: "Continuar", textoCancelar: "Agora não" });
+    if (!seguir) return false;
     // O Chrome do Android pode usar o pedido SILENCIOSO: em vez da caixa, um
     // aviso na barra de endereço — que o app instalado não tem. O pedido
     // fica pendurado e nunca responde. Sem este limite de tempo, o botão
     // parecia não fazer nada (foi o que aconteceu no primeiro teste).
+    const pedido = Notification.requestPermission();
     perm = await Promise.race([
-      Notification.requestPermission(),
-      new Promise((ok) => setTimeout(() => ok("sem-resposta"), 8000)),
+      pedido, new Promise((ok) => setTimeout(() => ok("sem-resposta"), 20000)),
     ]);
+    // Passou o tempo e a pergunta pode AINDA estar na tela (a pessoa lendo
+    // devagar). Não desiste: quando a resposta vier, inscreve.
+    if (perm === "sem-resposta") {
+      pedido.then(async (p) => {
+        if (p === "granted" && await ativarAvisos(true)) {
+          aviso("🔔 Pronto. O celular vai avisar quando chegar algo novo "
+              + "e na véspera das consultas.", "ok");
+          if (mv.recebimentos) listarRecebimentos();
+        }
+      });
+    }
   }
   if (perm !== "granted") {
-    // Bloqueado, o Chrome não pergunta mais — e o bloqueio mora nas
-    // configurações DO SITE, no Chrome, não nas do app instalado (foi o que
-    // não funcionou no primeiro teste: mexer no ícone não desbloqueava).
-    if (!silencioso && (perm === "denied" || perm === "default" || perm === "sem-resposta")) {
-      aviso("O celular bloqueou os avisos deste app. Para liberar: abra o Chrome → ⋮ → "
-        + "Configurações → Configurações do site → Notificações → doc.indiclin.com.br → "
-        + "Permitir. Depois toque de novo em “Ativar avisos”.", "info", "Avisos bloqueados");
+    if (!silencioso) {
+      if (perm === "denied") {
+        // Bloqueado, o Chrome não pergunta mais — e o bloqueio mora nas
+        // configurações DO SITE, no Chrome, não nas do app instalado.
+        aviso("O celular bloqueou os avisos deste app. Para liberar: abra o Chrome → ⋮ → "
+          + "Configurações → Configurações do site → Notificações → doc.indiclin.com.br → "
+          + "Permitir. Depois toque de novo em “Ativar avisos”.", "info", "Avisos bloqueados");
+      } else if (perm === "default") {
+        aviso("A pergunta do celular foi fechada sem resposta. Quando quiser, toque de novo "
+          + "em “Ativar avisos” e escolha “Permitir”.", "info");
+      } else {
+        aviso("Se o celular mostrou a pergunta, toque em “Permitir”. Se ela não apareceu, "
+          + "abra o Chrome → ⋮ → Configurações → Configurações do site → Notificações e "
+          + "libere doc.indiclin.com.br.", "info", "Avisos");
+      }
     }
     return false;
   }
