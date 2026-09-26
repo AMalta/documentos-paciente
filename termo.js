@@ -60,16 +60,19 @@ window.TERMO = {
      relatórios, atestados), se o paciente autorizar. O termo dizia "só
      entra o que você fotografar".
 
-     2026-09-26: receitas simples entram na lista do que a clínica envia. */
-  versao: "2026-09-26",
+     2026-09-26: receitas simples entram na lista do que a clínica envia.
+
+     2026-09-26.2: a mesma permissão passa a incluir as consultas marcadas
+     (entram na agenda) e os avisos no celular. */
+  versao: "2026-09-26.2",
 
   // As seis frases da tela. Cada uma responde uma pergunta da LGPD sem
   // usar a palavra da LGPD.
   resumo: [
     ["📷", "Só entra o que você guardar ou autorizar",
      "Nada é buscado em laboratório, convênio ou hospital. O acervo é o que "
-     + "você fotografar — e, se você autorizar, os documentos que uma clínica "
-     + "emitir para você."],
+     + "você fotografar — e, se você autorizar, os documentos e as consultas "
+     + "que uma clínica marcar ou emitir para você."],
     ["🔒", "Ninguém vê sem você liberar",
      "Nem médico, nem clínica, nem laboratório. Para mostrar a um médico, "
      + "você gera um código na hora da consulta, e o acesso dele vence no "
@@ -111,9 +114,17 @@ sistema Indiclin pode enviar para o seu acervo os documentos que emitir para
 você — pedidos de exame, receitas simples, relatórios, atestados —, com o
 nome dela. Receitas de controle especial não são enviadas. Os pedidos
 de exame viram uma lista do que falta fazer, que se marca quando você guarda
-o exame. A autorização é por clínica e por pessoa da conta, e você a cancela
-quando quiser em "Mostrar ao médico"; os documentos que já chegaram ficam no
-seu acervo até você apagá-los.
+o exame. As consultas que a clínica marcar para você entram na sua agenda, e
+mudam ou saem dela quando a clínica remarcar ou cancelar.
+
+Avisos no celular. Com a mesma autorização, e se você permitir também no seu
+celular (ele sempre pergunta), o indiDoc avisa quando chegar um documento ou
+uma consulta marcada, e na véspera das suas consultas. São avisos sobre você;
+não há propaganda. Você desliga nas configurações do celular.
+
+A autorização é por clínica e por pessoa da conta, e você a cancela quando
+quiser em "Mostrar ao médico"; os documentos que já chegaram ficam no seu
+acervo até você apagá-los.
 
 2. PARA QUE SERVE
 Para você ter seus exames, laudos, receitas e relatórios reunidos e

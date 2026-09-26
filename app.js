@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-26.3";
+const VERSAO_APP = "2026-09-26.4";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1302,6 +1302,15 @@ async function listarRecebimentos() {
     return;
   }
   mv.recebimentos.innerHTML = "";
+  if (pushDisponivel() && Notification.permission !== "granted") {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn-linha";
+    b.style.cssText = "width:100%;margin-bottom:8px";
+    b.textContent = "🔔 Ativar avisos no celular";
+    b.onclick = async () => { if (await ativarAvisos()) listarRecebimentos(); };
+    mv.recebimentos.appendChild(b);
+  }
   for (const r of lista) {
     const div = document.createElement("div");
     div.className = "acesso";
@@ -1414,6 +1423,67 @@ async function revogarAutorizacao(a) {
   listarAcessos();
 }
 
+/* ═══ Avisos no celular (Web Push, sql/016) ═════════════════════════════
+   Depois do "Receber" da permissão, o app pede a autorização DO CELULAR —
+   que o sistema sempre pede, e que ninguém pode pular. No iPhone só existe
+   com o app instalado na tela inicial (iOS 16.4+). */
+function pushDisponivel() {
+  return !!(CONFIG.VAPID_PUBLIC_KEY && "serviceWorker" in navigator
+            && "PushManager" in window && "Notification" in window);
+}
+
+function chaveVapid(b64) {
+  const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+  const bruto = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(bruto, (c) => c.charCodeAt(0));
+}
+
+async function gravarInscricao(sub) {
+  const j = sub.toJSON();
+  const { error } = await sb.from("push_inscricoes").upsert({
+    conta_id: usuario.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
+  }, { onConflict: "endpoint" });
+  if (error) console.warn("[push]", error.message);
+  return !error;
+}
+
+async function ativarAvisos(silencioso = false) {
+  if (!pushDisponivel()) {
+    if (!silencioso) aviso(/iphone|ipad/i.test(navigator.userAgent)
+      ? "No iPhone, os avisos só funcionam com o indiDoc instalado na tela inicial "
+        + "(Compartilhar → Adicionar à Tela de Início)."
+      : "Este celular não recebe avisos do indiDoc.", "info");
+    return false;
+  }
+  let perm = Notification.permission;
+  if (perm === "default" && !silencioso) perm = await Notification.requestPermission();
+  if (perm !== "granted") {
+    if (!silencioso && perm === "denied") aviso("Os avisos estão bloqueados nas configurações "
+      + "do celular para este site. Libere lá para receber.", "info");
+    return false;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription())
+      || await reg.pushManager.subscribe({ userVisibleOnly: true,
+                                           applicationServerKey: chaveVapid(CONFIG.VAPID_PUBLIC_KEY) });
+    const ok = await gravarInscricao(sub);
+    if (ok && !silencioso) aviso("🔔 Pronto. O celular vai avisar quando chegar algo novo "
+      + "e na véspera das consultas.", "ok");
+    return ok;
+  } catch (e) {
+    console.warn("[push]", e?.message || e);
+    if (!silencioso) aviso("Não consegui ativar os avisos agora.", "erro");
+    return false;
+  }
+}
+
+// Celular que já autorizou: a inscrição volta a ser gravada a cada abertura
+// (troca de conta, inscrição renovada pelo navegador) sem perguntar nada.
+function garantirAvisos() {
+  if (usuario && pushDisponivel() && Notification.permission === "granted") ativarAvisos(true);
+}
+
 const perguntadasNestaSessao = new Set();
 let perguntandoAutorizacao = false;
 
@@ -1462,15 +1532,19 @@ async function perguntarAutorizacoes() {
       const clinica = p.clinica_nome || "a clínica";
       const deQuem = pessoas.length > 1 ? " de " + nomeDaPessoa(pessoaDe(p.pessoa_id)) : "";
       const sim = await confirmarModal(
-        `Receber no indiDoc${deQuem} os documentos que ${clinica} emitir para você?`
+        `Receber no indiDoc${deQuem} os documentos, as consultas marcadas e os avisos de ${clinica}?`
         + LINHA + LINHA + "Pedidos de exame, receitas simples, relatórios e atestados chegam aqui, "
-        + "além do papel. "
-        + "Os pedidos viram uma lista do que falta fazer." + LINHA + LINHA
+        + "além do papel, e as consultas marcadas entram na sua agenda. O celular avisa "
+        + "quando chegar algo novo e na véspera da consulta." + LINHA + LINHA
         + "Você cancela quando quiser, em 🩺 Mostrar ao médico.",
-        { titulo: "Receber documentos?", textoConfirmar: "Receber", textoCancelar: "Agora não" });
+        { titulo: "Receber da clínica?", textoConfirmar: "Receber", textoCancelar: "Agora não" });
       const { error: e3 } = await sb.rpc("responder_envio", { p_liberacao: p.liberacao_id, p_aceita: sim });
       if (e3) { perguntadasNestaSessao.delete("env" + p.liberacao_id); continue; }
-      if (sim) aviso(`${clinica} passa a enviar os documentos para cá.`, "ok");
+      if (sim) {
+        aviso(`${clinica} passa a enviar documentos e consultas para cá.`, "ok");
+        // Logo depois do "sim": é o momento em que a caixa do celular faz sentido.
+        await ativarAvisos();
+      }
     }
   } finally {
     perguntandoAutorizacao = false;
@@ -2255,6 +2329,7 @@ async function carregar() {
   // Depois da lista, sem esperar: a pergunta não pode atrasar a tela.
   perguntarAutorizacoes();
   carregarPedidos();
+  garantirAvisos();
 }
 
 // dataBR vive em comum.js: as duas paginas mostram a mesma data, e a

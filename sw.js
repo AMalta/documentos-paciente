@@ -3,7 +3,7 @@
    elas vêm por URL assinada que expira, e cache de dado de saúde no disco do
    navegador é risco sem ganho — quem precisa do acervo offline é o dono, e
    isso é assunto da fila de envio, não deste arquivo. */
-const VERSAO = "casca-v92";
+const VERSAO = "casca-v93";
 const CASCA = ["./", "./index.html", "./app.js", "./config.js",
                 "./manifest.webmanifest", "./worker.js", "./comum.js", "./fila.js", "./agenda.js", "./termo.js",
                 // Sem esta linha o aplicativo NAO ABRE sem rede: e a
@@ -26,6 +26,23 @@ self.addEventListener("activate", (e) => {
       .then((ks) => Promise.all(ks.filter((k) => k !== VERSAO).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+/* NOTIFICAÇÕES (sql/016). O serviço do indiDoc manda { titulo, corpo }.
+   Tocar no aviso abre o app — ou traz para a frente o que já está aberto. */
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { corpo: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(d.titulo || "indiDoc", {
+    body: d.corpo || "", icon: "./icone-192.png", badge: "./favicon.png", lang: "pt-BR",
+  }));
+});
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((abertas) => {
+    const app = abertas.find((c) => !c.url.includes("/medico"));
+    return app ? app.focus() : clients.openWindow("./");
+  }));
 });
 
 self.addEventListener("fetch", (e) => {
