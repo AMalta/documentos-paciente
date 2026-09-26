@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-25.13";
+const VERSAO_APP = "2026-09-26.1";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1136,7 +1136,13 @@ mv.botao.onclick = () => {
   desenharMvPessoas();
   listarAcessos();
 };
-mv.fechar.onclick = () => { mv.tela.classList.add("escondido"); limparAvisos(); };
+mv.fechar.onclick = () => {
+  mv.tela.classList.add("escondido");
+  limparAvisos();
+  // Fechar "Mostrar ao médico" é o momento logo depois de o médico usar o
+  // código: é aqui que a pergunta tem mais chance de estar esperando.
+  perguntarAutorizacoes();
+};
 
 mv.gerar.onclick = async () => {
   if (!navigator.onLine) {
@@ -1559,7 +1565,14 @@ async function enviarFila() {
 // Três gatilhos, porque são três realidades: a conexão que volta, o app que
 // é reaberto, e a espera longa com o app na tela.
 window.addEventListener("online", () => { enviarFila(); sincronizarAgenda(); });
-setInterval(() => { if (navigator.onLine) { enviarFila(); sincronizarAgenda(); } }, 60000);
+setInterval(() => { if (navigator.onLine) { enviarFila(); sincronizarAgenda(); perguntarAutorizacoes(); } }, 60000);
+// A pergunta "manter liberado?" / "receber documentos?" nasce do médico ter
+// aberto o acervo — com o app do paciente JÁ aberto. Procurar só quando a
+// lista recarrega fazia a pergunta esperar o paciente fechar e abrir o app.
+// Voltar ao app (estava em outro, ou com a tela apagada) também procura.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && navigator.onLine) perguntarAutorizacoes();
+});
 
 /* ── Faixa "sem conexão" ───────────────────────────────────────────────────
    `online`/`offline` do navegador cobrem a troca de rede em si; falta o
