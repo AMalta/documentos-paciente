@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-26.4";
+const VERSAO_APP = "2026-09-26.5";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1456,10 +1456,22 @@ async function ativarAvisos(silencioso = false) {
     return false;
   }
   let perm = Notification.permission;
-  if (perm === "default" && !silencioso) perm = await Notification.requestPermission();
+  if (perm === "default" && !silencioso) {
+    // O Chrome do Android pode usar o pedido SILENCIOSO: em vez da caixa, um
+    // aviso na barra de endereço — que o app instalado não tem. O pedido
+    // fica pendurado e nunca responde. Sem este limite de tempo, o botão
+    // parecia não fazer nada (foi o que aconteceu no primeiro teste).
+    perm = await Promise.race([
+      Notification.requestPermission(),
+      new Promise((ok) => setTimeout(() => ok("sem-resposta"), 8000)),
+    ]);
+  }
   if (perm !== "granted") {
-    if (!silencioso && perm === "denied") aviso("Os avisos estão bloqueados nas configurações "
-      + "do celular para este site. Libere lá para receber.", "info");
+    if (!silencioso && (perm === "denied" || perm === "default" || perm === "sem-resposta")) {
+      aviso("O celular não liberou os avisos. Para liberar: segure o ícone do indiDoc "
+        + "na tela inicial → Informações do app → Notificações → Permitir. Depois toque "
+        + "de novo em “Ativar avisos”.", "info", "Avisos bloqueados");
+    }
     return false;
   }
   try {
