@@ -529,6 +529,17 @@
   .acesso.morto{opacity:.55}
   .acesso.morto .nome{font-weight:500}
   .mv-nenhum{font-size:13.5px;color:#a8d5c2;line-height:1.55;padding:2px}
+  /* Exames pedidos pela clínica e ainda não trazidos. */
+  .pedidos{background:#fff8e6;border:1px solid #f0d58c;border-radius:14px;
+           padding:12px 14px;margin:0 0 14px}
+  .pedidos .tit{font-size:13px;font-weight:700;color:#7a5200;margin-bottom:6px}
+  .pedidos .item{display:flex;align-items:center;gap:10px;padding:7px 0;
+                 border-top:1px solid #f3e2b3}
+  .pedidos .item:first-of-type{border-top:0}
+  .pedidos .item .txt{flex:1;min-width:0;font-size:14px}
+  .pedidos .item .quando{font-size:12px;color:#8a6d2a}
+  .pedidos .item button{background:#fff;border:1px solid #d9b85c;color:#7a5200;
+                        border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
   /* Quem vai ser mostrado. Some com uma pessoa só — ver desenharMvPessoas. */
   .mv-pessoas{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .mv-pessoa{background:rgba(255,255,255,.12);color:#dff0e8;border-radius:999px;
@@ -1163,6 +1174,11 @@
        se essa confirmacao dependesse do filtro estar em "Todos", ela
        sumiria bem na hora em que mais serve, so porque a pessoa tinha
        deixado um filtro de outra visita ligado. -->
+  <!-- EXAMES PEDIDOS: o que a clínica pediu e o paciente ainda não trouxe.
+       Some quando não há nada pendente. Marca sozinho quando o exame é
+       fotografado (gatilho no banco); "Já fiz" marca à mão. -->
+  <div class="pedidos escondido" id="pedidos"></div>
+
   <div class="recentes escondido" id="recentes">
     <div class="recentes-titulo">📌 Recentes</div>
     <div class="recentes-trilha" id="recentes-trilha"></div>
@@ -1580,6 +1596,9 @@
          cancelar. -->
     <h3 class="mv-titulo">Podem ver sem código</h3>
     <div id="mv-autorizados"></div>
+
+    <h3 class="mv-titulo">Clínicas que enviam documentos</h3>
+    <div id="mv-recebimentos"></div>
 
     <!-- 3. quem abriu -->
     <h3 class="mv-titulo">Quem abriu meu acervo</h3>

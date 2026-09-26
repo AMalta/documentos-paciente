@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-25.12";
+const VERSAO_APP = "2026-09-25.13";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1079,7 +1079,7 @@ const mv = {
   botao: $("btn-mostrar"), tela: $("tela-mostrar"), fechar: $("mostrar-fechar"),
   gerar: $("mv-gerar"), pronto: $("mv-pronto"), codigo: $("mv-codigo"),
   prazo: $("mv-prazo"), url: $("mv-url"), acessos: $("mv-acessos"),
-  autorizados: $("mv-autorizados"),
+  autorizados: $("mv-autorizados"), recebimentos: $("mv-recebimentos"),
 };
 
 // O endereço que o médico digita. Sai do próprio endereço do aplicativo:
@@ -1224,6 +1224,7 @@ function desenharEsqueletoAcessos(qtd = 2) {
 async function listarAcessos() {
   desenharEsqueletoAcessos();
   listarAutorizados();
+  listarRecebimentos();
   const { data, error } = await sb.from("liberacoes")
     .select("id, medico_nome, medico_crm, usado_em, expira_em, revogado_em, pessoa_id, tipo")
     .not("usado_em", "is", null)
@@ -1278,6 +1279,81 @@ async function listarAcessos() {
    celular contam como "agora não", e a mesma consulta não pergunta de
    novo. Consentimento para acesso permanente a dado de saúde tem de ser um
    toque deliberado em "Manter liberado", nunca um descuido. */
+/* ═══ Documentos que a clínica envia (sql/013) ═══════════════════════════
+   Permissão oposta à de cima: aquela deixa o médico VER; esta deixa a
+   clínica ESCREVER no acervo. Por isso pergunta própria, por clínica e por
+   pessoa, e lista própria para cancelar. */
+async function listarRecebimentos() {
+  if (!mv.recebimentos) return;
+  const { data, error } = await sb.from("recebimentos")
+    .select("id, clinica_nome, pessoa_id, criado_em")
+    .is("revogado_em", null).order("criado_em", { ascending: false });
+  if (error) { mv.recebimentos.innerHTML = '<div class="mv-nenhum">Não consegui ler agora.</div>'; return; }
+  const lista = data || [];
+  if (!lista.length) {
+    mv.recebimentos.innerHTML = '<div class="mv-nenhum">Nenhuma. Uma clínica só envia '
+      + "documentos (pedidos de exame, relatórios) se você autorizar.</div>";
+    return;
+  }
+  mv.recebimentos.innerHTML = "";
+  for (const r of lista) {
+    const div = document.createElement("div");
+    div.className = "acesso";
+    div.innerHTML = `
+      <div class="quem">
+        <div class="nome">🏥 ${escaparHTML(r.clinica_nome || "Clínica")}</div>
+        <div class="quando">Envia desde ${dataBR(r.criado_em.slice(0, 10))}</div>
+        ${pessoas.length > 1 ? '<div class="quando">acervo de ' +
+          escaparHTML(nomeDaPessoa(pessoaDe(r.pessoa_id))) + '</div>' : ''}
+      </div>`;
+    const b = document.createElement("button");
+    b.className = "revogar";
+    b.textContent = "Cancelar";
+    b.onclick = async () => {
+      if (!await confirmarModal(`Parar de receber documentos de ${r.clinica_nome || "esta clínica"}?`
+          + LINHA + LINHA + "Os que já chegaram continuam no seu acervo, e você pode apagá-los.",
+          { textoConfirmar: "Parar de receber", perigo: true })) return;
+      const { error: e2 } = await sb.rpc("revogar_recebimento", { p_id: r.id });
+      if (e2) return aviso("Não consegui cancelar agora. Tente de novo.", "erro");
+      aviso("Pronto. Esta clínica não envia mais documentos.", "ok");
+      listarAcessos();
+    };
+    div.appendChild(b);
+    mv.recebimentos.appendChild(div);
+  }
+}
+
+/* Exames pedidos pela clínica e ainda não trazidos, no alto da lista. */
+async function carregarPedidos() {
+  const caixa = document.getElementById("pedidos");
+  if (!caixa || !usuario || !navigator.onLine) return;
+  const { data, error } = await sb.from("exames_pedidos")
+    .select("id, item, clinica_nome, pedido_em, pessoa_id")
+    .is("trazido_documento_id", null).eq("marcado_manual", false)
+    .order("pedido_em", { ascending: false }).limit(30);
+  const lista = (error ? [] : data || []).filter((p) => !pessoaAtiva || p.pessoa_id === pessoaAtiva);
+  caixa.classList.toggle("escondido", !lista.length);
+  if (!lista.length) { caixa.innerHTML = ""; return; }
+  caixa.innerHTML = '<div class="tit">📋 Exames pedidos</div>';
+  for (const p of lista) {
+    const linha = document.createElement("div");
+    linha.className = "item";
+    linha.innerHTML = `<div class="txt">${escaparHTML(p.item)}
+      <div class="quando">pedido em ${dataBR(p.pedido_em)} · ${escaparHTML(p.clinica_nome || "")}</div></div>`;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = "Já fiz";
+    b.onclick = async () => {
+      const { error: e2 } = await sb.from("exames_pedidos")
+        .update({ marcado_manual: true, trazido_em: new Date().toISOString() }).eq("id", p.id);
+      if (e2) return aviso("Não consegui marcar agora.", "erro");
+      carregarPedidos();
+    };
+    linha.appendChild(b);
+    caixa.appendChild(linha);
+  }
+}
+
 async function listarAutorizados() {
   if (!mv.autorizados) return;
   const { data, error } = await sb.from("autorizacoes")
@@ -1370,6 +1446,24 @@ async function perguntarAutorizacoes() {
         continue;
       }
       if (sim) aviso(`${quem} poderá ver nas próximas consultas, sem código.`, "ok");
+    }
+    // Receber documentos da clínica: pergunta separada, porque é outra
+    // permissão — a clínica ESCREVER no acervo, e não o médico ver.
+    const { data: envios } = await sb.rpc("envios_a_perguntar");
+    for (const p of envios || []) {
+      if (perguntadasNestaSessao.has("env" + p.liberacao_id)) continue;
+      perguntadasNestaSessao.add("env" + p.liberacao_id);
+      const clinica = p.clinica_nome || "a clínica";
+      const deQuem = pessoas.length > 1 ? " de " + nomeDaPessoa(pessoaDe(p.pessoa_id)) : "";
+      const sim = await confirmarModal(
+        `Receber no indiDoc${deQuem} os documentos que ${clinica} emitir para você?`
+        + LINHA + LINHA + "Pedidos de exame, relatórios e atestados chegam aqui, além do papel. "
+        + "Os pedidos viram uma lista do que falta fazer." + LINHA + LINHA
+        + "Você cancela quando quiser, em 🩺 Mostrar ao médico.",
+        { titulo: "Receber documentos?", textoConfirmar: "Receber", textoCancelar: "Agora não" });
+      const { error: e3 } = await sb.rpc("responder_envio", { p_liberacao: p.liberacao_id, p_aceita: sim });
+      if (e3) { perguntadasNestaSessao.delete("env" + p.liberacao_id); continue; }
+      if (sim) aviso(`${clinica} passa a enviar os documentos para cá.`, "ok");
     }
   } finally {
     perguntandoAutorizacao = false;
@@ -2117,7 +2211,7 @@ async function carregar() {
   if (usuario && pessoasDaConta !== usuario.id) await carregarPessoas();
 
   const { data, error } = await sb.from("documentos")
-    .select("id, tipo, nome, data_documento, criado_em, pessoa_id, documento_paginas(storage_path, ordem)")
+    .select("id, tipo, nome, data_documento, criado_em, pessoa_id, origem, origem_clinica_nome, documento_paginas(storage_path, ordem)")
     .order("criado_em", { ascending: false });
   // Falhou a leitura: mantém o que já estava carregado em vez de esvaziar a
   // lista. Sumir com o acervo por causa de um sinal ruim assusta sem motivo.
@@ -2138,6 +2232,7 @@ async function carregar() {
     : "exames, laudos e receitas num lugar só";
   // Depois da lista, sem esperar: a pergunta não pode atrasar a tela.
   perguntarAutorizacoes();
+  carregarPedidos();
 }
 
 // dataBR vive em comum.js: as duas paginas mostram a mesma data, e a
@@ -2665,7 +2760,8 @@ function cartaoDoc(d) {
       <div class="txt">
         <div class="nome">${escaparHTML(d.nome || ROTULOS[d.tipo])}</div>
         <div class="meta">${ROTULOS[d.tipo]} · ${dataBR(d.data_documento || d.criado_em)}
-          ${paginas.length > 1 ? " · " + paginas.length + " páginas" : ""}</div>
+          ${paginas.length > 1 ? " · " + paginas.length + " páginas" : ""}
+          ${d.origem === "clinica" ? " · 🏥 enviado por " + escaparHTML(d.origem_clinica_nome || "clínica") : ""}</div>
       </div>
       <div style="color:var(--tinta-3);font-size:20px">›</div>`;
     div.onclick = () => abrirDocumento(d);

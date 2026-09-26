@@ -151,7 +151,10 @@ try {
     let po = null;
     try { po = q.get("po") ? new URL(q.get("po")).origin : null; } catch (e) { po = null; }
     origemIndiclin = { clinica: q.get("oc"), medico: q.get("om"),
-                       clinicaNome: (q.get("cn") || "").slice(0, 120), po };
+                       clinicaNome: (q.get("cn") || "").slice(0, 120), po,
+                       // re=1: a clínica envia documentos ao indiDoc, e o app
+                       // pode perguntar ao paciente se quer recebê-los.
+                       ofereceEnvio: q.get("re") === "1" };
   }
   if (/^\d{32}$/.test(q.get("acesso") || "")) senhaAcesso = q.get("acesso");
   if (/^\d{4}-\d{2}-\d{2}$/.test(q.get("desde") || "")) desdeUltima = q.get("desde");
@@ -202,6 +205,7 @@ el.abrir.onclick = async () => {
       p_origem_clinica: origemIndiclin ? origemIndiclin.clinica : null,
       p_origem_medico: origemIndiclin ? origemIndiclin.medico : null,
       p_clinica_nome: origemIndiclin ? origemIndiclin.clinicaNome || null : null,
+      p_oferece_envio: !!(origemIndiclin && origemIndiclin.ofereceEnvio),
     });
     if (error) throw error;
     const lib = Array.isArray(data) ? data[0] : data;

@@ -54,15 +54,20 @@ window.TERMO = {
 
      2026-09-25: o paciente pode deixar um médico ver nas próximas consultas
      sem código ("manter liberado"). É acesso que continua depois do dia da
-     consulta — o termo anterior dizia que todo acesso vencia no mesmo dia. */
-  versao: "2026-09-25",
+     consulta — o termo anterior dizia que todo acesso vencia no mesmo dia.
+
+     2026-09-25.2: a clínica pode ENVIAR documentos ao acervo (pedidos,
+     relatórios, atestados), se o paciente autorizar. O termo dizia "só
+     entra o que você fotografar". */
+  versao: "2026-09-25.2",
 
   // As seis frases da tela. Cada uma responde uma pergunta da LGPD sem
   // usar a palavra da LGPD.
   resumo: [
-    ["📷", "Só entra o que você fotografar",
+    ["📷", "Só entra o que você guardar ou autorizar",
      "Nada é buscado em laboratório, convênio ou hospital. O acervo é o que "
-     + "você escolher guardar."],
+     + "você fotografar — e, se você autorizar, os documentos que uma clínica "
+     + "emitir para você."],
     ["🔒", "Ninguém vê sem você liberar",
      "Nem médico, nem clínica, nem laboratório. Para mostrar a um médico, "
      + "você gera um código na hora da consulta, e o acesso dele vence no "
@@ -98,6 +103,14 @@ Apenas as fotografias que você tirar ou escolher no seu celular, e as
 informações que você digitar sobre elas: tipo de documento, nome e data.
 Nenhum dado é buscado automaticamente em laboratórios, convênios, hospitais
 ou no seu aparelho.
+
+Documentos enviados pela clínica. Se você autorizar, uma clínica que usa o
+sistema Indiclin pode enviar para o seu acervo os documentos que emitir para
+você — pedidos de exame, relatórios, atestados —, com o nome dela. Os pedidos
+de exame viram uma lista do que falta fazer, que se marca quando você guarda
+o exame. A autorização é por clínica e por pessoa da conta, e você a cancela
+quando quiser em "Mostrar ao médico"; os documentos que já chegaram ficam no
+seu acervo até você apagá-los.
 
 2. PARA QUE SERVE
 Para você ter seus exames, laudos, receitas e relatórios reunidos e
