@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-26.2";
+const VERSAO_APP = "2026-09-26.3";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1689,7 +1689,7 @@ function desenharAgenda() {
     div.innerHTML = `
       <div class="txt">
         <div class="quando">${f.texto}</div>
-        <div class="nome">${escaparHTML(c.titulo)}</div>
+        <div class="nome">${c.origem === "clinica" ? "🏥 " : ""}${escaparHTML(c.titulo)}</div>
         <div class="det">${ROTULO_TIPO[c.tipo] || ""}${detalhes ? " · " + detalhes : ""}</div>
       </div>`;
     // Só o que já passou ou é HOJE ganha "Já foi". A urgência não serve para
@@ -1703,7 +1703,15 @@ function desenharAgenda() {
       b.onclick = (e) => { e.stopPropagation(); marcarFeito(c); };
       div.appendChild(b);
     }
-    div.onclick = () => abrirCompromisso(c);
+    // Marcado pela clínica: é dela. Remarcar ou cancelar é com a clínica —
+    // o editor aqui mudaria só a cópia, e a próxima atualização da clínica
+    // desfaria a mudança sem aviso.
+    div.onclick = c.origem === "clinica"
+      ? () => confirmarModal(`Marcado pela ${c.origem_clinica_nome || "clínica"}.`
+          + LINHA + LINHA + "Para remarcar ou cancelar, fale com a clínica — a mudança "
+          + "aparece aqui sozinha.", { titulo: c.titulo, textoConfirmar: "Entendi",
+                                       textoCancelar: "Fechar" })
+      : () => abrirCompromisso(c);
     el.agendaItens.appendChild(div);
   }
 }
@@ -1713,7 +1721,7 @@ function desenharAgenda() {
    pode ter mudado o intervalo na consulta que ela acabou de sair.          */
 async function marcarFeito(c) {
   await salvarCompromisso({ ...c, feito_em: new Date().toISOString() });
-  if (!c.repetir_meses) return aviso("Marcado como feito.", "ok");
+  if (!c.repetir_meses || c.origem === "clinica") return aviso("Marcado como feito.", "ok");
   const proxima = somarMeses(c.quando, c.repetir_meses);
   if (await confirmarModal(`Marcar o próximo "${c.titulo}" para ${dataBR(proxima)}?`
               + LINHA + LINHA + "Você pode mudar a data depois.",
