@@ -160,6 +160,20 @@ try {
   if (/^\d{4}-\d{2}-\d{2}$/.test(q.get("desde") || "")) desdeUltima = q.get("desde");
 } catch (e) { /* URL estranha: segue com os campos vazios */ }
 
+// Convite ao Indiclin. Quem abre pelo prontuário do Indiclin já é cliente:
+// não vê propaganda do que já comprou. Para os outros, uma linha na entrada
+// e — depois de "Encerrar", quando já terminou de ler — o cartão com o
+// argumento que ele acabou de viver: o acervo sem código, no prontuário.
+(function convidarIndiclin() {
+  if (origemIndiclin || window.parent !== window) return;
+  let encerrou = false;
+  try {
+    encerrou = sessionStorage.getItem("idoc_encerrou") === "1";
+    sessionStorage.removeItem("idoc_encerrou");
+  } catch (e) { /* sem armazenamento: fica só a linha */ }
+  $(encerrou ? "convite-indiclin" : "parte-indiclin").classList.remove("escondido");
+})();
+
 // Conta à página do Indiclin de quem é o acervo aberto: é com isso que ela
 // oferece ao médico vincular este acervo ao paciente do prontuário. Só
 // quando veio do Indiclin, e só para a origem que ele declarou.
@@ -289,6 +303,7 @@ el.sair.onclick = async () => {
   // revoga é o dono do acervo, na tela dele. Dizer o contrário seria
   // prometer ao médico um poder que ele não tem.
   await sb.auth.signOut();
+  try { sessionStorage.setItem("idoc_encerrou", "1"); } catch (e) { /* só perde o convite */ }
   location.reload();
 };
 

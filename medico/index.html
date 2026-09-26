@@ -60,6 +60,19 @@
   .btn:disabled{opacity:.5}
   .rodape-entrada{margin-top:18px;font-size:12.5px;color:var(--fraco);
                   line-height:1.55;text-align:center}
+  /* Convite ao Indiclin: nunca durante a leitura, e nunca para quem já é
+     cliente (quem abre pelo prontuário do Indiclin). */
+  .parte-indiclin{margin-top:16px;padding-top:14px;border-top:1px solid var(--linha);
+                  font-size:12.5px;color:var(--suave);line-height:1.55;text-align:center}
+  .parte-indiclin a{color:var(--verde);font-weight:600;text-decoration:none;white-space:nowrap}
+  .convite-indiclin{background:var(--verde-claro);border:1px solid var(--verde-borda);
+                    border-radius:12px;padding:16px 16px 14px;margin:0 0 22px}
+  .convite-indiclin .ok{font-size:12.5px;color:var(--verde);font-weight:600;margin-bottom:8px}
+  .convite-indiclin p{margin:0;font-size:14.5px;line-height:1.5;color:var(--tinta)}
+  .convite-indiclin .btn-convite{display:block;margin-top:14px;background:var(--verde);color:#fff;
+                    border-radius:10px;padding:12px;text-align:center;font-weight:600;
+                    font-size:15px;text-decoration:none}
+  .convite-indiclin .mais{margin-top:8px;font-size:12px;color:var(--suave);text-align:center}
   .erro{background:#fbeceb;border:1px solid #f0c9c6;color:var(--vermelho);
         border-radius:10px;padding:11px 13px;font-size:13.5px;margin-top:16px;
         line-height:1.45}
@@ -301,6 +314,17 @@
 <div class="entrada" id="tela-entrada">
   <div class="cartao">
     <img class="logo-idoc" src="../logo_indidoc_480.png" alt="IndiDoc — seu portal de documentos médicos">
+    <!-- Depois de "Encerrar": o médico terminou de ler, é a hora de falar
+         do que ele não viu. medico.js mostra. -->
+    <div class="convite-indiclin escondido" id="convite-indiclin">
+      <div class="ok">✓ Acesso encerrado neste aparelho</div>
+      <p>Com o <b>Indiclin</b> na sua clínica, este acervo abre dentro do
+         prontuário, sem código. Seus pedidos e receitas chegam sozinhos ao
+         celular do paciente.</p>
+      <a class="btn-convite" href="https://indiclin.com.br/apresentacao?origem=indidoc_medico"
+         target="_blank" rel="noopener">Conhecer o Indiclin</a>
+      <div class="mais">Gestão completa para clínicas, com IA — e funciona até sem internet.</div>
+    </div>
     <div class="chapeu">Acervo do paciente</div>
     <h1 class="serif">O paciente mostra o código. O senhor vê os documentos.</h1>
     <div class="sub">
@@ -331,6 +355,12 @@
     <div class="rodape-entrada">
       O paciente vê seu nome na lista de quem abriu o acervo dele,
       e pode encerrar este acesso a qualquer momento.
+    </div>
+
+    <div class="parte-indiclin escondido" id="parte-indiclin">
+      O IndiDoc é parte do <b>Indiclin</b>, gestão completa para clínicas, com IA.
+      <a href="https://indiclin.com.br/apresentacao?origem=indidoc_medico"
+         target="_blank" rel="noopener">Conheça →</a>
     </div>
   </div>
 </div>
@@ -447,9 +477,9 @@
      GitHub Pages manda guardar cada arquivo por 10 min, e esta pagina fica
      FORA do service worker: sem a versao no endereco, o navegador do medico
      seguia com o medico.js antigo ate 10 min depois de publicar. -->
-<script src="../supabase.min.js?v=2026-09-26.8"></script>
-<script src="../config.js?v=2026-09-26.8"></script>
-<script src="../comum.js?v=2026-09-26.8"></script>
-<script src="medico.js?v=2026-09-26.8"></script>
+<script src="../supabase.min.js?v=2026-09-26.9"></script>
+<script src="../config.js?v=2026-09-26.9"></script>
+<script src="../comum.js?v=2026-09-26.9"></script>
+<script src="medico.js?v=2026-09-26.9"></script>
 </body>
 </html>
