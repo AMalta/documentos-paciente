@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-26.1";
+const VERSAO_APP = "2026-09-26.2";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1463,7 +1463,8 @@ async function perguntarAutorizacoes() {
       const deQuem = pessoas.length > 1 ? " de " + nomeDaPessoa(pessoaDe(p.pessoa_id)) : "";
       const sim = await confirmarModal(
         `Receber no indiDoc${deQuem} os documentos que ${clinica} emitir para você?`
-        + LINHA + LINHA + "Pedidos de exame, relatórios e atestados chegam aqui, além do papel. "
+        + LINHA + LINHA + "Pedidos de exame, receitas simples, relatórios e atestados chegam aqui, "
+        + "além do papel. "
         + "Os pedidos viram uma lista do que falta fazer." + LINHA + LINHA
         + "Você cancela quando quiser, em 🩺 Mostrar ao médico.",
         { titulo: "Receber documentos?", textoConfirmar: "Receber", textoCancelar: "Agora não" });

@@ -58,8 +58,10 @@ window.TERMO = {
 
      2026-09-25.2: a clínica pode ENVIAR documentos ao acervo (pedidos,
      relatórios, atestados), se o paciente autorizar. O termo dizia "só
-     entra o que você fotografar". */
-  versao: "2026-09-25.2",
+     entra o que você fotografar".
+
+     2026-09-26: receitas simples entram na lista do que a clínica envia. */
+  versao: "2026-09-26",
 
   // As seis frases da tela. Cada uma responde uma pergunta da LGPD sem
   // usar a palavra da LGPD.
@@ -106,7 +108,8 @@ ou no seu aparelho.
 
 Documentos enviados pela clínica. Se você autorizar, uma clínica que usa o
 sistema Indiclin pode enviar para o seu acervo os documentos que emitir para
-você — pedidos de exame, relatórios, atestados —, com o nome dela. Os pedidos
+você — pedidos de exame, receitas simples, relatórios, atestados —, com o
+nome dela. Receitas de controle especial não são enviadas. Os pedidos
 de exame viram uma lista do que falta fazer, que se marca quando você guarda
 o exame. A autorização é por clínica e por pessoa da conta, e você a cancela
 quando quiser em "Mostrar ao médico"; os documentos que já chegaram ficam no
