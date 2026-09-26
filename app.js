@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-26.5";
+const VERSAO_APP = "2026-09-26.6";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1467,10 +1467,13 @@ async function ativarAvisos(silencioso = false) {
     ]);
   }
   if (perm !== "granted") {
+    // Bloqueado, o Chrome não pergunta mais — e o bloqueio mora nas
+    // configurações DO SITE, no Chrome, não nas do app instalado (foi o que
+    // não funcionou no primeiro teste: mexer no ícone não desbloqueava).
     if (!silencioso && (perm === "denied" || perm === "default" || perm === "sem-resposta")) {
-      aviso("O celular não liberou os avisos. Para liberar: segure o ícone do indiDoc "
-        + "na tela inicial → Informações do app → Notificações → Permitir. Depois toque "
-        + "de novo em “Ativar avisos”.", "info", "Avisos bloqueados");
+      aviso("O celular bloqueou os avisos deste app. Para liberar: abra o Chrome → ⋮ → "
+        + "Configurações → Configurações do site → Notificações → doc.indiclin.com.br → "
+        + "Permitir. Depois toque de novo em “Ativar avisos”.", "info", "Avisos bloqueados");
     }
     return false;
   }
