@@ -3,7 +3,7 @@
    elas vêm por URL assinada que expira, e cache de dado de saúde no disco do
    navegador é risco sem ganho — quem precisa do acervo offline é o dono, e
    isso é assunto da fila de envio, não deste arquivo. */
-const VERSAO = "casca-v98";
+const VERSAO = "casca-v99";
 const CASCA = ["./", "./index.html", "./app.js", "./config.js",
                 "./manifest.webmanifest", "./worker.js", "./comum.js", "./fila.js", "./agenda.js", "./termo.js",
                 // Sem esta linha o aplicativo NAO ABRE sem rede: e a
@@ -14,7 +14,8 @@ const CASCA = ["./", "./index.html", "./app.js", "./config.js",
                 // pdf.js, pelo mesmo motivo do supabase.min.js acima: e
                 // preciso pro botao "Enviar PDF de exame" funcionar offline.
                 "./pdf.min.js", "./pdf.worker.min.js",
-                "./icone-192.png", "./icone-512.png", "./favicon.png"];
+                "./icone-192.png", "./icone-512.png", "./favicon.png",
+                "./logo_indidoc_branca.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(CASCA)).then(() => self.skipWaiting()));
