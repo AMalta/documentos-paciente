@@ -164,15 +164,82 @@ try {
 // não vê propaganda do que já comprou. Para os outros, uma linha na entrada
 // e — depois de "Encerrar", quando já terminou de ler — o cartão com o
 // argumento que ele acabou de viver: o acervo sem código, no prontuário.
+const URL_APRESENTACAO = "https://indiclin.com.br/apresentacao";
+const ehCliente = () => !!origemIndiclin || window.parent !== window;
+
+// Fala com a apresentação do Indiclin (outro domínio). text/plain de
+// propósito: é pedido "simples", sem a consulta prévia de CORS.
+function chamarIndiclin(corpo) {
+  return fetch(URL_APRESENTACAO + "/chat", {
+    method: "POST", headers: { "Content-Type": "text/plain" }, keepalive: true,
+    body: JSON.stringify({ ...corpo, origem: "indidoc_medico" }),
+  });
+}
+// Conta quem VIU o convite: sem isso o funil começava na visita e não dava
+// para saber a taxa de clique. Falhar aqui não afeta nada.
+function contarConvite() { try { chamarIndiclin({ acao: "evento", evento: "convite" }).catch(() => {}); } catch (e) {} }
+
 (function convidarIndiclin() {
-  if (origemIndiclin || window.parent !== window) return;
+  if (ehCliente()) return;
   let encerrou = false;
   try {
     encerrou = sessionStorage.getItem("idoc_encerrou") === "1";
     sessionStorage.removeItem("idoc_encerrou");
   } catch (e) { /* sem armazenamento: fica só a linha */ }
   $(encerrou ? "convite-indiclin" : "parte-indiclin").classList.remove("escondido");
+  if (encerrou) contarConvite();
 })();
+
+// Faixa no acervo: o cartão pós-"Encerrar" quase nunca aparece, porque o
+// médico fecha a aba. Depois de 2 minutos lendo — nunca antes de ele chegar
+// aos documentos —, uma faixa fina; o × a esconde até o dia seguinte.
+function agendarFaixaIndiclin() {
+  if (ehCliente()) return;
+  const hoje = new Date().toISOString().slice(0, 10);
+  try { if (localStorage.getItem("idoc_faixa_fechada") === hoje) return; } catch (e) {}
+  setTimeout(() => {
+    if (el.acervo.classList.contains("escondido")) return;
+    $("faixa-indiclin").classList.remove("escondido");
+    contarConvite();
+  }, 120000);
+  $("faixa-fechar").onclick = () => {
+    $("faixa-indiclin").classList.add("escondido");
+    try { localStorage.setItem("idoc_faixa_fechada", hoje); } catch (e) {}
+  };
+}
+
+// "Quero uma demonstração": vira lead (origem IndiDoc) só com o que o médico
+// digitar aqui. O nome da entrada vem só como sugestão, editável.
+document.querySelectorAll("[data-quero]").forEach((b) => {
+  b.onclick = () => {
+    $("quero-nome").value = $("quero-nome").value || el.nome.value || "";
+    $("quero-erro").textContent = "";
+    $("quero").classList.remove("escondido");
+    $("quero-whats").focus();
+  };
+});
+$("quero-cancelar").onclick = () => $("quero").classList.add("escondido");
+$("quero-enviar").onclick = async () => {
+  const nome = $("quero-nome").value.trim().slice(0, 120);
+  const whatsapp = $("quero-whats").value.trim().slice(0, 30);
+  if (!nome || whatsapp.replace(/\D/g, "").length < 10) {
+    $("quero-erro").textContent = "Preencha seu nome e o WhatsApp com DDD.";
+    return;
+  }
+  const b = $("quero-enviar"); b.disabled = true;
+  try {
+    const r = await chamarIndiclin({ acao: "salvar_lead", dados: { nome, whatsapp, clinica: "" } });
+    if (!r.ok) throw new Error(String(r.status));
+    b.classList.add("escondido");
+    $("quero-ok").classList.remove("escondido");
+    $("quero-cancelar").textContent = "Fechar";
+  } catch (e) {
+    b.disabled = false;
+    const txt = encodeURIComponent("Olá! Quero uma demonstração do Indiclin. Conheci pelo IndiDoc.");
+    $("quero-erro").innerHTML = "Não consegui enviar agora. Chame direto: "
+      + `<a href="https://wa.me/5573991051624?text=${txt}" target="_blank" rel="noopener">WhatsApp (73) 99105-1624</a>`;
+  }
+};
 
 // Conta à página do Indiclin de quem é o acervo aberto: é com isso que ela
 // oferece ao médico vincular este acervo ao paciente do prontuário. Só
@@ -273,6 +340,7 @@ el.abrir.onclick = async () => {
     el.entrada.classList.add("escondido");
     el.acervo.classList.remove("escondido");
     avisarIndiclin(via);
+    agendarFaixaIndiclin();
     await carregar();
   } catch (e) {
     const msg = String(e?.message || e);

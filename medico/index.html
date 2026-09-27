@@ -73,6 +73,29 @@
                     border-radius:10px;padding:12px;text-align:center;font-weight:600;
                     font-size:15px;text-decoration:none}
   .convite-indiclin .mais{margin-top:8px;font-size:12px;color:var(--suave);text-align:center}
+  .convite-indiclin .btn-quero{display:block;width:100%;margin-top:8px;background:transparent;
+                    border:1px solid var(--verde-borda);color:var(--verde);border-radius:10px;
+                    padding:10px;font-weight:600;font-size:14px}
+  /* Faixa no acervo: quase ninguém clica em "Encerrar" — fecha a aba. Aparece
+     depois de alguns minutos de uso, fina, e some no × pelo resto do dia. */
+  .faixa-indiclin{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+                  background:var(--verde-claro);border-bottom:1px solid var(--verde-borda);
+                  padding:8px 16px;font-size:13.5px;color:var(--tinta)}
+  .faixa-indiclin .fi-txt{flex:1 1 260px}
+  .faixa-indiclin a,.faixa-indiclin button{font-size:13px;font-weight:600;border-radius:8px;padding:6px 12px}
+  .faixa-indiclin .fi-link{color:var(--verde);text-decoration:none;border:1px solid var(--verde-borda);background:#fff}
+  .faixa-indiclin .fi-quero{background:var(--verde);color:#fff}
+  .faixa-indiclin .fi-fechar{background:transparent;color:var(--suave);font-size:18px;padding:2px 8px}
+  .quero-fundo{position:fixed;inset:0;z-index:60;background:rgba(10,20,25,.55);
+               display:flex;align-items:center;justify-content:center;padding:16px}
+  .quero-caixa{background:#fff;border-radius:16px;max-width:420px;width:100%;padding:22px}
+  .quero-caixa h3{margin:0 0 6px;font-size:19px}
+  .quero-caixa p{margin:0 0 12px;font-size:14px;color:var(--suave);line-height:1.5}
+  .quero-caixa label{display:block;font-size:12.5px;font-weight:600;margin:10px 0 4px}
+  .quero-caixa .quero-lgpd{font-size:12px;margin-top:12px}
+  .quero-caixa .quero-cancelar{display:block;margin:8px auto 0;background:transparent;color:var(--suave);font-size:14px}
+  .quero-caixa #quero-ok{margin-top:12px;color:var(--verde);font-weight:600;text-align:center}
+  .quero-caixa #quero-erro{margin-top:10px;color:var(--vermelho);font-size:13px}
   .erro{background:#fbeceb;border:1px solid #f0c9c6;color:var(--vermelho);
         border-radius:10px;padding:11px 13px;font-size:13.5px;margin-top:16px;
         line-height:1.45}
@@ -323,6 +346,7 @@
          celular do paciente.</p>
       <a class="btn-convite" href="https://indiclin.com.br/apresentacao?origem=indidoc_medico"
          target="_blank" rel="noopener">Conhecer o Indiclin</a>
+      <button class="btn-quero" type="button" data-quero>Quero uma demonstração</button>
       <div class="mais">Gestão completa para clínicas, com IA — e funciona até sem internet.</div>
     </div>
     <div class="chapeu">Acervo do paciente</div>
@@ -378,6 +402,13 @@
       <span id="topo-medico"></span></div>
     <div class="prazo" id="prazo"></div>
     <button class="sair" id="sair">Encerrar</button>
+  </div>
+  <div class="faixa-indiclin escondido" id="faixa-indiclin">
+    <span class="fi-txt">Com o <b>Indiclin</b> na sua clínica, este acervo abre no prontuário, sem código.</span>
+    <a class="fi-link" href="https://indiclin.com.br/apresentacao?origem=indidoc_medico"
+       target="_blank" rel="noopener">Conhecer</a>
+    <button class="fi-quero" type="button" data-quero>Quero uma demonstração</button>
+    <button class="fi-fechar" type="button" id="faixa-fechar" aria-label="Fechar">×</button>
   </div>
 
   <div class="palco">
@@ -477,9 +508,28 @@
      GitHub Pages manda guardar cada arquivo por 10 min, e esta pagina fica
      FORA do service worker: sem a versao no endereco, o navegador do medico
      seguia com o medico.js antigo ate 10 min depois de publicar. -->
-<script src="../supabase.min.js?v=2026-09-26.10"></script>
-<script src="../config.js?v=2026-09-26.10"></script>
-<script src="../comum.js?v=2026-09-26.10"></script>
-<script src="medico.js?v=2026-09-26.10"></script>
+<script src="../supabase.min.js?v=2026-09-27.1"></script>
+<script src="../config.js?v=2026-09-27.1"></script>
+<script src="../comum.js?v=2026-09-27.1"></script>
+<script src="medico.js?v=2026-09-27.1"></script>
+<!-- "Quero uma demonstração": o contato só existe se o médico decidir deixá-lo.
+     O nome e o CRM digitados para abrir o acervo foram dados para o registro
+     que o paciente vê — usá-los para vender seria desvio de finalidade. -->
+<div class="quero-fundo escondido" id="quero">
+  <div class="quero-caixa">
+    <h3>Receber uma demonstração do Indiclin</h3>
+    <p>Deixe seu WhatsApp e a equipe do Indiclin chama você para mostrar o sistema.</p>
+    <label for="quero-nome">Seu nome</label>
+    <input id="quero-nome" class="campo" type="text" autocomplete="name">
+    <label for="quero-whats">WhatsApp com DDD</label>
+    <input id="quero-whats" class="campo" type="tel" inputmode="tel" autocomplete="tel" placeholder="(73) 90000-0000">
+    <p class="quero-lgpd">Seu contato vai só para a equipe do Indiclin, para esta demonstração.
+      O paciente não vê, e ele não fica no acervo.</p>
+    <button class="btn" type="button" id="quero-enviar">Quero ser chamado</button>
+    <div id="quero-erro"></div>
+    <div id="quero-ok" class="escondido">✅ Recebido! A equipe do Indiclin vai chamar você no WhatsApp.</div>
+    <button class="quero-cancelar" type="button" id="quero-cancelar">Agora não</button>
+  </div>
+</div>
 </body>
 </html>
