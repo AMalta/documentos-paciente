@@ -501,17 +501,10 @@
   </div>
 </div>
 
-<!-- De dentro do site, como no aplicativo. Aqui a pagina nem e cacheada
-     pelo service worker, mas depender do CDN significaria que uma falha
-     dele deixa o medico sem acervo na frente do paciente. -->
-<!-- ?v= e a VERSAO_APP de app.js (conferir.js cobra que sejam iguais). O
-     GitHub Pages manda guardar cada arquivo por 10 min, e esta pagina fica
-     FORA do service worker: sem a versao no endereco, o navegador do medico
-     seguia com o medico.js antigo ate 10 min depois de publicar. -->
-<script src="../supabase.min.js?v=2026-09-27.1"></script>
-<script src="../config.js?v=2026-09-27.1"></script>
-<script src="../comum.js?v=2026-09-27.1"></script>
-<script src="medico.js?v=2026-09-27.1"></script>
+<!-- Fica ANTES dos scripts: o medico.js liga os botões desta janela ao
+     carregar, e com ela depois dos <script> o $("quero-cancelar") vinha
+     null — o script parava ali e o "Abrir acervo" nunca era ligado
+     (27/09 a 30/09: nenhum médico abria acervo). -->
 <!-- "Quero uma demonstração": o contato só existe se o médico decidir deixá-lo.
      O nome e o CRM digitados para abrir o acervo foram dados para o registro
      que o paciente vê — usá-los para vender seria desvio de finalidade. -->
@@ -531,5 +524,16 @@
     <button class="quero-cancelar" type="button" id="quero-cancelar">Agora não</button>
   </div>
 </div>
+<!-- De dentro do site, como no aplicativo. Aqui a pagina nem e cacheada
+     pelo service worker, mas depender do CDN significaria que uma falha
+     dele deixa o medico sem acervo na frente do paciente. -->
+<!-- ?v= e a VERSAO_APP de app.js (conferir.js cobra que sejam iguais). O
+     GitHub Pages manda guardar cada arquivo por 10 min, e esta pagina fica
+     FORA do service worker: sem a versao no endereco, o navegador do medico
+     seguia com o medico.js antigo ate 10 min depois de publicar. -->
+<script src="../supabase.min.js?v=2026-09-27.1"></script>
+<script src="../config.js?v=2026-09-27.1"></script>
+<script src="../comum.js?v=2026-09-27.1"></script>
+<script src="medico.js?v=2026-09-27.1"></script>
 </body>
 </html>
