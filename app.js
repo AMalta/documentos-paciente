@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-09-27.1";
+const VERSAO_APP = "2026-10-01.1";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1805,7 +1805,9 @@ function desenharAgenda() {
     const f = comoFalta(diasAte(c.quando));
     const div = document.createElement("div");
     div.className = "comp " + f.urgencia;
-    const detalhes = [dataBR(c.quando), escaparHTML(c.hora || ""), escaparHTML(c.onde || "")]
+    // Ordem de chegada (sql/017): a clínica manda a PREVISÃO, que vale no
+    // lugar da hora — na ordem de chegada a hora é só o número da vaga.
+    const detalhes = [dataBR(c.quando), escaparHTML(c.previsao || c.hora || ""), escaparHTML(c.onde || "")]
       .filter(Boolean).join(" · ");
     div.innerHTML = `
       <div class="txt">
