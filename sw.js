@@ -3,9 +3,9 @@
    elas vêm por URL assinada que expira, e cache de dado de saúde no disco do
    navegador é risco sem ganho — quem precisa do acervo offline é o dono, e
    isso é assunto da fila de envio, não deste arquivo. */
-const VERSAO = "casca-v101";
+const VERSAO = "casca-v102";
 const CASCA = ["./", "./index.html", "./app.js", "./config.js",
-                "./manifest.webmanifest", "./worker.js", "./comum.js", "./fila.js", "./agenda.js", "./termo.js",
+                "./manifest.webmanifest", "./worker.js", "./comum.js", "./fila.js", "./agenda.js", "./termo.js", "./conversa.js",
                 // Sem esta linha o aplicativo NAO ABRE sem rede: e a
                 // biblioteca do Supabase, e `app.js` estoura na linha 15 sem
                 // ela. Ficava de fora porque vinha de um CDN, e o cache
@@ -36,13 +36,20 @@ self.addEventListener("push", (e) => {
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = { corpo: e.data && e.data.text() }; }
   e.waitUntil(self.registration.showNotification(d.titulo || "indiDoc", {
     body: d.corpo || "", icon: "./icone-192.png", badge: "./favicon.png", lang: "pt-BR",
+    // Mensagem da clínica (sql/018): o toque abre a conversa, e não a lista.
+    data: d.abrir === "conversa" ? { abrir: "conversa", pessoa_id: d.pessoa_id, clinica_id: d.clinica_id } : {},
   }));
 });
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
+  const dados = e.notification.data || {};
+  const destino = dados.abrir === "conversa"
+    ? "./#conversa=" + encodeURIComponent(dados.pessoa_id + "," + dados.clinica_id) : "./";
   e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((abertas) => {
     const app = abertas.find((c) => !c.url.includes("/medico"));
-    return app ? app.focus() : clients.openWindow("./");
+    if (!app) return clients.openWindow(destino);
+    if (dados.abrir === "conversa") app.postMessage({ abrir: "conversa", pessoa_id: dados.pessoa_id, clinica_id: dados.clinica_id });
+    return app.focus();
   }));
 });
 

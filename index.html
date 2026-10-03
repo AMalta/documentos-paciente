@@ -856,6 +856,72 @@
      vermelho — a mesma cor que o resto do app já usa para "perigo". */
   .modal-confirmar.perigo{background:var(--vermelho)}
 
+  /* ── FALAR COM A CLÍNICA (conversa.js) — no jeito do WhatsApp ────────── */
+  .btn-conversa{right:110px;font-size:18px}
+  .conv-badge{position:absolute;top:-4px;right:-4px;min-width:19px;height:19px;padding:0 5px;
+              border-radius:10px;background:#e53935;color:#fff;font-size:11px;font-weight:700;
+              line-height:19px;text-align:center;border:2px solid var(--azul)}
+  #tela-conversa{background:#fff;color:#111b21}
+  .conv-barra{display:flex;align-items:center;gap:10px;background:var(--azul);color:#fff;
+              padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top))}
+  .conv-voltar{background:none;border:0;color:#fff;font-size:24px;width:38px;height:38px;
+               border-radius:50%;flex:none}
+  .conv-voltar:active{background:rgba(255,255,255,.18)}
+  .conv-cab{display:flex;flex-direction:column;min-width:0}
+  .conv-titulo{font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .conv-sub{font-size:12.5px;opacity:.85}
+  .conv-av{flex:none;width:48px;height:48px;border-radius:50%;color:#fff;font-weight:700;
+           font-size:17px;display:flex;align-items:center;justify-content:center}
+  .conv-av.pequeno{width:38px;height:38px;font-size:14px}
+  .conv-lista{flex:1;overflow-y:auto;background:#fff}
+  .conv-linha{display:flex;align-items:center;gap:12px;width:100%;background:#fff;border:0;
+              padding:10px 14px;text-align:left;color:inherit;font:inherit}
+  .conv-linha:active{background:#f0f2f5}
+  .conv-meio{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;
+             border-bottom:1px solid #e9edef;padding-bottom:12px;margin-bottom:-12px}
+  .conv-nome{font-size:16.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .conv-nome small{font-weight:400;color:#667781;font-size:13px}
+  .conv-previa{font-size:14.5px;color:#667781;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .conv-previa.forte{color:#111b21;font-weight:600}
+  .conv-lado{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px;align-self:flex-start;padding-top:4px}
+  .conv-hora{font-size:12px;color:#667781}
+  .conv-hora.nova{color:#1fa855;font-weight:600}
+  .conv-qtd{background:#25d366;color:#fff;font-size:12px;font-weight:700;min-width:21px;height:21px;
+            border-radius:11px;padding:0 6px;display:flex;align-items:center;justify-content:center}
+  .conv-vazio{text-align:center;color:#54656f;padding:48px 28px;line-height:1.5}
+  .conv-vazio b{display:block;color:#111b21;font-size:17px;margin-bottom:6px}
+  .conv-vazio-ico{font-size:46px;margin-bottom:10px}
+  .conv-carregando{text-align:center;color:#667781;padding:40px}
+  .conv-chat{flex:1;display:flex;flex-direction:column;min-height:0;background:#efeae2}
+  .conv-msgs{flex:1;overflow-y:auto;padding:10px 12px 6px;display:flex;flex-direction:column;gap:3px}
+  .conv-aviso{align-self:center;max-width:92%;background:#fff5c4;color:#54656f;font-size:12.5px;
+              text-align:center;border-radius:8px;padding:7px 11px;margin:4px 0 8px;line-height:1.4}
+  .conv-dia{display:flex;justify-content:center;margin:8px 0}
+  .conv-dia span{background:#fff;color:#54656f;font-size:12px;padding:4px 11px;border-radius:8px;
+                 box-shadow:0 1px .5px rgba(11,20,26,.13)}
+  .conv-bal{max-width:82%;padding:6px 8px 4px 9px;border-radius:8px;font-size:15.5px;line-height:1.38;
+            box-shadow:0 1px .5px rgba(11,20,26,.13);word-wrap:break-word;overflow-wrap:anywhere}
+  .conv-bal.eu{align-self:flex-end;background:#d9fdd3;border-top-right-radius:2px}
+  .conv-bal.ela{align-self:flex-start;background:#fff;border-top-left-radius:2px}
+  .conv-autor{font-size:12.5px;font-weight:600;color:#1a73e8;margin-bottom:2px}
+  .conv-meta{font-size:11px;color:#667781;text-align:right;margin-top:2px;white-space:nowrap}
+  .conv-tq{color:#8696a0;letter-spacing:-2px}
+  .conv-tq.ok{color:#53bdeb}
+  .conv-dica{align-self:center;max-width:88%;text-align:center;color:#54656f;font-size:13.5px;
+             background:rgba(255,255,255,.75);border-radius:8px;padding:10px 12px;margin-top:10px;line-height:1.45}
+  .conv-atalhos{display:flex;gap:8px;overflow-x:auto;padding:6px 10px 2px;flex:none}
+  .conv-chip{flex:none;background:#fff;border:1px solid #d1d7db;color:#111b21;border-radius:18px;
+             padding:7px 13px;font-size:14px;white-space:nowrap}
+  .conv-chip:active{background:#f0f2f5}
+  .conv-fechado{background:#fff;color:#54656f;text-align:center;font-size:13.5px;padding:12px}
+  .conv-rodape{display:flex;align-items:flex-end;gap:8px;padding:6px 8px;
+               padding-bottom:calc(8px + env(safe-area-inset-bottom));flex:none}
+  .conv-rodape textarea{flex:1;resize:none;border:0;border-radius:22px;padding:11px 16px;
+                        font:inherit;font-size:16px;line-height:1.35;max-height:120px;background:#fff;
+                        color:#111b21;box-shadow:0 1px .5px rgba(11,20,26,.13);outline:none}
+  .conv-enviar{flex:none;width:46px;height:46px;border-radius:50%;border:0;background:#00a884;
+               color:#fff;font-size:19px;display:flex;align-items:center;justify-content:center}
+  .conv-enviar:disabled{background:#8fd3c4}
   .escondido{display:none!important}
 
   /* ── Faixa "sem conexão" ──────────────────────────────────────────────
@@ -884,6 +950,10 @@
   <p id="cabecalho-sub">seus exames, laudos e receitas num lugar só</p>
   <p class="selo-seguranca">🔒 Dados salvos com segurança</p>
   <button class="btn-conta" id="btn-conta" aria-label="Minha conta">👤</button>
+  <!-- Falar com a clínica (sql/018): o número em vermelho é resposta da
+       recepção ainda não lida. -->
+  <button class="btn-conta btn-conversa" id="btn-conversa" aria-label="Falar com a clínica">💬
+    <span class="conv-badge escondido" id="btn-conversa-badge">0</span></button>
 </header>
 
 <!-- Ver o comentário no CSS (.faixa-offline) e o listener em app.js. -->
@@ -1549,6 +1619,30 @@
      abriu seu acervo e quando, e pode cancelar acessos". Ficam juntas porque
      são a mesma pergunta — quem vê os meus documentos — e separá-las faria
      a segunda nunca ser encontrada. -->
+<!-- FALAR COM A CLÍNICA (conversa.js): lista de conversas e a conversa, no
+     jeito do WhatsApp — quem usa o app já sabe usar isto. -->
+<div class="tela-cheia escondido" id="tela-conversa">
+  <div class="conv-barra">
+    <button type="button" id="conv-voltar" class="conv-voltar" aria-label="Voltar">←</button>
+    <span class="conv-av pequeno escondido" id="conv-avatar"></span>
+    <span class="conv-cab">
+      <span class="conv-titulo" id="conv-titulo">Conversas</span>
+      <span class="conv-sub" id="conv-sub"></span>
+    </span>
+  </div>
+  <div class="conv-lista" id="conv-lista"></div>
+  <div class="conv-chat escondido" id="conv-chat">
+    <div class="conv-msgs" id="conv-msgs"></div>
+    <div class="conv-atalhos" id="conv-atalhos"></div>
+    <div class="conv-fechado escondido" id="conv-fechado">
+      Esta clínica não envia mais para você, por isso a conversa está fechada.</div>
+    <div class="conv-rodape" id="conv-rodape">
+      <textarea id="conv-campo" rows="1" maxlength="2000" placeholder="Mensagem"></textarea>
+      <button type="button" id="conv-enviar" class="conv-enviar" aria-label="Enviar" disabled>➤</button>
+    </div>
+  </div>
+</div>
+
 <div class="tela-cheia escondido" id="tela-mostrar" style="background:#0f4c3a">
   <div class="barra">
     <span class="titulo">Mostrar ao médico</span>
@@ -1640,5 +1734,6 @@
 <script src="agenda.js"></script>
 <script src="termo.js"></script>
 <script src="app.js"></script>
+<script src="conversa.js"></script>
 </body>
 </html>
