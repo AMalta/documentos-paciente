@@ -24,6 +24,7 @@
 (function () {
   const JANELA = 45;            // dias que o cartão acompanha a consulta
   let pedidos = [];             // exames_pedidos da conta
+  let receitas = new Map();     // id do documento → {texto, itens} (sql/021)
   let lidoEm = 0;
   let lendo = null;
 
@@ -42,6 +43,9 @@
           .gte("pedido_em", somarDiasISO(hojeISO(), -JANELA))
           .order("pedido_em", { ascending: false }).limit(100);
         if (!error) pedidos = data || [];
+        const r = await sb.from("documentos").select("id, receita")
+          .eq("tipo", "receita").not("receita", "is", null).limit(60);
+        if (!r.error) receitas = new Map((r.data || []).map((x) => [x.id, x.receita]));
       } catch (e) { /* sem rede: fica o que tinha */ }
       lidoEm = Date.now();
       lendo = null;
@@ -139,7 +143,7 @@
     if (v.receitas.length) {
       h += `<div class="dc-sec"><div class="dc-t">💊 Receita</div>`;
       for (const r of v.receitas) {
-        h += `<div class="dc-it"><span class="dc-n">${escaparHTML(String(r.nome || "Receita").split(" — ")[0])}</span>
+        h += `<div class="dc-it"><span class="dc-n">${remedios(r)}</span>
           <button type="button" class="dc-bt" data-dc="ver" data-d="${escaparHTML(r.id)}">Ver</button></div>`;
       }
       h += `</div>`;
@@ -152,6 +156,18 @@
          <button type="button" class="dc-bt forte" data-dc="retorno" data-v="${escaparHTML(v.chave)}">Pedir à clínica</button>`;
     h += `</div></div></div>`;
     return h;
+  }
+
+  // Os remédios da receita (sql/021); sem eles, o nome do documento.
+  function remedios(r) {
+    const rx = receitas.get(r.id);
+    if (rx && rx.itens && rx.itens.length) {
+      return rx.itens.map((m) => `${escaparHTML(m.nome)}${m.quantidade ? " · " + escaparHTML(m.quantidade) : ""}`
+        + (m.posologia ? `<small>${escaparHTML(m.posologia)}</small>` : "")).join("<br>");
+    }
+    const linhas = String((rx && rx.texto) || "").split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    if (linhas.length) return escaparHTML(linhas.slice(0, 3).join(" · ")) + (linhas.length > 3 ? " …" : "");
+    return escaparHTML(String(r.nome || "Receita").split(" — ")[0]);
   }
 
   // Alto das Conversas: as duas consultas mais recentes em aberto.
