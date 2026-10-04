@@ -119,6 +119,8 @@
 
   // Consulta hoje ou amanhã: o lembrete que ficava acima do Fotografar.
   function faixaConsulta() {
+    const pre = window.PreConsulta && PreConsulta.cartaoInicio();
+    if (pre) return pre;
     try {
       const p = proximosCompromissos(compromissos, 3).find((x) => [0, 1].includes(diasAte(x.quando)));
       if (!p) return null;
@@ -153,7 +155,7 @@
     c.titulo.textContent = noInicio ? "indiDoc" : "Conversas";
     c.sub.textContent = noInicio ? "" : "com a recepção das suas clínicas";
     c.voltar.classList.toggle("escondido", noInicio);
-    for (const id of ["conv-ini-mostrar", "conv-ini-conta", "conv-fab"]) q(id).classList.toggle("escondido", !noInicio);
+    for (const id of ["conv-ini-conta", "conv-fab"]) q(id).classList.toggle("escondido", !noInicio);
     c.avatar.classList.add("escondido");
     c.chat.classList.add("escondido");
     c.lista.classList.remove("escondido");
@@ -273,6 +275,7 @@
       html += `<div class="conv-dica">Escreva sua mensagem para a recepção.
         A recepção responde no horário de atendimento, e a resposta chega como aviso no celular.</div>`;
     }
+    if (window.PreConsulta) html += PreConsulta.htmlConversa(cv);
     c.msgs.innerHTML = html;
     if (!cv.ativa) mostrarEmojis(false);
     c.rodape.classList.toggle("escondido", !cv.ativa);
@@ -296,12 +299,18 @@
         sb.from("liberacoes").select("medico_nome, expira_em")
           .eq("pessoa_id", cv.pessoa_id).eq("origem_clinica_id", cv.clinica_id)
           .not("usado_em", "is", null).is("revogado_em", null).gt("expira_em", agora),
+        window.PreConsulta ? PreConsulta.atualizar(true) : null,
       ]);
       if (a.error || l.error) throw (a.error || l.error);
       const porMedico = new Map();
       for (const x of [...(a.data || []), ...(l.data || [])]) {
         const k = x.medico_nome || "Médico";
         if (!porMedico.has(k) || x.expira_em > porMedico.get(k).expira_em) porMedico.set(k, x);
+      }
+      for (const x of window.PreConsulta ? PreConsulta.liberadasDe(cv) : []) {
+        const k = x.medico_nome || "Médico";
+        porMedico.set(k, { medico_nome: x.medico_nome, expira_em: x.valido_ate,
+                                                  consulta: x.id, qtd: (x.documento_ids || []).length });
       }
       if (mesma(cv)) { acessos = [...porMedico.values()]; desenharAcesso(); }
     } catch (e) { if (mesma(cv)) { acessos = null; desenharAcesso(); } }
@@ -313,9 +322,20 @@
     const n = (typeof documentos === "undefined" ? [] : documentos).filter((d) => d.pessoa_id === cv.pessoa_id).length;
     const docs = n + " documento" + (n === 1 ? "" : "s");
     let ico, tx, sub;
-    if (!acessos.length) {
+    const pergunta = window.PreConsulta && PreConsulta.perguntaDe(cv);
+    acaoAcesso = null;
+    if (!acessos.length && pergunta) {
+      ico = "🔒"; tx = "Esta clínica não vê seus documentos";
+      sub = "Toque para deixar o médico da consulta ver seus exames novos";
+      acaoAcesso = () => PreConsulta.abrirLista(pergunta);
+    } else if (!acessos.length) {
       ico = "🔒"; tx = "Esta clínica não vê seus documentos";
       sub = "Toque para mostrar ao médico na consulta";
+    } else if (acessos.length === 1 && acessos[0].consulta) {
+      const a = acessos[0];
+      ico = "🔓"; tx = `${escaparHTML(a.medico_nome || "O médico")} vê ${a.qtd} exame${a.qtd === 1 ? "" : "s"} seu${a.qtd === 1 ? "" : "s"}`;
+      sub = "só na consulta · toque para tirar o acesso";
+      acaoAcesso = () => PreConsulta.revogar(a.consulta, a.medico_nome, a.qtd);
     } else if (acessos.length === 1) {
       const a = acessos[0], hoje = a.expira_em.slice(0, 10) <= new Date().toISOString().slice(0, 10);
       ico = "🔓"; tx = `${escaparHTML(a.medico_nome || "Um médico")} vê seus ${docs}`;
@@ -330,8 +350,10 @@
 
   // Tocar abre o Mostrar ao médico de sempre (gerar código, quem abriu,
   // autorizados com Cancelar), já na pessoa desta conversa.
+  let acaoAcesso = null;
   c.acesso.onclick = () => {
     if (!aberta) return;
+    if (acaoAcesso) return acaoAcesso();
     const pessoa = aberta.pessoa_id;
     q("btn-mostrar").click();
     try { mvPessoa = pessoa; desenharMvPessoas(); } catch (e) {}
@@ -363,7 +385,7 @@
     aberta = cv;
     tela.classList.remove("como-aba");
     c.voltar.classList.remove("escondido");
-    for (const id of ["conv-ini-mostrar", "conv-ini-conta", "conv-fab"]) q(id).classList.add("escondido");
+    for (const id of ["conv-ini-conta", "conv-fab"]) q(id).classList.add("escondido");
     mostrarEmojis(false);
     acessos = null;
     desenharConversa(true);
@@ -415,6 +437,7 @@
 
   function inicio() {
     noInicio = true;
+    if (window.PreConsulta) PreConsulta.atualizar();
     if (!tela.classList.contains("escondido") && aberta) return;   // uma conversa aberta continua
     tela.classList.add("como-aba");
     abrir();
@@ -424,7 +447,6 @@
     tela.classList.remove("como-aba");
     fechar();
   }
-  q("conv-ini-mostrar").onclick = () => q("btn-mostrar").click();
   q("conv-ini-conta").onclick = () => q("btn-conta").click();
   q("conv-fab").onclick = () => { if (window.Abas) Abas.ir("documentos"); q("btn-fotografar").click(); };
 
@@ -551,5 +573,9 @@
   function redesenharInicio() {
     if (noInicio && !aberta && !tela.classList.contains("escondido")) desenharLista();
   }
-  window.Conversa = { abrir, inicio, sairDoInicio, redesenharInicio, naLista: () => noInicio && !aberta };
+  function redesenharConversa() {
+    if (aberta && !tela.classList.contains("escondido")) { desenharConversa(false); lerAcessos(aberta); }
+  }
+  window.Conversa = { abrir, inicio, sairDoInicio, redesenharInicio, redesenharConversa,
+                      naLista: () => noInicio && !aberta };
 })();

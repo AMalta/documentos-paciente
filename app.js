@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-04.5";
+const VERSAO_APP = "2026-10-04.7";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1241,7 +1241,7 @@ async function listarAcessos() {
   }
   const usados = data || [];
   if (!usados.length) {
-    mv.acessos.innerHTML = '<div class="mv-nenhum">Ninguém abriu seu acervo ainda.'
+    mv.acessos.innerHTML = '<div class="mv-nenhum">Ninguém viu seus documentos ainda.'
       + "<br>Quando um médico usar um código, ele aparece aqui com nome e hora.</div>";
     return;
   }
@@ -1261,7 +1261,7 @@ async function listarAcessos() {
           a.medico_crm ? " · CRM " + escaparHTML(a.medico_crm) : ""}</div>
         <div class="quando">Abriu em ${quandoBR(a.usado_em)}${semCodigo} · ${estado}</div>
         ${pessoas.length > 1
-          ? '<div class="quando">acervo de ' +
+          ? '<div class="quando">documentos de ' +
             escaparHTML(nomeDaPessoa(pessoaDe(a.pessoa_id))) + '</div>' : ''}
       </div>`;
     if (vivo) {
@@ -1318,7 +1318,7 @@ async function listarRecebimentos() {
       <div class="quem">
         <div class="nome">🏥 ${escaparHTML(r.clinica_nome || "Clínica")}</div>
         <div class="quando">Envia desde ${dataBR(r.criado_em.slice(0, 10))}</div>
-        ${pessoas.length > 1 ? '<div class="quando">acervo de ' +
+        ${pessoas.length > 1 ? '<div class="quando">documentos de ' +
           escaparHTML(nomeDaPessoa(pessoaDe(r.pessoa_id))) + '</div>' : ''}
       </div>`;
     const b = document.createElement("button");
@@ -1326,7 +1326,7 @@ async function listarRecebimentos() {
     b.textContent = "Cancelar";
     b.onclick = async () => {
       if (!await confirmarModal(`Parar de receber documentos de ${r.clinica_nome || "esta clínica"}?`
-          + LINHA + LINHA + "Os que já chegaram continuam no seu acervo, e você pode apagá-los.",
+          + LINHA + LINHA + "Os que já chegaram continuam nos seus documentos, e você pode apagá-los.",
           { textoConfirmar: "Parar de receber", perigo: true })) return;
       const { error: e2 } = await sb.rpc("revogar_recebimento", { p_id: r.id });
       if (e2) return aviso("Não consegui cancelar agora. Tente de novo.", "erro");
@@ -1381,6 +1381,12 @@ async function listarAutorizados() {
     return;
   }
   const lista = data || [];
+  // Exames liberados para UMA consulta (sql/019): na mesma lista, com o prazo.
+  try {
+    const r = await sb.from("liberacoes_consulta").select("id, medico_nome, pessoa_id, valido_ate, documento_ids")
+      .is("revogado_em", null).gt("valido_ate", new Date().toISOString());
+    for (const l of r.data || []) lista.push({ ...l, expira_em: l.valido_ate, consulta: true });
+  } catch (e) { /* sem o sql/019 */ }
   if (!lista.length) {
     mv.autorizados.innerHTML = '<div class="mv-nenhum">Nenhum médico.<br>Quando '
       + "um médico que usa o Indiclin abrir seus documentos pelo código, você "
@@ -1396,15 +1402,20 @@ async function listarAutorizados() {
       <div class="quem">
         <div class="nome">${escaparHTML(a.medico_nome || "Médico não identificado")}${
           a.medico_crm ? " · CRM " + escaparHTML(a.medico_crm) : ""}</div>
-        <div class="quando">Até ${dataBR(a.expira_em.slice(0, 10))}${ultimo}</div>
+        <div class="quando">${a.consulta
+          ? `${a.documento_ids.length} exame${a.documento_ids.length > 1 ? "s" : ""}, só na consulta de `
+            + new Date(new Date(a.expira_em) - 3600000).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
+          : "Até " + dataBR(a.expira_em.slice(0, 10))}${ultimo}</div>
         ${pessoas.length > 1
-          ? '<div class="quando">acervo de ' +
+          ? '<div class="quando">documentos de ' +
             escaparHTML(nomeDaPessoa(pessoaDe(a.pessoa_id))) + '</div>' : ''}
       </div>`;
     const b = document.createElement("button");
     b.className = "revogar";
     b.textContent = "Cancelar";
-    b.onclick = () => revogarAutorizacao(a);
+    b.onclick = () => a.consulta
+      ? PreConsulta.revogar(a.id, a.medico_nome, a.documento_ids.length).then((ok) => ok && listarAcessos())
+      : revogarAutorizacao(a);
     div.appendChild(b);
     mv.autorizados.appendChild(div);
   }
@@ -1796,11 +1807,11 @@ function desenharAgenda() {
   el.agendaItens.innerHTML = "";
   if (!prox.length) {
     el.agendaMais.textContent = compromissos.length
-      ? "+ Marcar consulta ou exame"
-      : "+ Marcar uma consulta ou exame";
+      ? "+ Anotar consulta ou exame"
+      : "+ Anotar uma consulta ou exame";
     return;
   }
-  el.agendaMais.textContent = "+ Marcar outro";
+  el.agendaMais.textContent = "+ Anotar compromisso";
 
   for (const c of prox) {
     const f = comoFalta(diasAte(c.quando));
@@ -4130,7 +4141,9 @@ el.corpoCabecalho.onclick = () => {
 };
 {
   let recolhidoSalvo = false;
-  try { recolhidoSalvo = localStorage.getItem("corpo-recolhido") === "1"; }
+  // Recolhido por padrão: aberto, o boneco empurrava a lista para fora da
+  // tela e quem abria "Documentos" não via documento nenhum.
+  try { recolhidoSalvo = localStorage.getItem("corpo-recolhido") !== "0"; }
   catch (e) { /* janela anônima */ }
   if (recolhidoSalvo) corpoAlternarColapso(true);
 }

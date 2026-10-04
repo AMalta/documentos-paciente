@@ -12,6 +12,8 @@
     atual = aba;
     document.body.classList.toggle("aba-agenda", aba === "agenda");
     document.body.classList.toggle("aba-documentos", aba === "documentos");
+    const t = document.getElementById("titulo-aba");
+    if (t) t.textContent = { agenda: "Agenda", documentos: "Meus documentos" }[aba] || "";
     for (const b of nav.querySelectorAll("button[data-aba]")) b.classList.toggle("on", b.dataset.aba === aba);
     if (aba === "conversas") Conversa.inicio(); else Conversa.sairDoInicio();
     window.scrollTo(0, 0);

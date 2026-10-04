@@ -909,6 +909,28 @@
   .conv-tq{color:#8696a0;letter-spacing:-2px}
   .conv-tq.ok{color:#53bdeb}
   .conv-status{align-self:flex-end;max-width:82%;text-align:right;color:#667781;font-size:12.5px;margin:2px 2px 6px}
+  /* Exames para a consulta (preconsulta.js) */
+  .pre-cartao{margin:8px 12px 4px;background:#e7f3ff;border-radius:12px;padding:12px 14px;color:#174a7c;font-size:15px;line-height:1.4}
+  .pre-cartao.no-fio{align-self:stretch;margin:10px 0 6px}
+  .pre-tx{margin-top:3px}
+  .pre-bts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .pre-bts button{border:0;border-radius:22px;padding:0 16px;height:44px;font:inherit;font-size:15px;font-weight:600}
+  .pre-sim{background:#008069;color:#fff;flex:1 1 100%}
+  .pre-quais{background:#fff;color:#008069;flex:1}
+  .pre-nao{background:none;color:#54656f;flex:1}
+  #tela-pre{z-index:48;display:flex;flex-direction:column}
+  .pre-explica{padding:12px 16px;color:#54656f;font-size:14.5px;line-height:1.4;background:#f0f2f5}
+  .pre-lista{flex:1;overflow-y:auto}
+  .pre-item{display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid #e9edef;color:#111b21}
+  .pre-item input{width:24px;height:24px;flex:none;accent-color:#008069}
+  .pre-ico{font-size:26px;flex:none}
+  .pre-nome{flex:1;min-width:0}
+  .pre-nome b{display:block;font-weight:500;font-size:16px}
+  .pre-nome small{color:#667781;font-size:13.5px}
+  .pre-ver{flex:none;border:1px solid #d1d7db;background:#fff;color:#008069;border-radius:18px;height:40px;padding:0 14px;font:inherit;font-weight:600}
+  .pre-rodape{padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #e9edef}
+  .pre-confirmar{width:100%;height:52px;border:0;border-radius:26px;background:#008069;color:#fff;font:inherit;font-size:16.5px;font-weight:600}
+  .pre-confirmar:disabled{background:#b6c2c0}
   /* Parte 2: o que a clínica vê, o que ela mandou e o que marcou, no fio. */
   .conv-acesso{display:flex;gap:10px;align-items:center;width:100%;border:0;text-align:left;
                padding:9px 14px;background:#fff;border-bottom:1px solid #e9edef;font:inherit;color:#111b21}
@@ -1012,7 +1034,7 @@
   body.aba-agenda #agenda{display:block!important}
   /* A lista de conversas como aba: abaixo das outras telas cheias (50) e
      acima da tela de documentos; deixa a barra de baixo à mostra. */
-  #tela-conversa.como-aba{z-index:30;bottom:calc(58px + env(safe-area-inset-bottom))}
+  #tela-conversa.como-aba{z-index:30;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom))}
   /* Aberta, a conversa fica acima da barra de baixo (40) e abaixo das outras
      telas cheias (50): o documento tocado no fio abre POR CIMA dela. */
   #tela-conversa{z-index:45}
@@ -1023,6 +1045,23 @@
               color:#5d4a00;text-align:left}
   .conv-fab{position:absolute;right:16px;bottom:16px;width:56px;height:56px;border-radius:16px;border:0;
             background:#00a884;color:#fff;font-size:24px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+  /* ── FÁCIL DE USAR (04/10): todo botão diz o que faz; o cabeçalho diz em
+     que aba se está; a barra de baixo com letra de ler sem óculos. ── */
+  :root{--nav-h:72px}
+  .nav-baixo button{font-size:13px;line-height:1.15;text-align:center;padding:6px 2px 8px}
+  .nav-baixo button .ico{line-height:28px}
+  body.com-abas main{padding-bottom:calc(var(--nav-h) + 30px)}
+  .conv-fab{width:auto;height:52px;padding:0 20px;border-radius:26px;font-size:16.5px;font-weight:600}
+  .conv-inicio-btn.conta{width:auto;height:44px;padding:0 14px;border-radius:22px;font-size:15.5px}
+  body.com-abas #btn-mostrar{display:none}
+  body.com-abas header h1,body.com-abas .selo-seguranca{display:none!important}
+  .titulo-aba{display:none}
+  body.com-abas .titulo-aba{display:block;margin:0;font-size:20px;font-weight:700;opacity:1;
+                            line-height:28px;padding-right:110px}
+  body.aba-agenda #cabecalho-sub{display:none}
+  .btn-conta .nome-btn{display:none}
+  body.com-abas #btn-conta{width:auto;height:44px;padding:0 14px;border-radius:22px;font-size:15.5px}
+  body.com-abas #btn-conta .nome-btn{display:inline;margin-left:4px}
 </style>
 </head>
 <body>
@@ -1034,9 +1073,10 @@
   <button class="btn-conta btn-mostrar" id="btn-mostrar"
           aria-label="Mostrar ao médico">🩺</button>
   <h1><img class="logo-cabecalho" src="logo_indidoc_branca.png" alt="indiDoc"></h1>
+  <p class="titulo-aba" id="titulo-aba"></p>
   <p id="cabecalho-sub">seus exames, laudos e receitas num lugar só</p>
   <p class="selo-seguranca">🔒 Dados salvos com segurança</p>
-  <button class="btn-conta" id="btn-conta" aria-label="Minha conta">👤</button>
+  <button class="btn-conta" id="btn-conta" aria-label="Minha conta">👤<span class="nome-btn"> Conta</span></button>
   <!-- Falar com a clínica (sql/018): o número em vermelho é resposta da
        recepção ainda não lida. -->
   <button class="btn-conta btn-conversa" id="btn-conversa" aria-label="Falar com a clínica">💬
@@ -1154,7 +1194,7 @@
        a pessoa procurar a agenda e o mesmo que nao ter lembrete. -->
   <div class="agenda escondido" id="agenda">
     <div class="agenda-itens" id="agenda-itens"></div>
-    <button class="agenda-mais" id="agenda-mais">+ Marcar consulta ou exame</button>
+    <button class="agenda-mais" id="agenda-mais">+ Anotar consulta ou exame</button>
   </div>
 
   <!-- CAPTURA ------------------------------------------------------------ -->
@@ -1716,11 +1756,10 @@
       <span class="conv-titulo" id="conv-titulo">Conversas</span>
       <span class="conv-sub" id="conv-sub"></span>
     </span>
-    <button type="button" class="conv-inicio-btn escondido" id="conv-ini-mostrar" aria-label="Mostrar ao médico">🩺</button>
-    <button type="button" class="conv-inicio-btn escondido" id="conv-ini-conta" aria-label="Minha conta">👤</button>
+    <button type="button" class="conv-inicio-btn conta escondido" id="conv-ini-conta">👤 Conta</button>
   </div>
   <div class="conv-lista" id="conv-lista" style="position:relative"></div>
-  <button type="button" class="conv-fab escondido" id="conv-fab" aria-label="Fotografar documento">📷</button>
+  <button type="button" class="conv-fab escondido" id="conv-fab">📷 Guardar exame</button>
   <div class="conv-chat escondido" id="conv-chat">
     <button type="button" class="conv-acesso escondido" id="conv-acesso"></button>
     <div class="conv-msgs" id="conv-msgs"></div>
@@ -1735,6 +1774,22 @@
     </div>
     <div class="conv-emojis escondido" id="conv-emojis"></div>
   </div>
+</div>
+
+<!-- EXAMES PARA A CONSULTA (preconsulta.js): a lista marcada; o paciente
+     desmarca o que não quiser. "Ver" abre o exame por cima (z-index 50). -->
+<div class="tela-cheia escondido" id="tela-pre" style="background:#fff">
+  <div class="conv-barra">
+    <button type="button" id="pre-fechar" class="conv-voltar" aria-label="Voltar">←</button>
+    <span class="conv-cab" style="flex:1">
+      <span class="conv-titulo" id="pre-titulo">Exames para a consulta</span>
+      <span class="conv-sub" id="pre-sub"></span>
+    </span>
+  </div>
+  <div class="pre-explica">Marcados, o médico vê na consulta. Desmarque o que não quiser mostrar.
+    O acesso termina no fim do dia da consulta.</div>
+  <div class="pre-lista" id="pre-lista"></div>
+  <div class="pre-rodape"><button type="button" class="pre-confirmar" id="pre-confirmar">Deixar ver</button></div>
 </div>
 
 <div class="tela-cheia escondido" id="tela-mostrar" style="background:#0f4c3a">
@@ -1794,7 +1849,7 @@
     <div id="mv-recebimentos"></div>
 
     <!-- 3. quem abriu -->
-    <h3 class="mv-titulo">Quem abriu meu acervo</h3>
+    <h3 class="mv-titulo">Quem viu meus documentos</h3>
     <div id="mv-acessos"></div>
   </div>
 </div>
@@ -1829,12 +1884,13 @@
 <script src="termo.js"></script>
 <script src="app.js"></script>
 <script src="conversa.js"></script>
+<script src="preconsulta.js"></script>
 <nav class="nav-baixo" id="nav-baixo" aria-label="Seções">
   <button type="button" data-aba="conversas" class="on"><span class="ico">💬</span>Conversas
     <span class="conv-badge escondido" id="nav-conv-badge">0</span></button>
   <button type="button" data-aba="agenda"><span class="ico">📅</span>Agenda</button>
   <button type="button" data-aba="documentos"><span class="ico">📁</span>Documentos</button>
-  <button type="button" data-aba="mostrar"><span class="ico">🩺</span>Mostrar</button>
+  <button type="button" data-aba="mostrar"><span class="ico">🩺</span>Mostrar ao médico</button>
 </nav>
 <script src="abas.js"></script>
 </body>
