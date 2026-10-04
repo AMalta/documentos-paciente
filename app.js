@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-04.13";
+const VERSAO_APP = "2026-10-04.14";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1385,7 +1385,9 @@ async function carregarPedidos() {
   const lista = (error ? [] : data || []).filter((p) => !pessoaAtiva || p.pessoa_id === pessoaAtiva);
   caixa.classList.toggle("escondido", !lista.length);
   if (!lista.length) { caixa.innerHTML = ""; return; }
-  caixa.innerHTML = '<div class="tit">📋 Exames pedidos</div>';
+  caixa.innerHTML = `<details><summary>📋 ${lista.length} exame${lista.length > 1 ? "s" : ""} pedido${
+    lista.length > 1 ? "s" : ""} esperando resultado</summary></details>`;
+  const lugar = caixa.firstChild;
   for (const p of lista) {
     const linha = document.createElement("div");
     linha.className = "item";
@@ -1401,7 +1403,7 @@ async function carregarPedidos() {
       carregarPedidos();
     };
     linha.appendChild(b);
-    caixa.appendChild(linha);
+    lugar.appendChild(linha);
   }
 }
 
@@ -4169,6 +4171,31 @@ function corpoAlternarColapso(recolhido) {
   el.corpoSeta.textContent = recolhido ? "▸" : "▾";
   try { localStorage.setItem("corpo-recolhido", recolhido ? "1" : "0"); }
   catch (e) { /* janela anônima */ }
+}
+{
+  const bc = $("btn-corpo-filtro");
+  // O boneco abre LOGO ABAIXO da linha dos filtros, onde está o botão.
+  bc.parentNode.after(el.corpoBloco);
+  // Some junto com o boneco (sem documento com parte do corpo, não há o que procurar).
+  const sync = () => {
+    bc.classList.toggle("escondido", el.corpoBloco.classList.contains("escondido"));
+    bc.classList.toggle("on", !el.corpoBloco.classList.contains("recolhido"));
+  };
+  bc.onclick = () => { corpoAlternarColapso(!el.corpoBloco.classList.contains("recolhido")); sync(); };
+  new MutationObserver(sync).observe(el.corpoBloco, { attributes: true, attributeFilter: ["class"] });
+  sync();
+  // Mostrar ao médico: quantos há em cada linha; "Podem ver sem código"
+  // abre sozinha quando tem alguém (é o acesso que continua valendo).
+  for (const sec of document.querySelectorAll(".mv-sec")) {
+    const lista = sec.querySelector("div[id]"), qtd = sec.querySelector(".mv-qtd");
+    const contar = () => {
+      const n = lista.querySelectorAll(".acesso").length;
+      qtd.textContent = n ? String(n) : "";
+      if (n && sec.dataset.abreSeTiver && !sec.dataset.mexeu) sec.open = true;
+    };
+    sec.querySelector("summary").addEventListener("click", () => { sec.dataset.mexeu = "1"; });
+    new MutationObserver(contar).observe(lista, { childList: true });
+  }
 }
 el.corpoCabecalho.onclick = () => {
   corpoAlternarColapso(!el.corpoBloco.classList.contains("recolhido"));
