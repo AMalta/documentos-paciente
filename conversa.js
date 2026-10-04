@@ -147,7 +147,7 @@
   }
 
   function tique(m) {
-    return m.entregue_em ? '<span class="conv-tq ok" title="Entregue à clínica">✓✓</span>'
+    return m.entregue_em ? '<span class="conv-tq" title="Recebida pela clínica">✓✓</span>'
                          : '<span class="conv-tq" title="Enviada">✓</span>';
   }
 
@@ -175,6 +175,12 @@
         <div class="conv-txt">${escaparHTML(m.texto).replace(/\n/g, "<br>")}</div>
         <div class="conv-meta">${hora(m.criado_em)}${meu ? " " + tique(m) : ""}</div>
       </div>`;
+    }
+    const ult = l[l.length - 1];
+    if (ult && ult.de === "paciente") {
+      html += `<div class="conv-status">${ult.entregue_em
+        ? "✓✓ Recebida pela clínica. A resposta chega como aviso no celular."
+        : "✓ Mensagem enviada. A recepção responde no horário de atendimento."}</div>`;
     }
     if (!l.length) {
       html += `<div class="conv-dica">Escolha um assunto abaixo ou escreva direto.
