@@ -169,7 +169,9 @@
       if (d !== dia) { html += `<div class="conv-dia"><span>${d}</span></div>`; dia = d; }
       const meu = m.de === "paciente";
       html += `<div class="conv-bal ${meu ? "eu" : "ela"}">
-        ${!meu && m.autor ? `<div class="conv-autor">${escaparHTML(m.autor)} · Recepção</div>` : ""}
+        ${!meu && m.autor ? (m.autor.startsWith("🤖")
+          ? `<div class="conv-autor auto">${escaparHTML(m.autor)}</div>`
+          : `<div class="conv-autor">${escaparHTML(m.autor)} · Recepção</div>`) : ""}
         <div class="conv-txt">${escaparHTML(m.texto).replace(/\n/g, "<br>")}</div>
         <div class="conv-meta">${hora(m.criado_em)}${meu ? " " + tique(m) : ""}</div>
       </div>`;
@@ -320,6 +322,9 @@
     try { await carregar(); } catch (e) { /* a mensagem já foi; aparece na próxima atualização */ }
     aberta = conversas.find((x) => x.pessoa_id === aberta.pessoa_id && x.clinica_id === aberta.clinica_id) || aberta;
     desenharConversa(true);
+    // A clínica recebe em segundos (e o assistente avisa): olha de novo logo.
+    setTimeout(atualizar, 3000);
+    setTimeout(atualizar, 8000);
   };
   // Enter envia no computador; no celular o Enter quebra a linha (teclado virtual).
   c.campo.addEventListener("keydown", (e) => {
