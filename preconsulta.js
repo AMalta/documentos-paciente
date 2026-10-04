@@ -169,7 +169,7 @@
       linha.className = "pre-item";
       linha.innerHTML = `<input type="checkbox" checked value="${escaparHTML(d.id)}">
         <span class="pre-ico">${ICONES[d.tipo] || "📎"}</span>
-        <span class="pre-nome"><b>${escaparHTML(d.nome || "Documento")}</b><small>${dataBR(dataDoc(d))}</small></span>
+        <span class="pre-nome"><b>${escaparHTML(d.nome || "Documento")}</b><small>${d.data_documento ? dataBR(d.data_documento) : "sem data · guardado em " + dataBR(dataDoc(d))}</small></span>
         <button type="button" class="pre-ver">Ver</button>`;
       linha.querySelector(".pre-ver").onclick = (e) => { e.preventDefault(); abrirDocumento(d); };
       lista.appendChild(linha);
@@ -221,6 +221,32 @@
     const c = (compromissos || []).find((x) => x.origem === "clinica" && x.origem_clinica_id === cv.clinica_id
       && x.origem_pessoa_id === cv.pessoa_id && x.origem_medico_id && !x.feito_em && [0, 1].includes(diasAte(x.quando)));
     return c && novos(c).length && !liberadas.some((l) => l.compromisso_id === c.id) ? c : null;
+  }
+
+  // Aviso da véspera tocado (sw.js): abre direto a lista "Ver quais".
+  // A agenda e os documentos chegam depois do login: espera até ~20 s.
+  function abrirPeloAviso(compId, tentativas = 40) {
+    const c = typeof compromissos !== "undefined" && compromissos.find((x) => x.id === compId);
+    if (!c || typeof documentos === "undefined" || !documentos.length) {
+      if (tentativas > 0) setTimeout(() => abrirPeloAviso(compId, tentativas - 1), 500);
+      return;
+    }
+    atualizar(true).then(() => {
+      if (liberadas.some((l) => l.compromisso_id === c.id))
+        return aviso(`Você já deixou ${medico(c)} ver seus exames desta consulta.`, "info");
+      if (!novos(c).length) return aviso("Não há exame novo para esta consulta.", "info");
+      abrirLista(c);
+    });
+  }
+  const pedido = /#preconsulta=([^&]+)/.exec(location.hash);
+  if (pedido) {
+    history.replaceState(history.state, "", location.pathname + location.search);
+    abrirPeloAviso(decodeURIComponent(pedido[1]));
+  }
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener("message", (e) => {
+      if ((e.data || {}).abrir === "preconsulta") abrirPeloAviso(e.data.compromisso_id);
+    });
   }
 
   window.PreConsulta = { atualizar, cartaoInicio, htmlConversa, abrirLista, revogar, perguntaDe,

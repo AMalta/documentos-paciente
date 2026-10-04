@@ -439,6 +439,13 @@
      a marca quer dizer "você ainda não olhou isto", não "isto está
      errado". */
   #data.conferir{border-color:var(--ambar);background:var(--ambar-fundo)}
+  /* Data do exame (04/10): atalhos Hoje / Não sei e a pergunta do Guardar. */
+  .data-atalhos{display:flex;gap:6px;margin-top:6px}
+  .data-atalhos button{flex:1;min-height:44px;border:1px solid var(--linha);border-radius:22px;
+       background:var(--superficie);color:var(--tinta);font-size:15px}
+  .data-atalhos button.ativo{background:var(--ambar-fundo);border-color:var(--ambar);font-weight:600}
+  .data-pergunta{margin:12px 0 2px;padding:10px 12px;border-radius:10px;font-size:15px;
+       line-height:1.4;background:var(--ambar-fundo);border:1px solid var(--ambar)}
 
   /* ── Aviso de documento repetido, CEDO ────────────────────────────────
      Antes só aparecia dentro de uma confirmação ao tocar em "Guardar" —
@@ -1261,9 +1268,18 @@
         </select>
       </div>
       <div>
-        <label for="data">Data</label>
+        <label for="data">Data do exame</label>
         <input id="data" type="date">
+        <div class="data-atalhos">
+          <button type="button" id="data-hoje">Hoje</button>
+          <button type="button" id="data-nao-sei">Não sei</button>
+        </div>
       </div>
+    </div>
+
+    <div class="data-pergunta escondido" id="data-pergunta">
+      📅 <b>Quando foi feito este exame?</b> A data está no papel, perto de
+      "coleta" ou "realização". Se não souber, toque em <b>Não sei</b>.
     </div>
 
     <div class="duplicata escondido" id="duplicata">

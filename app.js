@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-04.7";
+const VERSAO_APP = "2026-10-04.8";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -23,6 +23,7 @@ const el = {
   leitura: $("leitura"), leituraIcone: $("leitura-icone"),
   leituraTexto: $("leitura-texto"),
   data: $("data"), salvar: $("btn-salvar"), cancelar: $("btn-cancelar"),
+  dataHoje: $("data-hoje"), dataNaoSei: $("data-nao-sei"), dataPergunta: $("data-pergunta"),
   duplicata: $("duplicata"), duplicataNome: $("duplicata-nome"),
   filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   lista: $("lista"), sub: $("cabecalho-sub"),
@@ -773,6 +774,7 @@ function cancelar() {
   // comentario de duas linhas em lerDocumento).
   el.tipo.value = "exame";
   el.data.value = "";
+  dataNaoSei = false; dataEscolha();
   el.camera.value = "";
   el.duplicata.classList.add("escondido");
   leituraPedido++;          // invalida resposta em voo
@@ -808,10 +810,11 @@ function cancelar() {
       a regra protege é contra ASSUSTAR, não contra avisar — e disso cuida
       o lugar da mensagem (a caixa cinza da leitura), não o silêncio.
 
-   A DATA continua sendo a de HOJE quando a leitura não vem — era assim
-   antes e continua sendo. A diferença é que agora a sugestão pode
-   substituí-la, porque "hoje" ali nunca foi uma escolha da pessoa, foi um
-   palpite do aplicativo. */
+   A DATA nasce VAZIA (desde 04/10). Antes nascia HOJE, e o exame antigo
+   fotografado hoje ficava com a data de hoje: virava "exame novo" para a
+   consulta (preconsulta.js) e ia para o lugar errado na ordem. Agora a
+   leitura preenche se achar; senão a pessoa escreve, toca em "Hoje" ou em
+   "Não sei" — e o Guardar pergunta se nada foi escolhido. */
 
 // Campos que a leitura ainda pode preencher. Tocou no campo, ele sai daqui
 // e a sugestão nunca mais mexe nele — nem que chegue meio segundo depois.
@@ -825,8 +828,29 @@ el.data.addEventListener("input", () => {
   // Mexeu na data: a marca some. Ela quer dizer "voce ainda nao olhou
   // isto", nao "isto esta errado" — e quem digitou por cima ja olhou.
   el.data.classList.remove("conferir");
+  dataNaoSei = false; dataEscolha();
   verificarDuplicata();
 });
+
+/* Data do exame: "Hoje" e "Não sei" embaixo do campo. "Não sei" guarda sem
+   data (a lista mostra o dia em que foi guardado). */
+let dataNaoSei = false;
+function dataEscolha() {
+  el.dataNaoSei.classList.toggle("ativo", dataNaoSei);
+  el.dataPergunta.classList.add("escondido");
+}
+el.dataHoje.onclick = () => {
+  // hojeISO, e nao toISOString(): das 21h de Brasilia em diante o UTC ja
+  // virou o dia seguinte, e o documento nascia datado de AMANHA.
+  el.data.value = hojeISO(); dataNaoSei = false;
+  leituraSoltar("data"); el.data.classList.remove("conferir");
+  dataEscolha(); verificarDuplicata();
+};
+el.dataNaoSei.onclick = () => {
+  el.data.value = ""; dataNaoSei = true;
+  leituraSoltar("data"); el.data.classList.remove("conferir");
+  dataEscolha(); verificarDuplicata();
+};
 el.tipo.addEventListener("change", () => { leituraSoltar("tipo"); verificarDuplicata(); });
 
 /* ── Duplicidade, verificada CEDO ─────────────────────────────────────────
@@ -941,6 +965,7 @@ async function lerDocumento(blob) {
     }
     if (dados.data && leituraPodeEscrever.data) {
       el.data.value = dados.data; postos.push("a data");
+      dataNaoSei = false; dataEscolha();
     }
     if (!postos.length) {
       if (achouAlgo) return leituraCalar();  // já estava preenchido — nada a dizer
@@ -995,6 +1020,15 @@ async function guardar() {
 
   const nomeNovo = (el.nome.value || "").trim() || ROTULOS[el.tipo.value];
   const dataNova = el.data.value || null;
+
+  // Sem data e sem "Não sei": pergunta no próprio formulário. Não guarda
+  // com a data de hoje por conta própria (ver o comentário de lerDocumento).
+  if (!dataNova && !dataNaoSei) {
+    el.dataPergunta.classList.remove("escondido");
+    el.data.classList.add("conferir");
+    el.dataPergunta.scrollIntoView({ block: "center", behavior: "smooth" });
+    return false;
+  }
 
   // Duplicidade: a mesma checagem de `verificarDuplicata` (ver o comentário
   // lá), agora como confirmação de verdade antes de gravar — não só um
@@ -3092,11 +3126,8 @@ el.camera.onchange = async () => {
     const primeiraFoto = !jaAberto;
     el.form.classList.remove("escondido");
     el.fotografar.classList.add("escondido");
-    // hojeISO, e nao toISOString(): das 21h de Brasilia em diante o UTC ja
-    // virou o dia seguinte, e o documento fotografado a noite nascia
-    // datado de AMANHA — com a pessoa conferindo e achando certo, porque
-    // "amanha" nao parece erro, parece a data de hoje.
-    if (!el.data.value) el.data.value = hojeISO();
+    // A data nasce vazia: a leitura preenche ou a pessoa escolhe (ver o
+    // comentário de lerDocumento).
     desenharRascunho();
     // SEM await: o formulario ja esta na tela e os botoes ja funcionam. A
     // leitura chega quando chegar, ou nao chega.
@@ -3274,7 +3305,8 @@ async function abrirPaginaPdf(indice) {
     el.form.classList.remove("escondido");
     el.fotografar.classList.add("escondido");
     el.pdfBotao.classList.add("escondido");
-    el.data.value = hojeISO();
+    el.data.value = "";
+    dataNaoSei = false; dataEscolha();
     el.nome.value = "";
     el.tipo.value = "exame";
     desenharRascunho();
