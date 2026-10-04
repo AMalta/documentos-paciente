@@ -265,7 +265,7 @@
   // Endereço https:// em mensagem da clínica vira link (abre fora do app).
   function linkar(html, daClinica) {
     if (!daClinica) return html;
-    return html.replace(/https:\/\/[^\s<]+/g,
+    return html.replace(/https:\/\/[^\s<]+?(?=[.,;:!?)]*(?:\s|<|$))/g,
       u => `<a href="${u}" target="_blank" rel="noopener" style="color:#027eb5;text-decoration:underline">${u}</a>`);
   }
 
@@ -390,9 +390,10 @@
       sub = "só na consulta · toque para tirar o acesso";
       acaoAcesso = () => PreConsulta.revogar(a.consulta, a.medico_nome, a.qtd);
     } else if (acessos.length === 1) {
-      const a = acessos[0], hoje = a.expira_em.slice(0, 10) <= new Date().toISOString().slice(0, 10);
+      // Dia de Brasília (o código vence à meia-noite daqui = 03:00Z do dia seguinte).
+      const a = acessos[0], fim = diaLocalDe(new Date(new Date(a.expira_em) - 60000).toISOString()), hoje = fim <= hojeISO();
       ico = "🔓"; tx = `${escaparHTML(a.medico_nome || "Um médico")} vê seus ${docs}`;
-      sub = (hoje ? "até o fim do dia" : "até " + dataBR(a.expira_em.slice(0, 10))) + " · toque para ver ou tirar o acesso";
+      sub = (hoje ? "até o fim do dia" : "até " + dataBR(fim)) + " · toque para ver ou tirar o acesso";
     } else {
       ico = "🔓"; tx = `${acessos.length} médicos daqui veem seus ${docs}`;
       sub = "Toque para ver quem e tirar o acesso";
@@ -462,7 +463,7 @@
         desenharConversa(false);
         marcarLidas(aberta);
       } else {
-        desenharLista();
+        const y = c.lista.scrollTop; desenharLista(); c.lista.scrollTop = y;   // não volta ao topo
       }
     } catch (e) { /* sem rede: fica o que está na tela */ }
   }
@@ -474,6 +475,9 @@
       await carregar();
     } catch (e) {
       c.lista.innerHTML = '<div class="conv-vazio"><b>Sem conexão agora</b><p>As conversas precisam de internet. Tente de novo em instantes.</p></div>';
+      // Sem os botões o início fica sem saída; e o timer refaz a lista quando a rede voltar.
+      if (noInicio) { q("conv-fab").classList.remove("escondido"); q("conv-ini-conta").classList.remove("escondido"); }
+      agendar();
       return;
     }
     const alvo = pessoaId && conversas.find((x) => x.pessoa_id === pessoaId && x.clinica_id === clinicaId);
@@ -594,6 +598,7 @@
     const m = /#conversa=([^&]+)/.exec(location.hash);
     if (!m) return false;
     const [p, cl] = decodeURIComponent(m[1]).split(",");
+    window.__conversaPeloAviso = true;   // app.js não abre a lista por cima
     history.replaceState(history.state, "", location.pathname + location.search);
     esperarLogin(() => abrir(p, cl));
     return true;
@@ -625,7 +630,9 @@
   // A agenda chega depois da lista: redesenha a faixa da consulta e a
   // indicação quando ela chega (app.js chama).
   function redesenharInicio() {
-    if (noInicio && !aberta && !tela.classList.contains("escondido")) desenharLista();
+    if (noInicio && !aberta && !tela.classList.contains("escondido")) {
+      const y = c.lista.scrollTop; desenharLista(); c.lista.scrollTop = y;
+    }
   }
   function redesenharConversa() {
     if (aberta && !tela.classList.contains("escondido")) { desenharConversa(false); lerAcessos(aberta); }

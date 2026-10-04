@@ -880,7 +880,7 @@
   .conv-av{flex:none;width:48px;height:48px;border-radius:50%;color:#fff;font-weight:700;
            font-size:17px;display:flex;align-items:center;justify-content:center}
   .conv-av.pequeno{width:38px;height:38px;font-size:14px}
-  .conv-lista{flex:1;overflow-y:auto;background:#fff}
+  .conv-lista{flex:1;overflow-y:auto;background:#fff;padding-bottom:84px}
   .conv-linha{display:flex;align-items:center;gap:12px;width:100%;background:#fff;border:0;
               padding:10px 14px;text-align:left;color:inherit;font:inherit}
   .conv-linha:active{background:#f0f2f5}
@@ -1065,6 +1065,9 @@
   /* ── FÁCIL DE USAR (04/10): todo botão diz o que faz; o cabeçalho diz em
      que aba se está; a barra de baixo com letra de ler sem óculos. ── */
   :root{--nav-h:72px}
+  /* A barra mede o mesmo que --nav-h: a tela de Conversas termina ali, e
+     sobrava uma tira de 11 px mostrando a tela de trás. */
+  .nav-baixo{min-height:calc(var(--nav-h) + env(safe-area-inset-bottom))}
   .nav-baixo button{font-size:13px;line-height:1.15;text-align:center;padding:6px 2px 8px}
   .nav-baixo button .ico{line-height:28px}
   body.com-abas main{padding-bottom:calc(var(--nav-h) + 30px)}
@@ -1219,12 +1222,15 @@
       padding:14px 16px;color:#14272e}
   .dc.no-fio{align-self:stretch;margin:10px 0 6px}
   .dc-cab{display:flex;align-items:flex-start;gap:8px}
+  .dc-cab[data-dc]{cursor:pointer}
+  .dc.fechado .dc-sec{display:none}
+  .dc-seta{flex:none;align-self:center;color:var(--cinza-txt);font-size:18px;width:14px}
   .dc-tx{flex:1;min-width:0}
   .dc-tx b{display:block;font-size:16.5px;color:var(--petroleo)}
   .dc-tx small{display:block;color:var(--cinza-txt);font-size:13.5px}
   .dc-prog{flex:none;font-size:12.5px;font-weight:700;color:var(--marca-escura);background:var(--marca-clara);
            border-radius:12px;padding:4px 10px;margin-top:2px}
-  .dc-x{flex:none;width:32px;height:32px;border:0;border-radius:50%;background:none;color:#8a9a9e;font-size:15px;padding:0}
+  .dc-x{flex:none;width:44px;height:44px;border:0;border-radius:50%;background:none;color:#8a9a9e;font-size:15px;padding:0}
   .dc-sec{margin-top:10px;border-top:1px solid #edf1f1;padding-top:8px}
   .dc-t{font-size:12.5px;font-weight:700;color:var(--cinza-txt);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
   .dc-it{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:15.5px;flex-wrap:wrap}

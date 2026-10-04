@@ -36,7 +36,7 @@
   const chaveNao = (c) => "pre-nao-" + c.id;
   function disseNao(c) { try { return localStorage.getItem(chaveNao(c)) === "1"; } catch (e) { return false; } }
 
-  function dataDoc(d) { return d.data_documento || String(d.criado_em || "").slice(0, 10); }
+  function dataDoc(d) { return diaDoDocumento(d); }
   function corte(c) { return c.ultima_consulta || somarMeses(hojeISO(), -12); }
 
   // Os exames da pessoa feitos DEPOIS da última consulta (no mesmo dia, o
@@ -44,7 +44,11 @@
   function novos(c) {
     const desde = corte(c);
     return (typeof documentos === "undefined" ? [] : documentos)
-      .filter((d) => d.pessoa_id === c.origem_pessoa_id && dataDoc(d) > desde)
+      // Só exame e laudo, com data informada pela pessoa e guardados por ela:
+      // receita/relatório e o que a própria clínica mandou não são "exames novos",
+      // e o "Não sei" não tem como ser depois da última consulta (sql/022, mesma conta).
+      .filter((d) => d.pessoa_id === c.origem_pessoa_id && d.data_documento && d.origem !== "clinica"
+        && ["exame", "laudo"].includes(d.tipo) && d.data_documento > desde)
       .sort((a, b) => dataDoc(b).localeCompare(dataDoc(a)));
   }
 
@@ -136,7 +140,7 @@
         : "Não consegui liberar agora. Tente de novo.", "erro");
     }
     const n = (data && data[0] && data[0].qtd) || ids.length;
-    aviso(`Pronto! ${medico(c)} vai ver ${n} exame${n > 1 ? "s" : ""} seu${n > 1 ? "s" : ""} na consulta. `
+    aviso(`Pronto! ${escaparHTML(medico(c))} vai ver ${n} exame${n > 1 ? "s" : ""} seu${n > 1 ? "s" : ""} na consulta. `
       + "O acesso termina no fim do dia da consulta.", "ok");
     fecharLista();
     await atualizar(true);
@@ -187,7 +191,12 @@
   }
   function fecharLista() { aberta = null; tela.classList.add("escondido"); }
   q("pre-fechar").onclick = fecharLista;
-  q("pre-confirmar").onclick = () => { if (aberta) liberar(aberta, marcados()); };
+  q("pre-confirmar").onclick = async (e) => {
+    const b = e.currentTarget;
+    if (!aberta || b.disabled) return;   // segundo toque com internet lenta
+    b.disabled = true; b.textContent = "Liberando…";
+    try { await liberar(aberta, marcados()); } finally { b.disabled = false; contar(); }
+  };
 
   // Um só lugar para os botões do cartão (início e conversa).
   function acao(qual, compId) {
@@ -229,11 +238,12 @@
     const c = typeof compromissos !== "undefined" && compromissos.find((x) => x.id === compId);
     if (!c || typeof documentos === "undefined" || !documentos.length) {
       if (tentativas > 0) setTimeout(() => abrirPeloAviso(compId, tentativas - 1), 500);
+      else aviso("Não consegui abrir os exames agora. Abra a conversa com a clínica para liberar.", "info");
       return;
     }
     atualizar(true).then(() => {
       if (liberadas.some((l) => l.compromisso_id === c.id))
-        return aviso(`Você já deixou ${medico(c)} ver seus exames desta consulta.`, "info");
+        return aviso(`Você já deixou ${escaparHTML(medico(c))} ver seus exames desta consulta.`, "info");
       if (!novos(c).length) return aviso("Não há exame novo para esta consulta.", "info");
       abrirLista(c);
     });

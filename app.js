@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-04.15";
+const VERSAO_APP = "2026-10-04.16";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -175,7 +175,7 @@ function aviso(texto, tipo = "info", titulo = "") {
   if (alvo.id === "avisos-cheia") {
     const cheia = [...document.querySelectorAll(".tela-cheia")]
       .find((t) => t.id !== "tela-conta" && !t.classList.contains("escondido"));
-    const barra = cheia && cheia.querySelector(".barra");
+    const barra = cheia && cheia.querySelector(".barra, .conv-barra");
     const y = barra ? barra.getBoundingClientRect().bottom : 10;
     alvo.style.top = Math.round(y + 8) + "px";
   }
@@ -1587,7 +1587,7 @@ async function perguntarAutorizacoes() {
   if (perguntandoAutorizacao || !usuario || !navigator.onLine || !jaAceitou()) return;
   // Nunca por cima de outra coisa: foto no meio, formulário aberto ou
   // qualquer tela cheia. A pergunta espera a próxima carga da lista.
-  if (document.querySelector(".tela-cheia:not(.escondido)")
+  if (document.querySelector(".tela-cheia:not(.escondido):not(.como-aba)")
       || !el.form.classList.contains("escondido")
       || !el.modalFundo.classList.contains("escondido")) return;
   perguntandoAutorizacao = true;
@@ -1840,7 +1840,7 @@ async function sincronizarAgenda() {
 
 function desenharAgenda() {
   if (window.Conversa) Conversa.redesenharInicio();
-  const prox = proximosCompromissos(compromissos);
+  const prox = proximosCompromissos(compromissos, 50);   // a aba inteira, não a faixa de 3
   el.agenda.classList.toggle("escondido", !usuario);
   el.agendaItens.innerHTML = "";
   if (!prox.length) {
@@ -1955,7 +1955,7 @@ function fecharCompromisso() {
   compEditando = null;
 }
 
-cp.cancelar.onclick = () => { fecharCompromisso(); if (window.Abas) Abas.ir("conversas"); };
+cp.cancelar.onclick = () => { fecharCompromisso(); };   // fica na aba de onde veio
 cp.salvar.onclick = async () => {
   limparAvisos();
   const titulo = (cp.nome.value || "").trim() || ROTULO_TIPO[cp.tipo.value];
@@ -2015,7 +2015,7 @@ const capaLocal = new Map();
 
 async function abrirDocumento(doc) {
   const paginas = (doc.documento_paginas || []).slice().sort((a, b) => a.ordem - b.ordem);
-  if (!paginas.length) return;
+  if (!paginas.length) return aviso("Este documento ainda não tem imagem.", "info");
   visuTitulo(doc);
   el.telaVisu.classList.remove("escondido");
   el.visuImg.removeAttribute("src");
@@ -2491,7 +2491,9 @@ function tornarDeslizavel(wrap, alvo, origem) {
   };
 
   wrap.addEventListener("pointerdown", (e) => {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
+    // Com mouse não há deslizar: a captura do ponteiro roubava o clique e o
+    // documento não abria no computador (apagar e compartilhar estão no visualizador).
+    if (e.pointerType === "mouse") return;
     arrastando = true;
     inicioX = e.clientX;
     inicioTranslado = wrap.dataset.aberto === "esq" ? LIMITE
@@ -4250,7 +4252,7 @@ for (const b of botoesTextoOpcao) {
 
   if (await entrar()) {
     await carregar();
-    if (window.Abas && !/#conversa=/.test(location.hash)) Abas.ir("conversas");
+    if (window.Abas && !window.__conversaPeloAviso) Abas.ir("conversas");
     // O que ficou da sessão anterior sobe agora, sem o usuário pedir.
     if (navigator.onLine) enviarFila();
     /* O TERMO NA ABERTURA, para quem nao aceitou a versao atual.
@@ -4368,6 +4370,7 @@ window.addEventListener("popstate", () => {
   const agora = Date.now();
   if (agora - ultimoAvisoSair < 2000) return;   // segundo toque: deixa sair
   ultimoAvisoSair = agora;
-  aviso("Toque em voltar mais uma vez para sair.", "info");
+  const dS = aviso("Toque em voltar mais uma vez para sair.", "info");
+  setTimeout(() => dS && dS.remove(), 2500);   // não fica preso por cima do Fechar
   history.pushState({ app: true }, "");
 });

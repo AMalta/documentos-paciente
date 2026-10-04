@@ -29,8 +29,11 @@
   let lendo = null;
 
   const chaveFora = (v) => "dc-fora-" + v.chave;
+  // No início o cartão nasce numa linha só e abre ao tocar: aberto, ocupava a
+  // tela inteira de um celular de 360 px e escondia as conversas.
+  const abertos = new Set();
   function dispensado(v) { try { return localStorage.getItem(chaveFora(v)) === "1"; } catch (e) { return false; } }
-  function dataDoc(d) { return d.data_documento || String(d.criado_em || "").slice(0, 10); }
+  function dataDoc(d) { return diaDoDocumento(d); }
   const norm = (t) => (typeof semAcento === "function" ? semAcento(String(t || "")) : String(t || "")).toLowerCase();
 
   async function atualizar(forcar) {
@@ -123,9 +126,11 @@
     const quem = pessoas.length > 1 && typeof nomeDaPessoa === "function"
       ? " · " + escaparHTML(nomeDaPessoa(pessoaDe(v.pessoa_id))) : "";
     const sub = [v.medico, dataBR(v.dia).slice(0, 5), noFio ? "" : v.clinica_nome].filter(Boolean).map(escaparHTML).join(" · ");
-    let h = `<div class="dc${noFio ? " no-fio" : ""}">
-      <div class="dc-cab"><div class="dc-tx"><b>📋 Depois da consulta</b><small>${sub}${quem}</small></div>
+    const fechado = !noFio && !abertos.has(v.chave);
+    let h = `<div class="dc${noFio ? " no-fio" : ""}${fechado ? " fechado" : ""}">
+      <div class="dc-cab"${noFio ? "" : ` data-dc="abrir" data-v="${escaparHTML(v.chave)}" role="button" aria-expanded="${!fechado}"`}><div class="dc-tx"><b>📋 Depois da consulta</b><small>${sub}${quem}</small></div>
         <span class="dc-prog">${v.feitos} de ${v.total} feito${v.feitos === 1 ? "" : "s"}</span>
+        ${noFio ? "" : `<span class="dc-seta" aria-hidden="true">${fechado ? "▸" : "▾"}</span>`}
         <button type="button" class="dc-x" data-dc="fora" data-v="${escaparHTML(v.chave)}" aria-label="Dispensar">✕</button></div>`;
     if (v.pedidos.length) {
       h += `<div class="dc-sec"><div class="dc-t">🧪 Exames pedidos</div>`;
@@ -220,6 +225,10 @@
       return;
     }
     if (!v) return;
+    if (qual === "abrir") {
+      if (abertos.has(v.chave)) abertos.delete(v.chave); else abertos.add(v.chave);
+      return redesenhar();
+    }
     if (qual === "fora") {
       try { localStorage.setItem(chaveFora(v), "1"); } catch (e) {}
       return redesenhar();
