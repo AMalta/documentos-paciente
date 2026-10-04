@@ -133,22 +133,62 @@
       return b;
     } catch (e) { return null; }
   }
-  // O acervo do paciente, sempre a primeira linha (parte 3: vira conversa).
-  function linhaMeusDocumentos() {
-    let ult = null;
-    try { ult = [...documentos].sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)))[0]; } catch (e) {}
-    const linha = document.createElement("button");
-    linha.type = "button";
-    linha.className = "conv-linha";
-    linha.innerHTML = `
-      <span class="conv-av" style="background:#005c4b">📁</span>
-      <span class="conv-meio">
-        <span class="conv-nome">Meus documentos</span>
-        <span class="conv-previa">${ult ? "📄 " + escaparHTML(ult.nome || "Documento") : "Fotografe seu primeiro exame"}</span>
-      </span>
-      <span class="conv-lado"><span class="conv-hora">${ult ? quandoNaLista(ult.criado_em) : ""}</span></span>`;
-    linha.onclick = () => window.Abas && Abas.ir("documentos");
-    return linha;
+  /* INDIQUE O INDIDOC (04/10). O acervo saiu do topo (está na aba
+     Documentos); no lugar, as clínicas que o paciente frequenta e que ainda
+     não usam o Indiclin: os lugares que ELE anotou na Agenda ("Onde") e que
+     não aparecem nas conversas. Sem nenhum, uma linha genérica. O toque abre
+     o compartilhar do celular com um texto pronto; ✕ esconde. */
+  const LINK_INDICAR = "https://indiclin.com.br/apresentacao";
+  const semAcentoMin = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/\s+/g, " ").trim();
+  function ocultos() { try { return JSON.parse(localStorage.getItem("indicar-oculto") || "[]"); } catch (e) { return []; } }
+  function ocultar(k) {
+    try { localStorage.setItem("indicar-oculto", JSON.stringify([...ocultos(), k])); } catch (e) {}
+    desenharLista();
+  }
+  function lugaresParaIndicar() {
+    const conhecidas = [...conversas.map((cv) => cv.clinica_nome),
+      ...(typeof compromissos === "undefined" ? [] : compromissos)
+        .filter((x) => x.origem === "clinica").map((x) => x.origem_clinica_nome)]
+      .map(semAcentoMin).filter(Boolean);
+    const vistos = new Map();
+    const lista = (typeof compromissos === "undefined" ? [] : compromissos)
+      .filter((x) => x.origem !== "clinica" && !x.apagado && (x.onde || "").trim())
+      .sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
+    for (const x of lista) {
+      const nome = x.onde.trim(), k = semAcentoMin(nome);
+      if (vistos.has(k) || conhecidas.some((cn) => cn === k || cn.includes(k) || k.includes(cn))) continue;
+      vistos.set(k, nome);
+    }
+    const esc = ocultos();
+    return [...vistos].filter(([k]) => !esc.includes(k)).slice(0, 3);
+  }
+  async function indicar(lugar) {
+    const texto = `Olá${lugar ? ", " + lugar : ""}! Sou paciente de vocês e guardo meus exames no indiDoc. `
+      + "Se a clínica usar o Indiclin, meus exames e receitas chegam direto no app. Conheçam:";
+    try {
+      if (navigator.share) return await navigator.share({ title: "indiDoc", text: texto, url: LINK_INDICAR });
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    window.open("https://wa.me/?text=" + encodeURIComponent(texto + " " + LINK_INDICAR), "_blank", "noopener");
+  }
+  function blocoIndicar() {
+    const lugares = lugaresParaIndicar();
+    const itens = lugares.length ? lugares
+      : (ocultos().includes("*") ? [] : [["*", ""]]);
+    if (!itens.length) return null;
+    const div = document.createElement("div");
+    div.className = "conv-indicar";
+    div.innerHTML = `<div class="ci-tit">📣 Indique o indiDoc às suas clínicas</div>
+      <div class="ci-sub">Clínica que usa o Indiclin manda exames e receitas direto para cá.</div>`
+      + itens.map(([k, nome]) => `<div class="ci-item">
+          <span class="ci-nome">${nome ? escaparHTML(nome) : "Sua clínica ainda não usa o indiDoc?"}</span>
+          <button type="button" class="ci-ir" data-k="${escaparHTML(k)}">Indicar</button>
+          <button type="button" class="ci-x" data-k="${escaparHTML(k)}" aria-label="Não mostrar mais">✕</button>
+        </div>`).join("");
+    const nomes = new Map(itens);
+    div.querySelectorAll(".ci-ir").forEach((b) => { b.onclick = () => indicar(nomes.get(b.dataset.k)); });
+    div.querySelectorAll(".ci-x").forEach((b) => { b.onclick = () => ocultar(b.dataset.k); });
+    return div;
   }
 
   function desenharLista() {
@@ -164,8 +204,17 @@
       c.lista.innerHTML = "";
       const f = faixaConsulta();
       if (f) c.lista.appendChild(f);
-      c.lista.appendChild(linhaMeusDocumentos());
-      if (!conversas.length) return;
+    }
+    if (!conversas.length && noInicio) {
+      c.lista.insertAdjacentHTML("beforeend", `
+        <div class="conv-vazio curto">
+          <b>Nenhuma clínica ainda</b>
+          <p>Quando uma clínica que usa o indiDoc enviar seus documentos, ela aparece
+          aqui e você fala com a recepção por mensagem.</p>
+        </div>`);
+      const ind = blocoIndicar();
+      if (ind) c.lista.appendChild(ind);
+      return;
     }
     if (!conversas.length) {
       c.lista.innerHTML = `
@@ -203,6 +252,7 @@
       linha.onclick = () => abrirConversa(cv);
       c.lista.appendChild(linha);
     }
+    if (noInicio) { const ind = blocoIndicar(); if (ind) c.lista.appendChild(ind); }
   }
 
   function tique(m) {
@@ -568,8 +618,8 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { contarNaoLidas(); atualizar(); } });
   setInterval(() => { if (!document.hidden && tela.classList.contains("escondido")) carregar().catch(() => {}); }, 120000);
 
-  // A agenda e os documentos chegam depois da lista: redesenha a faixa e o
-  // "Meus documentos" quando chegam (app.js chama).
+  // A agenda chega depois da lista: redesenha a faixa da consulta e a
+  // indicação quando ela chega (app.js chama).
   function redesenharInicio() {
     if (noInicio && !aberta && !tela.classList.contains("escondido")) desenharLista();
   }
