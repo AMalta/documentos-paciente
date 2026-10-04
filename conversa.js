@@ -27,7 +27,7 @@
     sub: q("conv-sub"), avatar: q("conv-avatar"), lista: q("conv-lista"), chat: q("conv-chat"),
     msgs: q("conv-msgs"), emojis: q("conv-emojis"), btnEmoji: q("conv-btn-emoji"),
     campo: q("conv-campo"), enviar: q("conv-enviar"),
-    rodape: q("conv-rodape"), fechado: q("conv-fechado"),
+    rodape: q("conv-rodape"), fechado: q("conv-fechado"), acesso: q("conv-acesso"),
   };
 
   let conversas = [];        // [{pessoa_id, clinica_id, clinica_nome}]
@@ -36,10 +36,20 @@
   let timer = null;
   let enviando = false;
   let noInicio = false;      // a lista é a aba Conversas (abas.js)
+  let acessos = null;        // médicos desta clínica que veem o acervo (null = não deu para ler)
 
   const chave = (p, cl) => p + "|" + cl;
   const daConversa = (cv) => mensagens.filter((m) => m.pessoa_id === cv.pessoa_id && m.clinica_id === cv.clinica_id);
   const naoLidas = (cv) => daConversa(cv).filter((m) => m.de === "clinica" && !m.lida_em).length;
+
+  // O que a clínica mandou para esta pessoa: está no acervo (`documentos`,
+  // app.js) e aparece também no fio. Nada é lido de novo do servidor.
+  const docsDa = (cv) => (typeof documentos === "undefined" ? [] : documentos)
+    .filter((d) => d.origem === "clinica" && d.origem_clinica_id === cv.clinica_id && d.pessoa_id === cv.pessoa_id);
+  // Consultas que a clínica marcou. Compromisso não tem pessoa (é da conta),
+  // então aparece em toda conversa com aquela clínica.
+  const consultasDa = (cv) => (typeof compromissos === "undefined" ? [] : compromissos)
+    .filter((x) => x.origem_clinica_id === cv.clinica_id && !x.apagado && x.criado_em);
 
   function iniciais(nome) {
     const p = String(nome || "?").replace(/^(cl[ií]nica|centro|instituto)\s+/i, "").split(/\s+/).filter(Boolean);
@@ -169,7 +179,11 @@
     const varias = pessoas.length > 1;
     if (!noInicio) c.lista.innerHTML = "";
     for (const cv of conversas) {
-      const l = daConversa(cv), ult = l[l.length - 1], n = naoLidas(cv);
+      const l = daConversa(cv), n = naoLidas(cv);
+      const doc = docsDa(cv).sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)))[0];
+      const ult = doc && (!l.length || doc.criado_em > l[l.length - 1].criado_em)
+        ? { de: "clinica", texto: (ICONES[doc.tipo] || "📎") + " " + (doc.nome || "Documento"), criado_em: doc.criado_em }
+        : l[l.length - 1];
       const previa = ult ? (ult.de === "paciente" ? "Você: " : "") + ult.texto.replace(/\s+/g, " ") : "Toque para escrever à recepção";
       const linha = document.createElement("button");
       linha.type = "button";
@@ -212,13 +226,34 @@
     c.lista.classList.add("escondido");
     c.chat.classList.remove("escondido");
 
+    desenharAcesso();
     const l = daConversa(cv);
+    const fio = [...l.map((m) => ({ k: "m", m, t: m.criado_em })),
+                 ...docsDa(cv).map((d) => ({ k: "d", d, t: d.criado_em })),
+                 ...consultasDa(cv).map((x) => ({ k: "c", x, t: x.criado_em }))]
+      .sort((a, b) => String(a.t).localeCompare(String(b.t)));
     let html = `<div class="conv-aviso">🔒 Só a recepção da clínica lê esta conversa.
       <b>Não use para urgências</b>: em emergência, ligue 192.</div>`;
     let dia = "";
-    for (const m of l) {
-      const d = rotuloDia(m.criado_em);
+    for (const it of fio) {
+      const d = rotuloDia(it.t);
       if (d !== dia) { html += `<div class="conv-dia"><span>${d}</span></div>`; dia = d; }
+      if (it.k === "d") {
+        const n = (it.d.documento_paginas || []).length;
+        html += `<button type="button" class="conv-bal ela conv-anexo" data-doc="${escaparHTML(it.d.id)}">
+          <span class="cx"><span class="i">${ICONES[it.d.tipo] || "📎"}</span>
+            <span><b>${escaparHTML(it.d.nome || "Documento")}</b>
+            <small>${n} página${n === 1 ? "" : "s"} · guardado em Meus documentos</small></span></span>
+          <div class="conv-meta">${hora(it.t)}</div></button>`;
+        continue;
+      }
+      if (it.k === "c") {
+        const x = it.x;
+        html += `<div class="conv-evento">📅 <b>${escaparHTML(x.titulo)}</b> marcada para ${dataBR(x.quando)}`
+          + `${x.previsao || x.hora ? " · " + escaparHTML(x.previsao || x.hora) : ""}</div>`;
+        continue;
+      }
+      const m = it.m;
       const meu = m.de === "paciente";
       html += `<div class="conv-bal ${meu ? "eu" : "ela"}">
         ${!meu && m.autor ? (m.autor.startsWith("🤖")
@@ -245,6 +280,75 @@
     if (rolar || perto) c.msgs.scrollTop = c.msgs.scrollHeight;
   }
 
+  /* Quem desta clínica vê o acervo desta pessoa. O médico vê o acervo
+     INTEIRO da pessoa, não exame a exame (sql/006 e 011): por autorização
+     (sem código, até 12 meses) ou por código usado hoje. A liberação que
+     o médico pediu nasce em `liberacoes` com tipo "autorizacao": o mesmo
+     médico aparece uma vez só. */
+  const mesma = (cv) => aberta && aberta.pessoa_id === cv.pessoa_id && aberta.clinica_id === cv.clinica_id;
+  async function lerAcessos(cv) {
+    const agora = new Date().toISOString();
+    try {
+      const [a, l] = await Promise.all([
+        sb.from("autorizacoes").select("medico_nome, expira_em")
+          .eq("pessoa_id", cv.pessoa_id).eq("clinica_id", cv.clinica_id)
+          .is("revogado_em", null).gt("expira_em", agora),
+        sb.from("liberacoes").select("medico_nome, expira_em")
+          .eq("pessoa_id", cv.pessoa_id).eq("origem_clinica_id", cv.clinica_id)
+          .not("usado_em", "is", null).is("revogado_em", null).gt("expira_em", agora),
+      ]);
+      if (a.error || l.error) throw (a.error || l.error);
+      const porMedico = new Map();
+      for (const x of [...(a.data || []), ...(l.data || [])]) {
+        const k = x.medico_nome || "Médico";
+        if (!porMedico.has(k) || x.expira_em > porMedico.get(k).expira_em) porMedico.set(k, x);
+      }
+      if (mesma(cv)) { acessos = [...porMedico.values()]; desenharAcesso(); }
+    } catch (e) { if (mesma(cv)) { acessos = null; desenharAcesso(); } }
+  }
+
+  function desenharAcesso() {
+    const cv = aberta;
+    if (!cv || !acessos) { c.acesso.classList.add("escondido"); return; }
+    const n = (typeof documentos === "undefined" ? [] : documentos).filter((d) => d.pessoa_id === cv.pessoa_id).length;
+    const docs = n + " documento" + (n === 1 ? "" : "s");
+    let ico, tx, sub;
+    if (!acessos.length) {
+      ico = "🔒"; tx = "Esta clínica não vê seus documentos";
+      sub = "Toque para mostrar ao médico na consulta";
+    } else if (acessos.length === 1) {
+      const a = acessos[0], hoje = a.expira_em.slice(0, 10) <= new Date().toISOString().slice(0, 10);
+      ico = "🔓"; tx = `${escaparHTML(a.medico_nome || "Um médico")} vê seus ${docs}`;
+      sub = (hoje ? "até o fim do dia" : "até " + dataBR(a.expira_em.slice(0, 10))) + " · toque para ver ou tirar o acesso";
+    } else {
+      ico = "🔓"; tx = `${acessos.length} médicos daqui veem seus ${docs}`;
+      sub = "Toque para ver quem e tirar o acesso";
+    }
+    c.acesso.className = "conv-acesso" + (acessos.length ? " livre" : "");
+    c.acesso.innerHTML = `<span class="ico">${ico}</span><span class="tx">${tx}<small>${sub}</small></span><span class="seta">›</span>`;
+  }
+
+  // Tocar abre o Mostrar ao médico de sempre (gerar código, quem abriu,
+  // autorizados com Cancelar), já na pessoa desta conversa.
+  c.acesso.onclick = () => {
+    if (!aberta) return;
+    const pessoa = aberta.pessoa_id;
+    q("btn-mostrar").click();
+    try { mvPessoa = pessoa; desenharMvPessoas(); } catch (e) {}
+  };
+  // Fechou o Mostrar (botão ou voltar do celular): a linha relê o acesso.
+  new MutationObserver(() => {
+    if (aberta && q("tela-mostrar").classList.contains("escondido")) lerAcessos(aberta);
+  }).observe(q("tela-mostrar"), { attributes: true, attributeFilter: ["class"] });
+
+  // Balão de documento: abre o visualizador de sempre (app.js).
+  c.msgs.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-doc]");
+    if (!b) return;
+    const d = documentos.find((x) => x.id === b.dataset.doc);
+    if (d) abrirDocumento(d);
+  });
+
   async function marcarLidas(cv) {
     if (!naoLidas(cv)) return;
     const { error } = await sb.rpc("marcar_mensagens_lidas", { p_pessoa: cv.pessoa_id, p_clinica: cv.clinica_id });
@@ -261,7 +365,9 @@
     c.voltar.classList.remove("escondido");
     for (const id of ["conv-ini-mostrar", "conv-ini-conta", "conv-fab"]) q(id).classList.add("escondido");
     mostrarEmojis(false);
+    acessos = null;
     desenharConversa(true);
+    lerAcessos(cv);
     marcarLidas(cv);
     agendar();
   }

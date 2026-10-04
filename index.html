@@ -909,6 +909,21 @@
   .conv-tq{color:#8696a0;letter-spacing:-2px}
   .conv-tq.ok{color:#53bdeb}
   .conv-status{align-self:flex-end;max-width:82%;text-align:right;color:#667781;font-size:12.5px;margin:2px 2px 6px}
+  /* Parte 2: o que a clínica vê, o que ela mandou e o que marcou, no fio. */
+  .conv-acesso{display:flex;gap:10px;align-items:center;width:100%;border:0;text-align:left;
+               padding:9px 14px;background:#fff;border-bottom:1px solid #e9edef;font:inherit;color:#111b21}
+  .conv-acesso .ico{font-size:20px;flex:none}
+  .conv-acesso .tx{flex:1;min-width:0;font-size:14px;line-height:1.3}
+  .conv-acesso small{display:block;color:#667781;font-size:12.5px}
+  .conv-acesso .seta{color:#8696a0;font-size:20px;flex:none}
+  .conv-acesso.livre .ico{color:#00a884}
+  .conv-anexo{display:block;border:0;text-align:left;font:inherit;cursor:pointer;min-width:220px}
+  .conv-anexo .cx{display:flex;gap:10px;align-items:center;background:#f0f2f5;border-radius:6px;padding:8px 10px}
+  .conv-anexo .cx .i{font-size:26px;flex:none}
+  .conv-anexo .cx b{display:block;font-size:14.5px;font-weight:600;color:#111b21}
+  .conv-anexo .cx small{display:block;font-size:12px;color:#667781}
+  .conv-evento{align-self:center;max-width:92%;background:#e7f3ff;color:#174a7c;font-size:13px;
+               text-align:center;border-radius:8px;padding:6px 11px;margin:6px 0;line-height:1.4}
   .conv-dica{align-self:center;max-width:88%;text-align:center;color:#54656f;font-size:13.5px;
              background:rgba(255,255,255,.75);border-radius:8px;padding:10px 12px;margin-top:10px;line-height:1.45}
   .conv-pilula{flex:1;display:flex;align-items:flex-end;background:#fff;border-radius:24px;
@@ -998,6 +1013,9 @@
   /* A lista de conversas como aba: abaixo das outras telas cheias (50) e
      acima da tela de documentos; deixa a barra de baixo à mostra. */
   #tela-conversa.como-aba{z-index:30;bottom:calc(58px + env(safe-area-inset-bottom))}
+  /* Aberta, a conversa fica acima da barra de baixo (40) e abaixo das outras
+     telas cheias (50): o documento tocado no fio abre POR CIMA dela. */
+  #tela-conversa{z-index:45}
   .conv-inicio-btn{background:none;border:0;color:#fff;font-size:20px;width:40px;height:40px;border-radius:50%;flex:none}
   .conv-inicio-btn:active{background:rgba(255,255,255,.18)}
   .conv-faixa{display:flex;gap:10px;align-items:center;width:calc(100% - 24px);margin:8px 12px 4px;
@@ -1704,6 +1722,7 @@
   <div class="conv-lista" id="conv-lista" style="position:relative"></div>
   <button type="button" class="conv-fab escondido" id="conv-fab" aria-label="Fotografar documento">📷</button>
   <div class="conv-chat escondido" id="conv-chat">
+    <button type="button" class="conv-acesso escondido" id="conv-acesso"></button>
     <div class="conv-msgs" id="conv-msgs"></div>
     <div class="conv-fechado escondido" id="conv-fechado">
       Esta clínica não envia mais para você, por isso a conversa está fechada.</div>

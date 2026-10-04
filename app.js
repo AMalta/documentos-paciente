@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-04.4";
+const VERSAO_APP = "2026-10-04.5";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -2357,7 +2357,7 @@ async function carregar() {
   if (usuario && pessoasDaConta !== usuario.id) await carregarPessoas();
 
   const { data, error } = await sb.from("documentos")
-    .select("id, tipo, nome, data_documento, criado_em, pessoa_id, origem, origem_clinica_nome, documento_paginas(storage_path, ordem)")
+    .select("id, tipo, nome, data_documento, criado_em, pessoa_id, origem, origem_clinica_id, origem_clinica_nome, documento_paginas(storage_path, ordem)")
     .order("criado_em", { ascending: false });
   // Falhou a leitura: mantém o que já estava carregado em vez de esvaziar a
   // lista. Sumir com o acervo por causa de um sinal ruim assusta sem motivo.
