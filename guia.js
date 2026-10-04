@@ -7,6 +7,8 @@
    Minha conta, e SOZINHO uma vez: depois do aceite do termo para quem é
    novo, ou na abertura para quem já usava (`guia-visto` no localStorage).
 
+   O aviso da véspera sem exame novo (sql/023) abre aqui, já no cartão certo.
+
    O último cartão leva à ação: sem nenhum documento, "Guardar meu primeiro
    exame" abre a câmera; com documentos, só "Entendi".                      */
 (function () {
@@ -114,9 +116,11 @@
     prox.textContent = !ultimo ? "Próximo" : semDocumentos() ? "📷 Guardar meu primeiro exame" : "Entendi";
   }
 
-  function abrir() {
+  // `n`: o cartão de partida (o aviso da véspera abre no papel ou no
+  // "Mostre ao médico"; Voltar segue levando aos anteriores).
+  function abrir(n) {
     tela.classList.remove("escondido");
-    ir(0);
+    ir(Number(n) || 0);
     try { localStorage.setItem(VISTO, "1"); } catch (e) {}
   }
   function fechar() { tela.classList.add("escondido"); }
@@ -149,6 +153,25 @@
       + "#bemvindo:not(.escondido),#termo:not(.escondido)");
     if (outra) return;
     abrir();
+  }
+
+  /* Aviso da véspera tocado (sw.js, sql/023): abre no cartão pedido.
+     Espera o login e o termo (~20 s), como o aviso dos exames novos. */
+  function abrirPeloAviso(n, tentativas = 40) {
+    let pronto = false;
+    try { pronto = !!usuario && jaAceitou(); } catch (e) {}
+    if (pronto) return abrir(n);
+    if (tentativas > 0) setTimeout(() => abrirPeloAviso(n, tentativas - 1), 500);
+  }
+  const pedido = /#guia=(\d+)/.exec(location.hash);
+  if (pedido) {
+    history.replaceState(history.state, "", location.pathname + location.search);
+    abrirPeloAviso(pedido[1]);
+  }
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener("message", (e) => {
+      if ((e.data || {}).abrir === "guia") abrirPeloAviso(e.data.cartao);
+    });
   }
 
   window.Guia = { abrir, talvezAbrir };

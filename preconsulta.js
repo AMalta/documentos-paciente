@@ -16,6 +16,15 @@
    exame novo, o paciente disse "Agora não" para esta consulta, ou o
    banco ainda não tem o sql/019 (a leitura falha e o recurso se cala).
 
+   SEM exame novo (ou com o médico já vendo), o cartão vira "o que levar"
+   (04/10/2026): cita os exames que a clínica pediu e ainda não foram
+   guardados (`exames_pedidos`, desde a última consulta) e oferece
+   [📷 Guardar exame] [❓ Como fazer] [Agora não]. No DIA da consulta, com
+   exame guardado, lembra "Ao médico → Gerar código". O "Agora não" desse
+   cartão vale por dia: dito na véspera, ele volta no dia com o lembrete.
+   Com o que foi pedido já guardado, diz que os exames estão aqui, prontos
+   para mostrar ao médico (pedido do usuário, 04/10).
+
    Carregado depois de conversa.js e antes de abas.js. Usa `sb`,
    `compromissos`, `documentos`, `pessoas`, `diasAte`, `comoFalta`,
    `somarMeses`, `hojeISO`, `dataBR`, `escaparHTML`, `ICONES`, `aviso`,
@@ -29,12 +38,15 @@
   let pronto = false;          // o banco respondeu (sql/019 rodado)
   let liberadas = [];          // liberacoes_consulta vivas
   let autorizados = [];        // autorizacoes vivas (quem já vê tudo)
+  let pedidos = [];            // exames_pedidos dos últimos 12 meses
   let lidoEm = 0;
   let lendo = null;
   let aberta = null;           // consulta na lista "Ver quais"
 
   const chaveNao = (c) => "pre-nao-" + c.id;
   function disseNao(c) { try { return localStorage.getItem(chaveNao(c)) === "1"; } catch (e) { return false; } }
+  const chaveLevar = (c) => "pre-levar-" + c.id + "-" + hojeISO();
+  function dispensouLevar(c) { try { return localStorage.getItem(chaveLevar(c)) === "1"; } catch (e) { return false; } }
 
   function dataDoc(d) { return diaDoDocumento(d); }
   function corte(c) { return c.ultima_consulta || somarMeses(hojeISO(), -12); }
@@ -52,6 +64,21 @@
       .sort((a, b) => dataDoc(b).localeCompare(dataDoc(a)));
   }
 
+  // Exames que a clínica pediu a esta pessoa desde a última consulta e que
+  // ainda não foram guardados (a mesma conta do aviso da véspera, sql/023).
+  function pedidosDa(c) {
+    const desde = corte(c);
+    return pedidos.filter((p) => p.pessoa_id === c.origem_pessoa_id && p.clinica_id === c.origem_clinica_id
+      && p.pedido_em >= desde && p.pedido_em < c.quando);
+  }
+  const faltam = (c) => pedidosDa(c).filter((p) => !p.trazido_em && !p.marcado_manual).map((p) => p.item);
+  const prontos = (c) => pedidosDa(c).filter((p) => p.trazido_em || p.marcado_manual).map((p) => p.item);
+  // Algum exame/laudo desta pessoa já guardado (vale o "Gerar código").
+  function temExames(c) {
+    return (typeof documentos === "undefined" ? [] : documentos)
+      .some((d) => d.pessoa_id === c.origem_pessoa_id && ["exame", "laudo"].includes(d.tipo));
+  }
+
   function medico(c) {
     return c.origem_medico_nome || String(c.titulo || "").replace(/^(Consulta|Retorno|Exame)\s+com\s+/i, "") || "o médico";
   }
@@ -62,16 +89,19 @@
     lendo = (async () => {
       const agora = new Date().toISOString();
       try {
-        const [lc, au] = await Promise.all([
+        const [lc, au, pe] = await Promise.all([
           sb.from("liberacoes_consulta")
             .select("id, compromisso_id, pessoa_id, clinica_id, medico_id, medico_nome, documento_ids, valido_ate")
             .is("revogado_em", null).gt("valido_ate", agora),
           sb.from("autorizacoes").select("pessoa_id, clinica_id, medico_id")
             .is("revogado_em", null).gt("expira_em", agora),
+          sb.from("exames_pedidos").select("item, clinica_id, pessoa_id, pedido_em, trazido_em, marcado_manual")
+            .gte("pedido_em", somarMeses(hojeISO(), -12)).order("pedido_em").limit(200),
         ]);
         if (lc.error || au.error) throw (lc.error || au.error);
         liberadas = lc.data || [];
         autorizados = au.data || [];
+        if (!pe.error) pedidos = pe.data || [];
         pronto = true;
       } catch (e) { /* sem rede ou sem o sql/019: o recurso se cala */ }
       lidoEm = Date.now();   // certo ou errado, a próxima leitura espera 2 min
@@ -88,35 +118,93 @@
     for (const c of compromissos) {
       if (c.origem !== "clinica" || !c.origem_pessoa_id || !c.origem_medico_id) continue;
       if (c.feito_em || c.apagado || ![0, 1].includes(diasAte(c.quando))) continue;
-      if (autorizados.some((a) => a.pessoa_id === c.origem_pessoa_id
-          && a.clinica_id === c.origem_clinica_id && a.medico_id === c.origem_medico_id)) continue;
+      const vendo = autorizados.some((a) => a.pessoa_id === c.origem_pessoa_id
+          && a.clinica_id === c.origem_clinica_id && a.medico_id === c.origem_medico_id);
       const lib = liberadas.find((l) => l.compromisso_id === c.id);
-      const docs = novos(c);
-      if (lib) out.push({ c, estado: "liberado", docs, lib });
-      else if (docs.length && !disseNao(c)) out.push({ c, estado: "pergunta", docs });
+      const todos = novos(c);
+      const docs = vendo ? [] : todos;
+      const falta = faltam(c), pronto = prontos(c);
+      if (lib) out.push({ c, estado: "liberado", docs, lib, falta });
+      else if (docs.length && !disseNao(c)) out.push({ c, estado: "pergunta", docs, falta });
+      // "O que levar": com o médico já vendo, só faz sentido se falta exame.
+      // Disse "Agora não" à pergunta na véspera: não emenda outro cartão
+      // (sem pedido faltando); no dia, volta com o lembrete do código.
+      // Com o médico já vendo, o cartão só aparece se falta exame ou se há o
+      // que dizer "já está aqui" (pedido guardado ou exame novo).
+      if (!dispensouLevar(c) && !(docs.length && !disseNao(c))
+          && (!(vendo || lib) || falta.length || pronto.length || todos.length)
+          && !(disseNao(c) && diasAte(c.quando) === 1 && !falta.length))
+        out.push({ c, estado: "levar", docs: [], falta, pronto, novos: todos.length, vendo: !!(vendo || lib),
+                   codigo: !vendo && !lib && (diasAte(c.quando) === 0 || pronto.length > 0) && temExames(c) });
     }
     return out.sort((a, b) => String(a.c.quando).localeCompare(String(b.c.quando)));
   }
 
-  function textoPergunta(s) {
-    const c = s.c, n = s.docs.length;
+  // "Dr. Décio pediu: Holter 24h, Ecocardiograma" (até 3 e "mais N").
+  function htmlFaltam(s) {
+    if (!s.falta.length) return "";
+    const ver = s.falta.slice(0, 3).map(escaparHTML).join(", ")
+      + (s.falta.length > 3 ? ` e mais ${s.falta.length - 3}` : "");
+    return `<div class="pre-falta">🧪 Falta guardar o que ${escaparHTML(medico(s.c))} pediu: <b>${ver}</b>.</div>`;
+  }
+
+  // Já guardados: os pedidos da consulta, ou (sem pedido conhecido e com o
+  // médico vendo) os exames novos. "Esperando para mostrar ao médico".
+  function htmlProntos(s) {
+    const m = escaparHTML(medico(s.c));
+    const ver = s.pronto.slice(0, 3).map(escaparHTML).join(", ")
+      + (s.pronto.length > 3 ? ` e mais ${s.pronto.length - 3}` : "");
+    const ja = s.vendo ? ` ${m} já pode vê-los.` : "";
+    if (s.pronto.length && !s.falta.length)
+      return `<div class="pre-ok">✓ Os exames que ${m} pediu já estão aqui: <b>${ver}</b>. Prontos para mostrar na consulta.${ja}</div>`;
+    if (s.pronto.length)
+      return `<div class="pre-ok">✓ Já guardados: <b>${ver}</b>.</div>`;
+    if (s.vendo && s.novos)
+      return `<div class="pre-ok">✓ Seus ${s.novos === 1 ? "exame novo já está" : s.novos + " exames novos já estão"} aqui, e ${m} já pode vê-los.</div>`;
+    return "";
+  }
+
+  function textoLevar(s) {
+    const c = s.c;
+    const ok = htmlProntos(s);
+    const tx = s.falta.length ? htmlFaltam(s) + ok
+      : ok ? ok
+      : s.codigo ? "" : `<div class="pre-tx">Tem exame em papel ou PDF para levar? Guarde aqui antes de ir.</div>`;
+    const cod = s.codigo
+      ? `<div class="pre-tx">No consultório, toque em <b>Ao médico</b> → <b>Gerar código</b> e mostre o número.</div>` : "";
+    const tudoPronto = !s.falta.length && !!ok;
+    return `${cabecalho(c)}${tx}${cod}
+      <div class="pre-bts">
+        ${(s.codigo || tudoPronto) && !s.falta.length ? "" : `<button type="button" class="pre-sim" data-pre-acao="foto" data-comp="${escaparHTML(c.id)}">📷 Guardar exame</button>`}
+        <button type="button" class="pre-quais" data-pre-acao="guia" data-comp="${escaparHTML(c.id)}">❓ ${tudoPronto ? "Como mostrar" : "Como fazer"}</button>
+        <button type="button" class="pre-nao" data-pre-acao="levar_nao" data-comp="${escaparHTML(c.id)}">${tudoPronto ? "Ok" : "Agora não"}</button>
+      </div>`;
+  }
+
+  function cabecalho(c) {
     const quando = (t => t[0].toUpperCase() + t.slice(1))(comoFalta(diasAte(c.quando)).texto);
     const quem = pessoas.length > 1 ? ` de ${escaparHTML(nomeDaPessoa(pessoaDe(c.origem_pessoa_id)))}` : "";
+    return `<div class="pre-tit">📅 <b>${quando}</b>: consulta${quem} com <b>${escaparHTML(medico(c))}</b>.</div>`;
+  }
+
+  function textoPergunta(s) {
+    if (s.estado === "levar") return textoLevar(s);
+    const c = s.c, n = s.docs.length;
     const desde = c.ultima_consulta
       ? `feito${n > 1 ? "s" : ""} depois da última consulta (${dataBR(c.ultima_consulta).slice(0, 5)})`
       : `feito${n > 1 ? "s" : ""} nos últimos 12 meses`;
-    return `<div class="pre-tit">📅 <b>${quando}</b>: consulta${quem} com <b>${escaparHTML(medico(c))}</b>.</div>
-      <div class="pre-tx">Deixar ${/^dra\b/i.test(medico(c)) ? "ela" : "ele"} ver ${pessoas.length > 1 ? "os" : "seus"} <b>${n} exame${n > 1 ? "s" : ""}</b> ${desde}?</div>
+    return `${cabecalho(c)}
+      <div class="pre-tx">Deixar ${/^dra\b/i.test(medico(c)) ? "ela" : "ele"} ver ${n > 1 ? (pessoas.length > 1 ? "os " : "seus ") : ""}<b>${n} exame${n > 1 ? "s" : ""}</b> ${desde}?</div>
       <div class="pre-bts">
         <button type="button" class="pre-sim" data-pre-acao="sim" data-comp="${escaparHTML(c.id)}">Deixar ver</button>
         <button type="button" class="pre-quais" data-pre-acao="quais" data-comp="${escaparHTML(c.id)}">Ver quais</button>
         <button type="button" class="pre-nao" data-pre-acao="nao" data-comp="${escaparHTML(c.id)}">Agora não</button>
-      </div>`;
+      </div>${htmlFaltam(s)}`;
   }
 
   // Para o alto das Conversas: a primeira pergunta pendente, ou nada.
   function cartaoInicio() {
-    const s = situacoes().find((x) => x.estado === "pergunta");
+    const s = situacoes().find((x) => x.estado === "pergunta" || x.estado === "levar");
     if (!s) return null;
     const div = document.createElement("div");
     div.className = "pre-cartao";
@@ -126,7 +214,7 @@
 
   // Para o fim do fio da conversa daquela clínica e daquela pessoa.
   function htmlConversa(cv) {
-    const s = situacoes().find((x) => x.estado === "pergunta"
+    const s = situacoes().find((x) => (x.estado === "pergunta" || x.estado === "levar")
       && x.c.origem_clinica_id === cv.clinica_id && x.c.origem_pessoa_id === cv.pessoa_id);
     return s ? `<div class="pre-cartao no-fio">${textoPergunta(s)}</div>` : "";
   }
@@ -208,6 +296,24 @@
       try { localStorage.setItem(chaveNao(c), "1"); } catch (e) {}
       aviso("Tudo bem. Se mudar de ideia, toque na linha 🔒 no alto da conversa com a clínica.", "info");
       if (window.Conversa) { Conversa.redesenharInicio(); Conversa.redesenharConversa(); }
+    }
+    if (qual === "levar_nao") {
+      try { localStorage.setItem(chaveLevar(c), "1"); } catch (e) {}
+      if (window.Conversa) { Conversa.redesenharInicio(); Conversa.redesenharConversa(); }
+    }
+    // Guardar na pessoa da consulta: numa conta com a família, a câmera
+    // salvaria no acervo de quem estivesse escolhido.
+    if (qual === "foto") {
+      if (typeof trocarPessoa === "function" && c.origem_pessoa_id
+          && (pessoas || []).some((p) => p.id === c.origem_pessoa_id)) trocarPessoa(c.origem_pessoa_id);
+      if (window.Abas) Abas.ir("documentos");
+      q("btn-fotografar")?.click();
+    }
+    // Guia no "Mostre ao médico" quando não falta nada a guardar e há o que
+    // mostrar (o cartão diz "Como mostrar"); senão, no papel.
+    if (qual === "guia" && window.Guia) {
+      const s = situacoes().find((x) => x.c.id === c.id && x.estado === "levar");
+      Guia.abrir(s && !s.falta.length && (s.codigo || htmlProntos(s)) ? 4 : 0);
     }
   }
   document.addEventListener("click", (e) => {
