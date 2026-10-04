@@ -161,13 +161,31 @@
   // Os remédios da receita (sql/021); sem eles, o nome do documento.
   function remedios(r) {
     const rx = receitas.get(r.id);
+    const FP = window.FarmaciaPopular;
     if (rx && rx.itens && rx.itens.length) {
-      return rx.itens.map((m) => `${escaparHTML(m.nome)}${m.quantidade ? " · " + escaparHTML(m.quantidade) : ""}`
-        + (m.posologia ? `<small>${escaparHTML(m.posologia)}</small>` : "")).join("<br>");
+      let algum = false;
+      const h = rx.itens.map((m) => {
+        const gratis = FP && FP.casa(m.nome);
+        if (gratis) algum = true;
+        return `${escaparHTML(m.nome)}${m.quantidade ? " · " + escaparHTML(m.quantidade) : ""}`
+          + (m.posologia ? `<small>${escaparHTML(m.posologia)}</small>` : "")
+          + (gratis ? `<span class="dc-fp">💚 Grátis na Farmácia Popular</span>` : "");
+      }).join("<br>");
+      return h + (algum ? notaFP("") : "");
     }
     const linhas = String((rx && rx.texto) || "").split(/\n+/).map((l) => l.trim()).filter(Boolean);
-    if (linhas.length) return escaparHTML(linhas.slice(0, 3).join(" · ")) + (linhas.length > 3 ? " …" : "");
+    if (linhas.length) {
+      const gratis = FP ? FP.casaTexto(rx.texto) : [];
+      return escaparHTML(linhas.slice(0, 3).join(" · ")) + (linhas.length > 3 ? " …" : "")
+        + (gratis.length ? notaFP(gratis.join(", ")) : "");
+    }
     return escaparHTML(String(r.nome || "Receita").split(" — ")[0]);
+  }
+
+  // Como retirar: o que o programa pede no balcão.
+  function notaFP(quais) {
+    return `<div class="dc-fp-nota">💚 ${quais ? "Grátis na Farmácia Popular: " + escaparHTML(quais) + ". " : ""}`
+      + `Leve a receita, um documento com foto e o CPF a uma farmácia com o selo “Aqui Tem Farmácia Popular”.</div>`;
   }
 
   // Alto das Conversas: as duas consultas mais recentes em aberto.

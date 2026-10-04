@@ -3,9 +3,9 @@
    elas vêm por URL assinada que expira, e cache de dado de saúde no disco do
    navegador é risco sem ganho — quem precisa do acervo offline é o dono, e
    isso é assunto da fila de envio, não deste arquivo. */
-const VERSAO = "casca-v116";
+const VERSAO = "casca-v117";
 const CASCA = ["./", "./index.html", "./app.js", "./config.js",
-                "./manifest.webmanifest", "./worker.js", "./comum.js", "./fila.js", "./agenda.js", "./termo.js", "./conversa.js", "./preconsulta.js", "./depois.js", "./abas.js",
+                "./manifest.webmanifest", "./worker.js", "./comum.js", "./fila.js", "./agenda.js", "./termo.js", "./conversa.js", "./preconsulta.js", "./depois.js", "./farmacia_popular.js", "./abas.js",
                 // Sem esta linha o aplicativo NAO ABRE sem rede: e a
                 // biblioteca do Supabase, e `app.js` estoura na linha 15 sem
                 // ela. Ficava de fora porque vinha de um CDN, e o cache
