@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-04.22";
+const VERSAO_APP = "2026-10-04.23";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -80,9 +80,18 @@ let pessoaAtiva = null;
 // desenhando as abas da conta anterior — e `pessoaAtiva` apontaria para uma
 // pessoa que o RLS nem deixa mais ler.
 let pessoasDaConta = null;
+// CUIDAR JUNTO (sql/024): pessoas de OUTRA conta que esta conta ajuda a
+// cuidar entram em `pessoas` com `compartilhada = true` (e o nome da dona).
+// Elas não contam no teto de pessoas, não se renomeiam nem se apagam daqui.
+// `compartilhamentos` = as linhas de que esta conta faz parte (dona ou
+// cuidadora), lidas junto com as pessoas.
+let compartilhamentos = [];
+const pessoasProprias = () => pessoas.filter((p) => !p.compartilhada);
+// Em que conta o documento da pessoa é guardado: a pasta e a cota são da dona.
+const contaDaPessoa = (id) => (pessoaDe(id) || {}).conta_id || usuario.id;
 
 const pessoaEuId = () =>
-  (pessoas.find((p) => p.parentesco === "eu") || {}).id || null;
+  (pessoas.find((p) => p.parentesco === "eu" && !p.compartilhada) || {}).id || null;
 
 /* Documento SEM pessoa é da "eu", e não de ninguém.
 
@@ -103,7 +112,7 @@ const docsDaPessoa = () => documentos.filter(daPessoa);
 const filaDaPessoa = () => naFila.filter(daPessoa);
 const pessoaDe = (id) => pessoas.find((p) => p.id === id) || null;
 const nomeDaPessoa = (p) =>
-  (p && (p.nome || "").trim()) || (p && p.parentesco === "eu" ? "Eu" : "Sem nome");
+  (p && (p.nome || "").trim()) || (p && p.parentesco === "eu" && !p.compartilhada ? "Eu" : "Sem nome");
 // Só a PRIMEIRA carga mostra o skeleton. Nas seguintes (depois de guardar,
 // apagar, trocar de conta…) a lista já tem conteúdo na tela — trocá-lo por
 // blocos cinza a cada vez seria a lista "piscando" sem motivo.
@@ -269,6 +278,13 @@ function explicar(erro) {
   if (/LIMITE_PESSOAS/.test(cru))
     return "Duas pessoas é o limite gratuito desta conta. Guardar o acervo "
          + "de uma terceira vai ser um recurso pago, ainda não disponível.";
+  if (/CONVITE_INVALIDO/.test(cru))
+    return "Este convite não vale mais: já foi usado, foi cancelado ou passou "
+         + "de 24 horas. Peça um novo a quem convidou.";
+  if (/CONVITE_PROPRIO/.test(cru))
+    return "Este convite é seu. Mande o link para a pessoa que vai cuidar junto.";
+  if (/LIMITE_CUIDADORES/.test(cru))
+    return "Esta pessoa já tem 5 convites ou pessoas cuidando junto.";
   if (/LIMITE_PAGINAS/.test(cru))
     return "Este documento já tem páginas demais. Guarde o restante como um "
          + "segundo documento.";
@@ -490,11 +506,22 @@ async function carregarPerfil() {
    cadastro, que é a ordem em que a pessoa pensa neles. */
 async function carregarPessoas() {
   const { data, error } = await sb.from("pessoas")
-    .select("id, nome, parentesco, data_nascimento, criado_em")
+    .select("id, conta_id, nome, parentesco, data_nascimento, criado_em")
     .order("criado_em", { ascending: true });
   if (error) { console.warn("[pessoas]", error.message); return; }
-  pessoas = (data || []).slice()
-    .sort((a, b) => (b.parentesco === "eu") - (a.parentesco === "eu"));
+  // Sem o sql/024 a tabela não existe: a leitura falha e tudo segue como antes.
+  const cp = await sb.from("compartilhamentos")
+    .select("id, pessoa_id, conta_dona, conta_convidada, dona_nome, convidado_nome, codigo, convite_expira, aceito_em")
+    .is("revogado_em", null);
+  compartilhamentos = cp.error ? [] : (cp.data || []);
+  const meu = (p) => !p.conta_id || p.conta_id === usuario.id;
+  pessoas = (data || []).map((p) => meu(p) ? p : {
+    ...p, compartilhada: true,
+    dona_nome: (compartilhamentos.find((c) => c.pessoa_id === p.id) || {}).dona_nome || "",
+  })
+    // A "eu" primeiro, depois as da conta, e as cuidadas por último.
+    .sort((a, b) => (!!a.compartilhada - !!b.compartilhada)
+      || ((b.parentesco === "eu") - (a.parentesco === "eu")));
 
   // Conta sem pessoa nenhuma e um estado em que o aplicativo nao guarda
   // NADA: sem a "eu", o gatilho do banco nao tem para onde mandar o
@@ -502,11 +529,11 @@ async function carregarPessoas() {
   // (sql/009) ja impede isso do lado de la; esta linha e a rede para o dia
   // em que alguem apontar o app para um banco sem ele — e custa uma
   // gravacao que so acontece uma vez na vida da conta.
-  if (!pessoas.length) {
+  if (!pessoasProprias().length) {
     const nova = await sb.from("pessoas").insert({
       conta_id: usuario.id, nome: usuario.nome || null, parentesco: "eu",
-    }).select("id, nome, parentesco, data_nascimento, criado_em").single();
-    if (nova.data) pessoas = [nova.data];
+    }).select("id, conta_id, nome, parentesco, data_nascimento, criado_em").single();
+    if (nova.data) pessoas = [nova.data, ...pessoas];
     else console.warn("[pessoas] conta sem pessoa e nao consegui criar",
                       nova.error && nova.error.message);
   }
@@ -549,7 +576,8 @@ function desenharPessoas() {
     b.className = "pessoa-chip" + (p.id === pessoaAtiva ? " ativa" : "");
     b.setAttribute("role", "tab");
     b.setAttribute("aria-selected", p.id === pessoaAtiva ? "true" : "false");
-    b.innerHTML = `<span>${escaparHTML(nomeDaPessoa(p))}</span>`
+    if (p.compartilhada) b.title = "Da conta de " + (p.dona_nome || "outra pessoa");
+    b.innerHTML = `<span>${p.compartilhada ? "🔗 " : ""}${escaparHTML(nomeDaPessoa(p))}</span>`
                 + `<span class="n">${n}</span>`;
     b.onclick = () => trocarPessoa(p.id);
     el.pessoasBarra.appendChild(b);
@@ -1687,7 +1715,8 @@ async function enviarFila() {
       try {
         if (!entrada.documento_id) {
           const { data, error } = await sb.from("documentos").insert({
-            paciente_id: usuario.id,
+            // Pessoa cuidada (sql/024): o documento vai para a conta DONA.
+            paciente_id: contaDaPessoa(entrada.pessoa_id || pessoaAtiva),
             // `|| pessoaAtiva` cobre a fila ANTIGA: entradas gravadas antes
             // desta versão não têm o campo, e nasceram quando a conta só
             // tinha a pessoa "eu" — que é a que está ativa numa conta de
@@ -1705,7 +1734,7 @@ async function enviarFila() {
         for (let i = 0; i < entrada.paginas.length; i++) {
           const pag = entrada.paginas[i];
           if (pag.enviada) continue;
-          const caminho = `${usuario.id}/${entrada.documento_id}/${i + 1}.jpg`;
+          const caminho = `${contaDaPessoa(entrada.pessoa_id || pessoaAtiva)}/${entrada.documento_id}/${i + 1}.jpg`;
 
           const { error: e2 } = await sb.storage.from("documentos")
             .upload(caminho, pag.blob, { contentType: "image/jpeg", upsert: true });
@@ -2034,7 +2063,12 @@ async function abrirDocumento(doc) {
   visuDoc = doc;
   visuEntrada = null;
   visuOriginal.clear();
-  el.visuEditar.classList.remove("escondido");
+  // Documento de outra conta (pessoa cuidada, sql/024): só a dona edita,
+  // gira ou apaga — o banco recusa, e o botão que não faz nada confunde.
+  const alheio = !!(doc.paciente_id && usuario && doc.paciente_id !== usuario.id);
+  el.visuEditar.classList.toggle("escondido", alheio);
+  el.visuGirar.classList.toggle("escondido", alheio);
+  el.visuApagar.classList.toggle("escondido", alheio);
   if (!visuPaginas.length) {
     el.telaVisu.classList.add("escondido");
     console.warn("[visualizador]", error?.message || "sem urls");
@@ -2050,7 +2084,9 @@ async function abrirDocumento(doc) {
 }
 
 function visuTitulo(doc) {
-  el.visuTitulo.textContent = doc.nome || ROTULOS[doc.tipo];
+  // Pessoa cuidada junto (sql/024): quem guardou, quando não foi a dona.
+  const por = window.Cuidar ? Cuidar.rotulo(doc) : "";
+  el.visuTitulo.textContent = (doc.nome || ROTULOS[doc.tipo]) + (por ? " · " + por : "");
 }
 
 function mostrarPagina() {
@@ -2379,6 +2415,8 @@ function abrirPendente(entrada) {
   visuDoc = null;
   // O pendente ainda mora so no celular; editar e depois de ele subir.
   el.visuEditar.classList.add("escondido");
+  el.visuGirar.classList.remove("escondido");
+  el.visuApagar.classList.remove("escondido");
   visuCaminhos = [];
   visuOriginal.clear();
   visuIndice = 0;
@@ -2408,12 +2446,13 @@ async function carregar() {
   if (usuario && pessoasDaConta !== usuario.id) await carregarPessoas();
 
   const { data, error } = await sb.from("documentos")
-    .select("id, tipo, nome, data_documento, criado_em, pessoa_id, origem, origem_clinica_id, origem_clinica_nome, documento_paginas(storage_path, ordem)")
+    .select("id, paciente_id, tipo, nome, data_documento, criado_em, pessoa_id, origem, origem_clinica_id, origem_clinica_nome, documento_paginas(storage_path, ordem)")
     .order("criado_em", { ascending: false });
   // Falhou a leitura: mantém o que já estava carregado em vez de esvaziar a
   // lista. Sumir com o acervo por causa de um sinal ruim assusta sem motivo.
   if (error) console.warn("[lista]", error.message || error);
   else documentos = data || [];
+  if (window.Cuidar) await Cuidar.lerQuemGuardou();
 
   await lerConsumo();
   primeiraCargaLista = false;
@@ -3657,7 +3696,8 @@ const ROTULO_PARENTESCO = { eu: "você", filho: "filho", filha: "filha",
 function desenharContaPessoas() {
   if (!ct.pessoasLista) return;
   ct.pessoasLista.innerHTML = "";
-  for (const p of pessoas) {
+  if (window.Cuidar) Cuidar.desenhar();
+  for (const p of pessoasProprias()) {
     const n = documentos.filter((d) => (d.pessoa_id || pessoaEuId()) === p.id).length;
     const linha = document.createElement("div");
     linha.className = "pessoa-linha";
@@ -3710,7 +3750,7 @@ function desenharContaPessoas() {
   // Do BANCO. O `|| 2` e para o caso de meu_consumo ainda ser a versao de
   // tres colunas (banco sem sql/009), nao para o dia a dia.
   const teto = (consumo && consumo.teto_pessoas) || 2;
-  const cheio = pessoas.length >= teto;
+  const cheio = pessoasProprias().length >= teto;
   ct.pessoaNova.classList.toggle("escondido", cheio);
   ct.pessoaAdicionar.classList.toggle("escondido", cheio);
   ct.pessoaPago.classList.toggle("escondido", !cheio);
