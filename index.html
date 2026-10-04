@@ -1079,6 +1079,14 @@
   .btn-conta .nome-btn{display:none}
   body.com-abas #btn-conta{width:auto;height:44px;padding:0 14px;border-radius:22px;font-size:15.5px}
   body.com-abas #btn-conta .nome-btn{display:inline;margin-left:4px}
+  /* ✕ FECHAR (04/10): toda tela tem Fechar no canto de cima, e ele volta
+     para Conversas. Em Agenda e Documentos ele fica no lugar da Conta (a
+     Conta mora na tela inicial). */
+  .btn-fechar-aba{display:none}
+  body.aba-agenda #btn-conta,body.aba-documentos #btn-conta{display:none}
+  body.aba-agenda #btn-fechar-aba,body.aba-documentos #btn-fechar-aba{display:flex;align-items:center;
+       width:auto;height:44px;padding:0 14px;border-radius:22px;font-size:15.5px;font-weight:600}
+  .conv-voltar{order:9;width:auto;height:44px;padding:0 12px;border-radius:22px;font-size:15.5px;font-weight:600}
 </style>
 </head>
 <body>
@@ -1094,6 +1102,7 @@
   <p id="cabecalho-sub">seus exames, laudos e receitas num lugar só</p>
   <p class="selo-seguranca">🔒 Dados salvos com segurança</p>
   <button class="btn-conta" id="btn-conta" aria-label="Minha conta">👤<span class="nome-btn"> Conta</span></button>
+  <button class="btn-conta btn-fechar-aba" id="btn-fechar-aba">✕ Fechar</button>
   <!-- Falar com a clínica (sql/018): o número em vermelho é resposta da
        recepção ainda não lida. -->
   <button class="btn-conta btn-conversa" id="btn-conversa" aria-label="Falar com a clínica">💬
@@ -1454,7 +1463,7 @@
 <div class="tela-cheia escondido" id="tela-conta" style="background:#1a5276">
   <div class="barra">
     <span class="titulo">Minha conta</span>
-    <button id="conta-fechar">Fechar</button>
+    <button id="conta-fechar">✕ Fechar</button>
   </div>
   <div class="palco" style="align-items:flex-start;overflow-y:auto">
     <div class="conta-caixa">
@@ -1776,7 +1785,7 @@
      jeito do WhatsApp — quem usa o app já sabe usar isto. -->
 <div class="tela-cheia escondido" id="tela-conversa">
   <div class="conv-barra">
-    <button type="button" id="conv-voltar" class="conv-voltar" aria-label="Voltar">←</button>
+    <button type="button" id="conv-voltar" class="conv-voltar">✕ Fechar</button>
     <span class="conv-av pequeno escondido" id="conv-avatar"></span>
     <span class="conv-cab" style="flex:1">
       <span class="conv-titulo" id="conv-titulo">Conversas</span>
@@ -1821,7 +1830,7 @@
 <div class="tela-cheia escondido" id="tela-mostrar" style="background:#0f4c3a">
   <div class="barra">
     <span class="titulo">Mostrar ao médico</span>
-    <button id="mostrar-fechar">Fechar</button>
+    <button id="mostrar-fechar">✕ Fechar</button>
   </div>
 
   <div class="mostrar-corpo">

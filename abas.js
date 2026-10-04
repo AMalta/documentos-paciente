@@ -19,6 +19,8 @@
     window.scrollTo(0, 0);
   }
   for (const b of nav.querySelectorAll("button[data-aba]")) b.onclick = () => ir(b.dataset.aba);
+  const fecharAba = document.getElementById("btn-fechar-aba");
+  if (fecharAba) fecharAba.onclick = () => ir("conversas");
 
   document.body.classList.add("com-abas");
   window.Abas = { ir, atual: () => atual };

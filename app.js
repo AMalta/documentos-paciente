@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-04.9";
+const VERSAO_APP = "2026-10-04.10";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1173,6 +1173,7 @@ mv.botao.onclick = () => {
 mv.fechar.onclick = () => {
   mv.tela.classList.add("escondido");
   limparAvisos();
+  if (window.Abas) Abas.ir("conversas");
   // Fechar "Mostrar ao médico" é o momento logo depois de o médico usar o
   // código: é aqui que a pergunta tem mais chance de estar esperando.
   perguntarAutorizacoes();
@@ -1951,7 +1952,7 @@ function fecharCompromisso() {
   compEditando = null;
 }
 
-cp.cancelar.onclick = fecharCompromisso;
+cp.cancelar.onclick = () => { fecharCompromisso(); if (window.Abas) Abas.ir("conversas"); };
 cp.salvar.onclick = async () => {
   limparAvisos();
   const titulo = (cp.nome.value || "").trim() || ROTULO_TIPO[cp.tipo.value];
@@ -3986,7 +3987,7 @@ async function confirmarCodigo() {
 
 ct.botao.onclick = () => abrirConta(false);
 ct.bvVoltar.onclick = () => { fecharBoasVindas(); abrirConta(true); };
-ct.fechar.onclick = () => ct.tela.classList.add("escondido");
+ct.fechar.onclick = () => { ct.tela.classList.add("escondido"); if (window.Abas) Abas.ir("conversas"); };
 ct.comoFunciona.onclick = () => abrirBoasVindas(true);
 ct.pessoaAdicionar.onclick = adicionarPessoa;
 ct.enviar.onclick = enviarCodigo;
