@@ -82,43 +82,46 @@ function escaparHTML(t) {
 
    Os retangulos `alcance` sao transparentes e existem so para o dedo: braco
    e perna de pictograma sao finos demais para 44px, e engrossa-los estragaria
-   o desenho. Ver o comentario de `.regiao.alcance` no CSS.                  */
+   o desenho. Ver o comentario de `.regiao.alcance` no CSS.
+
+   REDESENHO DE 04/10/2026 (pedido do usuario: "meio esquisitao"): ombros
+   arredondados no lugar do colete de cantos retos, bracos presos ao ombro e
+   com mao, pescoco que afina e pernas que terminam em pe arredondado. As
+   faixas de altura de torax/abdome/pelve e as areas `alcance` ficaram.  */
 const CORPO_SVG = `
   <g class="silhueta" aria-hidden="true">
-    <path d="M44 27 h12 v14 h-12 Z"/>
+    <path d="M45 27 Q45 33 43 38 L57 38 Q55 33 55 27 Z"/>
   </g>
   <path class="regiao" data-regiao="cabeca" tabindex="0" role="button"
         aria-label="Cabeça: crânio, olhos e ouvidos"
-        d="M50 2 A15 15 0 0 1 50 32 A15 15 0 0 1 50 2 Z"/>
+        d="M50 3 C58.5 3 64 9.5 64 17 C64 25 58.5 31 50 31 C41.5 31 36 25 36 17 C36 9.5 41.5 3 50 3 Z"/>
   <path class="regiao" data-regiao="peito" tabindex="0" role="button"
         aria-label="Tórax: coração, pulmões e mamas"
-        d="M34 41 h32 l10 10 v24 h-52 v-24 Z"/>
+        d="M43 37 L57 37 Q69 38 73.5 43 Q75.5 46 75 53 L73.5 75 L26.5 75 L25 53 Q24.5 46 26.5 43 Q31 38 43 37 Z"/>
   <path class="regiao" data-regiao="barriga" tabindex="0" role="button"
         aria-label="Abdome: fígado, estômago, intestino e rins"
-        d="M24 75 h52 l-6 28 h-40 Z"/>
+        d="M26.5 75 L73.5 75 Q72 90 70 103 L30 103 Q28 90 26.5 75 Z"/>
   <path class="regiao" data-regiao="pelve" tabindex="0" role="button"
         aria-label="Pelve: bexiga, próstata, útero e ovários"
-        d="M30 103 Q24 109 24 117 Q24 126 27 133
-           L46 133 Q50 128 54 133
-           L73 133 Q76 126 76 117 Q76 109 70 103 Z"/>
+        d="M30 103 L70 103 Q75.5 113 75.5 123 Q75.5 129 74 134 L54 134 Q50 129 46 134 L26 134 Q24.5 129 24.5 123 Q24.5 113 30 103 Z"/>
   <path class="regiao" data-regiao="pernas" tabindex="0" role="button"
         aria-label="Pernas: joelhos, tornozelos, pés e circulação"
-        d="M27 133 L26 160 L29 184 L30 210 L31 236 L40 236 L41 210 L42 184 L45 160 L46 133 Z"/>
+        d="M26 134 L46 134 Q46.5 152 44.5 170 Q43 182 43.5 196 Q44 215 42.5 233 Q41 238 36.5 238 Q32 238 31.5 233 Q30.5 215 31 196 Q31 182 29.5 170 Q26.5 152 26 134 Z"/>
   <path class="regiao" data-regiao="pernas" tabindex="-1" aria-hidden="true"
-        d="M73 133 L74 160 L71 184 L70 210 L69 236 L60 236 L59 210 L58 184 L55 160 L54 133 Z"/>
+        d="M74 134 L54 134 Q53.5 152 55.5 170 Q57 182 56.5 196 Q56 215 57.5 233 Q59 238 63.5 238 Q68 238 68.5 233 Q69.5 215 69 196 Q69 182 70.5 170 Q73.5 152 74 134 Z"/>
   <path class="regiao" data-regiao="bracos" tabindex="0" role="button"
         aria-label="Braços: ombros, cotovelos, punhos e mãos"
-        d="M24 52 L19 59 L16 104 L15 150 L22 151 L22 105 L24 62 Z"/>
+        d="M27 42 Q19.5 43 18 52 L16 100 Q15 124 15.5 140 Q15.5 150 19.5 150 Q23.5 150 23 140 Q23 124 23.5 102 L25 62 Q25.5 50 27 42 Z"/>
   <path class="regiao" data-regiao="bracos" tabindex="-1" aria-hidden="true"
-        d="M76 52 L81 59 L84 104 L85 150 L78 151 L78 105 L76 62 Z"/>
+        d="M73 42 Q80.5 43 82 52 L84 100 Q85 124 84.5 140 Q84.5 150 80.5 150 Q76.5 150 77 140 Q77 124 76.5 102 L75 62 Q74.5 50 73 42 Z"/>
   <rect class="regiao alcance" data-regiao="bracos" aria-hidden="true"
-        x="1" y="47" width="23" height="116"/>
+        x="1" y="44" width="23" height="114"/>
   <rect class="regiao alcance" data-regiao="bracos" aria-hidden="true"
-        x="76" y="47" width="23" height="116"/>
+        x="76" y="44" width="23" height="114"/>
   <rect class="regiao alcance" data-regiao="pernas" aria-hidden="true"
-        x="24" y="135" width="22" height="103"/>
+        x="25" y="136" width="22" height="104"/>
   <rect class="regiao alcance" data-regiao="pernas" aria-hidden="true"
-        x="54" y="135" width="22" height="103"/>
+        x="53" y="136" width="22" height="104"/>
   <g id="corpo-bolhas" aria-hidden="true"></g>
 `;
 

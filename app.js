@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-04.18";
+const VERSAO_APP = "2026-10-04.19";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -2752,6 +2752,9 @@ function alternarRegiao(id) {
   regiaoAtiva = regiaoAtiva === id ? null : id;
   subAtivo = null;
   desenharLista();
+  // Escolheu uma parte: leva aos exames dela (o boneco fica acima, ao alcance
+  // de rolar de volta). Desmarcar não rola: a pessoa está olhando o boneco.
+  if (regiaoAtiva) requestAnimationFrame(() => el.lista.scrollIntoView({ behavior: "smooth", block: "start" }));
 }
 
 /* ── Skeleton da lista (só na primeira carga) ─────────────────────────────
