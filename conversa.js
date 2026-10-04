@@ -149,6 +149,13 @@
                          : '<span class="conv-tq" title="Enviada">✓</span>';
   }
 
+  // Endereço https:// em mensagem da clínica vira link (abre fora do app).
+  function linkar(html, daClinica) {
+    if (!daClinica) return html;
+    return html.replace(/https:\/\/[^\s<]+/g,
+      u => `<a href="${u}" target="_blank" rel="noopener" style="color:#027eb5;text-decoration:underline">${u}</a>`);
+  }
+
   function desenharConversa(rolar) {
     const cv = aberta;
     const perto = c.msgs.scrollHeight - c.msgs.scrollTop - c.msgs.clientHeight < 80;
@@ -172,7 +179,7 @@
         ${!meu && m.autor ? (m.autor.startsWith("🤖")
           ? `<div class="conv-autor auto">${escaparHTML(m.autor)}</div>`
           : `<div class="conv-autor">${escaparHTML(m.autor)} · Recepção</div>`) : ""}
-        <div class="conv-txt">${escaparHTML(m.texto).replace(/\n/g, "<br>")}</div>
+        <div class="conv-txt">${linkar(escaparHTML(m.texto), m.de === "clinica").replace(/\n/g, "<br>")}</div>
         <div class="conv-meta">${hora(m.criado_em)}${meu ? " " + tique(m) : ""}</div>
       </div>`;
     }
