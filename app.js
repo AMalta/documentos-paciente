@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-04.20";
+const VERSAO_APP = "2026-10-04.21";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -392,6 +392,8 @@ async function registrarAceite() {
     // a versao, e a do objeto em memoria continuaria a antiga ate recarregar.
     usuario.termo_versao = TERMO.versao;
     tm.tela.classList.add("escondido");
+    // Primeira vez: boas-vindas → termo → guia de uso, um depois do outro.
+    if (window.Guia) Guia.talvezAbrir();
   } catch (e) {
     aviso(explicar(e), "erro");
   } finally {
@@ -3997,6 +3999,7 @@ ct.botao.onclick = () => abrirConta(false);
 ct.bvVoltar.onclick = () => { fecharBoasVindas(); abrirConta(true); };
 ct.fechar.onclick = () => { ct.tela.classList.add("escondido"); if (window.Abas) Abas.ir("conversas"); };
 ct.comoFunciona.onclick = () => abrirBoasVindas(true);
+$("conta-como-usar").onclick = () => { ct.tela.classList.add("escondido"); if (window.Guia) Guia.abrir(); };
 ct.pessoaAdicionar.onclick = adicionarPessoa;
 ct.enviar.onclick = enviarCodigo;
 ct.confirmar.onclick = confirmarCodigo;
@@ -4275,6 +4278,8 @@ for (const b of botoesTextoOpcao) {
        vez, e a melhor forma de a pessoa fechar as duas sem ler. */
     const bvAberta = !bv.tela.classList.contains("escondido");
     if (!jaAceitou() && !bvAberta) abrirTermo();
+    // Quem já usava vê o guia uma vez (só com o termo aceito e nada aberto).
+    if (window.Guia) Guia.talvezAbrir();
   }
 
   // Atalho do ícone: segurar o app na tela inicial oferece "Fotografar
@@ -4332,7 +4337,7 @@ if ("serviceWorker" in navigator) {
 const FECHAR_TELA_CHEIA = {
   "tela-conta": "conta-fechar", "tela-recorte": "recorte-cancelar",
   "tela-visu": "visu-fechar", "tela-compromisso": "comp-cancelar",
-  "tela-mostrar": "mostrar-fechar",
+  "tela-mostrar": "mostrar-fechar", "tela-guia": "gu-fechar",
 };
 function fecharTelaAtual() {
   // O MODAL VEM PRIMEIRO, e a ordem nao e arbitraria: ele esta por CIMA de

@@ -195,7 +195,7 @@
     c.titulo.textContent = noInicio ? "indiDoc" : "Conversas";
     c.sub.textContent = noInicio ? "" : "com a recepção das suas clínicas";
     c.voltar.classList.toggle("escondido", noInicio);
-    for (const id of ["conv-ini-conta", "conv-fab"]) q(id).classList.toggle("escondido", !noInicio);
+    for (const id of ["conv-ini-conta", "conv-ini-guia", "conv-fab"]) q(id).classList.toggle("escondido", !noInicio);
     c.avatar.classList.add("escondido");
     c.chat.classList.add("escondido");
     c.lista.classList.remove("escondido");
@@ -448,7 +448,7 @@
     aberta = cv;
     tela.classList.remove("como-aba");
     c.voltar.classList.remove("escondido");
-    for (const id of ["conv-ini-conta", "conv-fab"]) q(id).classList.add("escondido");
+    for (const id of ["conv-ini-conta", "conv-ini-guia", "conv-fab"]) q(id).classList.add("escondido");
     mostrarEmojis(false);
     acessos = null;
     desenharConversa(true);
@@ -485,7 +485,7 @@
     } catch (e) {
       c.lista.innerHTML = '<div class="conv-vazio"><b>Sem conexão agora</b><p>As conversas precisam de internet. Tente de novo em instantes.</p></div>';
       // Sem os botões o início fica sem saída; e o timer refaz a lista quando a rede voltar.
-      if (noInicio) { q("conv-fab").classList.remove("escondido"); q("conv-ini-conta").classList.remove("escondido"); }
+      if (noInicio) { for (const id of ["conv-fab", "conv-ini-conta", "conv-ini-guia"]) q(id).classList.remove("escondido"); }
       agendar();
       return;
     }
@@ -515,6 +515,7 @@
     fechar();
   }
   q("conv-ini-conta").onclick = () => q("btn-conta").click();
+  q("conv-ini-guia").onclick = () => window.Guia && Guia.abrir();
   q("conv-fab").onclick = () => { if (window.Abas) Abas.ir("documentos"); q("btn-fotografar").click(); };
 
   c.voltar.onclick = () => {
