@@ -980,6 +980,31 @@
                  color:var(--ambar);font-size:13px;font-weight:600;
                  text-align:center;padding:9px 14px;
                  border-bottom:1px solid rgba(138,93,0,.15)}
+  /* ── ABAS DE BAIXO (abas.js): Conversas é o início, como no WhatsApp ── */
+  .nav-baixo{position:fixed;left:0;right:0;bottom:0;z-index:40;display:none;background:#fff;
+             border-top:1px solid #e9edef;padding-bottom:env(safe-area-inset-bottom)}
+  body.com-abas .nav-baixo{display:flex}
+  .nav-baixo button{flex:1;background:none;border:0;padding:7px 0 9px;font:inherit;font-size:11.5px;
+                    color:#54656f;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+  .nav-baixo button .ico{font-size:20px;line-height:28px;width:56px;border-radius:14px}
+  .nav-baixo button.on{color:#008069;font-weight:700}
+  .nav-baixo button.on .ico{background:#d9fdd3}
+  .nav-baixo .conv-badge{top:2px;right:calc(50% - 30px);border-color:#fff;background:#25d366}
+  body.com-abas main{padding-bottom:84px}
+  body.com-abas .btn-conversa{display:none}
+  body.aba-documentos #agenda{display:none!important}
+  body.aba-agenda main > :not(#agenda):not(#avisos){display:none!important}
+  body.aba-agenda #agenda{display:block!important}
+  /* A lista de conversas como aba: abaixo das outras telas cheias (50) e
+     acima da tela de documentos; deixa a barra de baixo à mostra. */
+  #tela-conversa.como-aba{z-index:30;bottom:calc(58px + env(safe-area-inset-bottom))}
+  .conv-inicio-btn{background:none;border:0;color:#fff;font-size:20px;width:40px;height:40px;border-radius:50%;flex:none}
+  .conv-inicio-btn:active{background:rgba(255,255,255,.18)}
+  .conv-faixa{display:flex;gap:10px;align-items:center;width:calc(100% - 24px);margin:8px 12px 4px;
+              background:#fff8e1;border:0;border-radius:12px;padding:10px 12px;font:inherit;font-size:13.5px;
+              color:#5d4a00;text-align:left}
+  .conv-fab{position:absolute;right:16px;bottom:16px;width:56px;height:56px;border-radius:16px;border:0;
+            background:#00a884;color:#fff;font-size:24px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
 </style>
 </head>
 <body>
@@ -1669,12 +1694,15 @@
   <div class="conv-barra">
     <button type="button" id="conv-voltar" class="conv-voltar" aria-label="Voltar">←</button>
     <span class="conv-av pequeno escondido" id="conv-avatar"></span>
-    <span class="conv-cab">
+    <span class="conv-cab" style="flex:1">
       <span class="conv-titulo" id="conv-titulo">Conversas</span>
       <span class="conv-sub" id="conv-sub"></span>
     </span>
+    <button type="button" class="conv-inicio-btn escondido" id="conv-ini-mostrar" aria-label="Mostrar ao médico">🩺</button>
+    <button type="button" class="conv-inicio-btn escondido" id="conv-ini-conta" aria-label="Minha conta">👤</button>
   </div>
-  <div class="conv-lista" id="conv-lista"></div>
+  <div class="conv-lista" id="conv-lista" style="position:relative"></div>
+  <button type="button" class="conv-fab escondido" id="conv-fab" aria-label="Fotografar documento">📷</button>
   <div class="conv-chat escondido" id="conv-chat">
     <div class="conv-msgs" id="conv-msgs"></div>
     <div class="conv-fechado escondido" id="conv-fechado">
@@ -1782,5 +1810,13 @@
 <script src="termo.js"></script>
 <script src="app.js"></script>
 <script src="conversa.js"></script>
+<nav class="nav-baixo" id="nav-baixo" aria-label="Seções">
+  <button type="button" data-aba="conversas" class="on"><span class="ico">💬</span>Conversas
+    <span class="conv-badge escondido" id="nav-conv-badge">0</span></button>
+  <button type="button" data-aba="agenda"><span class="ico">📅</span>Agenda</button>
+  <button type="button" data-aba="documentos"><span class="ico">📁</span>Documentos</button>
+  <button type="button" data-aba="mostrar"><span class="ico">🩺</span>Mostrar</button>
+</nav>
+<script src="abas.js"></script>
 </body>
 </html>

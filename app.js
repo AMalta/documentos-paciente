@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-04.3";
+const VERSAO_APP = "2026-10-04.4";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1790,6 +1790,7 @@ async function sincronizarAgenda() {
 }
 
 function desenharAgenda() {
+  if (window.Conversa) Conversa.redesenharInicio();
   const prox = proximosCompromissos(compromissos);
   el.agenda.classList.toggle("escondido", !usuario);
   el.agendaItens.innerHTML = "";
@@ -4175,6 +4176,7 @@ for (const b of botoesTextoOpcao) {
 
   if (await entrar()) {
     await carregar();
+    if (window.Abas && !/#conversa=/.test(location.hash)) Abas.ir("conversas");
     // O que ficou da sessão anterior sobe agora, sem o usuário pedir.
     if (navigator.onLine) enviarFila();
     /* O TERMO NA ABERTURA, para quem nao aceitou a versao atual.
@@ -4273,12 +4275,14 @@ function fecharTelaAtual() {
   }
   for (const [telaId, botaoId] of Object.entries(FECHAR_TELA_CHEIA)) {
     const tela = document.getElementById(telaId);
+    if (telaId === "tela-conversa" && window.Conversa && Conversa.naLista()) continue;
     if (tela && !tela.classList.contains("escondido")) {
       const botao = document.getElementById(botaoId);
       if (botao) { botao.click(); return true; }
     }
   }
   if (!el.form.classList.contains("escondido")) { cancelar(); return true; }
+  if (window.Abas && Abas.atual() !== "conversas") { Abas.ir("conversas"); return true; }
   return false;
 }
 

@@ -35,6 +35,7 @@
   let aberta = null;         // {pessoa_id, clinica_id, clinica_nome}
   let timer = null;
   let enviando = false;
+  let noInicio = false;      // a lista é a aba Conversas (abas.js)
 
   const chave = (p, cl) => p + "|" + cl;
   const daConversa = (cv) => mensagens.filter((m) => m.pessoa_id === cv.pessoa_id && m.clinica_id === cv.clinica_id);
@@ -102,14 +103,58 @@
     const n = conversas.reduce((s, cv) => s + naoLidas(cv), 0);
     c.badge.textContent = n > 9 ? "9+" : String(n);
     c.badge.classList.toggle("escondido", n === 0);
+    const nb = q("nav-conv-badge");
+    if (nb) { nb.textContent = c.badge.textContent; nb.classList.toggle("escondido", n === 0); }
+  }
+
+  // Consulta hoje ou amanhã: o lembrete que ficava acima do Fotografar.
+  function faixaConsulta() {
+    try {
+      const p = proximosCompromissos(compromissos, 3).find((x) => [0, 1].includes(diasAte(x.quando)));
+      if (!p) return null;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "conv-faixa";
+      b.innerHTML = `📅 <span><b>${(t => t[0].toUpperCase() + t.slice(1))(comoFalta(diasAte(p.quando)).texto)} · ${escaparHTML(p.titulo)}</b><br>`
+        + `${escaparHTML([p.previsao || p.hora, p.onde].filter(Boolean).join(" · "))}</span>`;
+      b.onclick = () => window.Abas && Abas.ir("agenda");
+      return b;
+    } catch (e) { return null; }
+  }
+  // O acervo do paciente, sempre a primeira linha (parte 3: vira conversa).
+  function linhaMeusDocumentos() {
+    let ult = null;
+    try { ult = [...documentos].sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)))[0]; } catch (e) {}
+    const linha = document.createElement("button");
+    linha.type = "button";
+    linha.className = "conv-linha";
+    linha.innerHTML = `
+      <span class="conv-av" style="background:#005c4b">📁</span>
+      <span class="conv-meio">
+        <span class="conv-nome">Meus documentos</span>
+        <span class="conv-previa">${ult ? "📄 " + escaparHTML(ult.nome || "Documento") : "Fotografe seu primeiro exame"}</span>
+      </span>
+      <span class="conv-lado"><span class="conv-hora">${ult ? quandoNaLista(ult.criado_em) : ""}</span></span>`;
+    linha.onclick = () => window.Abas && Abas.ir("documentos");
+    return linha;
   }
 
   function desenharLista() {
-    c.titulo.textContent = "Conversas";
-    c.sub.textContent = "com a recepção das suas clínicas";
+    c.titulo.textContent = noInicio ? "indiDoc" : "Conversas";
+    c.sub.textContent = noInicio ? "" : "com a recepção das suas clínicas";
+    c.voltar.classList.toggle("escondido", noInicio);
+    for (const id of ["conv-ini-mostrar", "conv-ini-conta", "conv-fab"]) q(id).classList.toggle("escondido", !noInicio);
     c.avatar.classList.add("escondido");
     c.chat.classList.add("escondido");
     c.lista.classList.remove("escondido");
+    if (noInicio) {
+      tela.classList.add("como-aba");
+      c.lista.innerHTML = "";
+      const f = faixaConsulta();
+      if (f) c.lista.appendChild(f);
+      c.lista.appendChild(linhaMeusDocumentos());
+      if (!conversas.length) return;
+    }
     if (!conversas.length) {
       c.lista.innerHTML = `
         <div class="conv-vazio">
@@ -122,7 +167,7 @@
       return;
     }
     const varias = pessoas.length > 1;
-    c.lista.innerHTML = "";
+    if (!noInicio) c.lista.innerHTML = "";
     for (const cv of conversas) {
       const l = daConversa(cv), ult = l[l.length - 1], n = naoLidas(cv);
       const previa = ult ? (ult.de === "paciente" ? "Você: " : "") + ult.texto.replace(/\s+/g, " ") : "Toque para escrever à recepção";
@@ -212,6 +257,9 @@
 
   function abrirConversa(cv) {
     aberta = cv;
+    tela.classList.remove("como-aba");
+    c.voltar.classList.remove("escondido");
+    for (const id of ["conv-ini-mostrar", "conv-ini-conta", "conv-fab"]) q(id).classList.add("escondido");
     mostrarEmojis(false);
     desenharConversa(true);
     marcarLidas(cv);
@@ -255,8 +303,24 @@
   function fechar() {
     clearInterval(timer);
     aberta = null;
+    if (noInicio) { desenharLista(); agendar(); return; }   // o início não fecha
     tela.classList.add("escondido");
   }
+
+  function inicio() {
+    noInicio = true;
+    if (!tela.classList.contains("escondido") && aberta) return;   // uma conversa aberta continua
+    tela.classList.add("como-aba");
+    abrir();
+  }
+  function sairDoInicio() {
+    noInicio = false;
+    tela.classList.remove("como-aba");
+    fechar();
+  }
+  q("conv-ini-mostrar").onclick = () => q("btn-mostrar").click();
+  q("conv-ini-conta").onclick = () => q("btn-conta").click();
+  q("conv-fab").onclick = () => { if (window.Abas) Abas.ir("documentos"); q("btn-fotografar").click(); };
 
   c.voltar.onclick = () => {
     if (aberta) { aberta = null; desenharLista(); agendar(); return; }
@@ -376,5 +440,10 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { contarNaoLidas(); atualizar(); } });
   setInterval(() => { if (!document.hidden && tela.classList.contains("escondido")) carregar().catch(() => {}); }, 120000);
 
-  window.Conversa = { abrir };
+  // A agenda e os documentos chegam depois da lista: redesenha a faixa e o
+  // "Meus documentos" quando chegam (app.js chama).
+  function redesenharInicio() {
+    if (noInicio && !aberta && !tela.classList.contains("escondido")) desenharLista();
+  }
+  window.Conversa = { abrir, inicio, sairDoInicio, redesenharInicio, naLista: () => noInicio && !aberta };
 })();
