@@ -14,11 +14,9 @@
    `nomeDaPessoa`, `pessoaDe` e `FECHAR_TELA_CHEIA` de lá.
    ═══════════════════════════════════════════════════════════════════════ */
 (function () {
-  const ASSUNTOS = {
-    remarcar: { rotulo: "📅 Preciso remarcar", texto: "Olá! Preciso remarcar minha consulta. " },
-    duvida:   { rotulo: "❓ Tenho uma dúvida",  texto: "Olá! Tenho uma dúvida: " },
-    outro:    { rotulo: "💬 Outro assunto",    texto: "" },
-  };
+  // Os mais usados numa conversa com a recepção. O teclado do celular tem os demais.
+  const EMOJIS = ("😊 🙂 😀 😂 😅 😉 😍 🥰 😘 🤗 🤔 😐 😔 😢 😷 🤒 🤕 🙏 👍 👏 🙌 💪 👋 ✌️ "
+    + "👌 🤝 🙋 ❤️ 💙 💚 💛 🌹 🌻 🎉 ✨ ✅ ❌ ⚠️ ❓ 🩺 💊 💉 🩹 🏥 📅 ⏰ 📄 📞").split(" ");
   const CORES = ["#00a884", "#1a73e8", "#e2711d", "#8e44ad", "#c0392b", "#16a085", "#2c3e50"];
 
   const tela = document.getElementById("tela-conversa");
@@ -27,14 +25,14 @@
   const c = {
     badge: q("btn-conversa-badge"), voltar: q("conv-voltar"), titulo: q("conv-titulo"),
     sub: q("conv-sub"), avatar: q("conv-avatar"), lista: q("conv-lista"), chat: q("conv-chat"),
-    msgs: q("conv-msgs"), atalhos: q("conv-atalhos"), campo: q("conv-campo"), enviar: q("conv-enviar"),
+    msgs: q("conv-msgs"), emojis: q("conv-emojis"), btnEmoji: q("conv-btn-emoji"),
+    campo: q("conv-campo"), enviar: q("conv-enviar"),
     rodape: q("conv-rodape"), fechado: q("conv-fechado"),
   };
 
   let conversas = [];        // [{pessoa_id, clinica_id, clinica_nome}]
   let mensagens = [];        // todas as da conta (as 500 mais recentes)
   let aberta = null;         // {pessoa_id, clinica_id, clinica_nome}
-  let assunto = null;
   let timer = null;
   let enviando = false;
 
@@ -183,11 +181,11 @@
         : "✓ Mensagem enviada. A recepção responde no horário de atendimento."}</div>`;
     }
     if (!l.length) {
-      html += `<div class="conv-dica">Escolha um assunto abaixo ou escreva direto.
+      html += `<div class="conv-dica">Escreva sua mensagem para a recepção.
         A recepção responde no horário de atendimento, e a resposta chega como aviso no celular.</div>`;
     }
     c.msgs.innerHTML = html;
-    c.atalhos.classList.toggle("escondido", !cv.ativa);
+    if (!cv.ativa) mostrarEmojis(false);
     c.rodape.classList.toggle("escondido", !cv.ativa);
     c.fechado.classList.toggle("escondido", !!cv.ativa);
     if (rolar || perto) c.msgs.scrollTop = c.msgs.scrollHeight;
@@ -205,7 +203,7 @@
 
   function abrirConversa(cv) {
     aberta = cv;
-    assunto = null;
+    mostrarEmojis(false);
     desenharConversa(true);
     marcarLidas(cv);
     agendar();
@@ -256,22 +254,35 @@
     fechar();
   };
 
-  for (const [k, a] of Object.entries(ASSUNTOS)) {
+  // Painel de emojis no lugar do teclado, como no WhatsApp: 😊 abre (e
+  // recolhe o teclado), ⌨️ ou tocar no campo volta ao teclado.
+  let cursor = null;
+  function mostrarEmojis(sim) {
+    c.emojis.classList.toggle("escondido", !sim);
+    c.btnEmoji.textContent = sim ? "⌨️" : "😊";
+    c.btnEmoji.setAttribute("aria-label", sim ? "Teclado" : "Emojis");
+  }
+  for (const e of EMOJIS) {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "conv-chip";
-    b.textContent = a.rotulo;
+    b.textContent = e;
     b.onclick = () => {
-      assunto = k;
-      if (!c.campo.value.trim() || Object.values(ASSUNTOS).some((x) => x.texto && c.campo.value === x.texto)) {
-        c.campo.value = a.texto;
-      }
+      const v = c.campo.value;
+      const i = cursor == null ? v.length : cursor;
+      c.campo.value = v.slice(0, i) + e + v.slice(i);
+      cursor = i + e.length;
       ajustarCampo();
-      c.campo.focus();
-      c.campo.setSelectionRange(c.campo.value.length, c.campo.value.length);
     };
-    c.atalhos.appendChild(b);
+    c.emojis.appendChild(b);
   }
+  c.btnEmoji.onclick = () => {
+    const abrir = c.emojis.classList.contains("escondido");
+    if (abrir) { cursor = c.campo.selectionStart; c.campo.blur(); }
+    mostrarEmojis(abrir);
+    if (!abrir) c.campo.focus();
+  };
+  c.campo.addEventListener("focus", () => mostrarEmojis(false));
+  c.campo.addEventListener("blur", () => { cursor = c.campo.selectionStart; });
 
   function ajustarCampo() {
     c.campo.style.height = "auto";
@@ -293,7 +304,8 @@
     ajustarCampo();
     const { error } = await sb.rpc("enviar_mensagem", {
       p_pessoa: aberta.pessoa_id, p_clinica: aberta.clinica_id,
-      p_assunto: assunto || (texto.toLowerCase().includes("remarc") ? "remarcar" : "outro"), p_texto: texto,
+      p_assunto: /remarc/i.test(texto) ? "remarcar" : /\?|d[úu]vida/i.test(texto) ? "duvida" : "outro",
+      p_texto: texto,
     });
     enviando = false;
     if (error) {
@@ -303,7 +315,7 @@
       return;
     }
     c.campo.value = "";
-    assunto = null;
+    cursor = null;
     ajustarCampo();
     try { await carregar(); } catch (e) { /* a mensagem já foi; aparece na próxima atualização */ }
     aberta = conversas.find((x) => x.pessoa_id === aberta.pessoa_id && x.clinica_id === aberta.clinica_id) || aberta;

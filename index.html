@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1a5276">
+<meta name="theme-color" content="#008069">
 <title>indiDoc — meus documentos de saúde</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon.png">
@@ -13,10 +13,10 @@
 <meta name="description" content="Guarde seus exames, laudos e receitas no celular e mostre ao médico na consulta.">
 <style>
   :root{
-    --azul:#1a5276; --azul-claro:#e8f1f7; --azul-escuro:#123a56; --azul-vivo:#2874a6;
-    --tinta:#14212b; --tinta-2:#5b6b78; --tinta-3:#8496a3;
+    --azul:#008069; --azul-claro:#e7f6f2; --azul-escuro:#005c4b; --azul-vivo:#00a884;
+    --tinta:#111b21; --tinta-2:#54656f; --tinta-3:#667781;
     --papel:#f4f6f8; --superficie:#fff; --linha:#dde4ea;
-    --verde:#1c6b4a; --verde-fundo:#e4f2ea;
+    --verde:#008069; --verde-fundo:#d9fdd3;
     --ambar:#8a5d00; --ambar-fundo:#fdf3dd;
     --vermelho:#9c2f2f;
     /* Sombras suaves e consistentes: dão profundidade aos cartões sem pesar
@@ -910,19 +910,61 @@
   .conv-status{align-self:flex-end;max-width:82%;text-align:right;color:#667781;font-size:12.5px;margin:2px 2px 6px}
   .conv-dica{align-self:center;max-width:88%;text-align:center;color:#54656f;font-size:13.5px;
              background:rgba(255,255,255,.75);border-radius:8px;padding:10px 12px;margin-top:10px;line-height:1.45}
-  .conv-atalhos{display:flex;gap:8px;overflow-x:auto;padding:6px 10px 2px;flex:none}
-  .conv-chip{flex:none;background:#fff;border:1px solid #d1d7db;color:#111b21;border-radius:18px;
-             padding:7px 13px;font-size:14px;white-space:nowrap}
-  .conv-chip:active{background:#f0f2f5}
+  .conv-pilula{flex:1;display:flex;align-items:flex-end;background:#fff;border-radius:24px;
+               box-shadow:0 1px .5px rgba(11,20,26,.13);min-height:46px}
+  .conv-btn-emoji{flex:none;width:44px;height:46px;border:0;background:none;font-size:22px;
+                  line-height:1;padding:0;color:#54656f;opacity:.85}
+  .conv-emojis{flex:none;display:grid;grid-template-columns:repeat(8,1fr);gap:2px;
+               height:230px;overflow-y:auto;padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+               background:#f0f2f5;border-top:1px solid #d1d7db}
+  .conv-emojis button{border:0;background:none;font-size:26px;height:44px;border-radius:8px;padding:0}
+  .conv-emojis button:active{background:#d9dee1}
   .conv-fechado{background:#fff;color:#54656f;text-align:center;font-size:13.5px;padding:12px}
   .conv-rodape{display:flex;align-items:flex-end;gap:8px;padding:6px 8px;
                padding-bottom:calc(8px + env(safe-area-inset-bottom));flex:none}
-  .conv-rodape textarea{flex:1;resize:none;border:0;border-radius:22px;padding:11px 16px;
-                        font:inherit;font-size:16px;line-height:1.35;max-height:120px;background:#fff;
-                        color:#111b21;box-shadow:0 1px .5px rgba(11,20,26,.13);outline:none}
+  .conv-rodape textarea{flex:1;resize:none;border:0;border-radius:22px;padding:12px 14px 11px 2px;
+                        font:inherit;font-size:16px;line-height:1.35;max-height:120px;background:transparent;
+                        color:#111b21;outline:none}
   .conv-enviar{flex:none;width:46px;height:46px;border-radius:50%;border:0;background:#00a884;
                color:#fff;font-size:19px;display:flex;align-items:center;justify-content:center}
   .conv-enviar:disabled{background:#8fd3c4}
+  /* ── TEMA WHATSAPP ─────────────────────────────────────────────────────
+     Cores, formas e listas no jeito do WhatsApp: o paciente reconhece de
+     cara onde tocar. Só aparência — nenhum id, nenhuma função muda. */
+  body{background:#fff}
+  header{background:#008069;box-shadow:none;padding:12px 16px 12px;
+         padding-top:calc(12px + env(safe-area-inset-top))}
+  .logo-cabecalho{height:30px}
+  header p{font-size:13px;opacity:.9}
+  .selo-seguranca{display:none}
+  .btn-conta{background:none;border:0;top:calc(10px + env(safe-area-inset-top));
+             width:42px;height:42px;font-size:20px}
+  .btn-conta:active{background:rgba(255,255,255,.18)}
+  .pessoas{gap:8px}
+  .pessoa-chip{background:#f0f2f5;border:0;box-shadow:none;color:#54656f;padding:7px 14px}
+  .pessoa-chip.ativa{background:#d9fdd3;color:#008069}
+  .pessoa-chip.ativa .n{color:#008069}
+  .busca input,.filtros select{background-color:#f0f2f5;border:0;border-radius:24px}
+  .busca input{padding-top:10px;padding-bottom:10px}
+  .linha-captura .btn-grande{background:#00a884;box-shadow:0 2px 6px rgba(11,20,26,.18);border-radius:16px}
+  .linha-captura .btn-grande#btn-pdf{background:#fff;color:#008069;border:1.5px solid #d1d7db}
+  .btn-salvar{background:#00a884;border-radius:24px;box-shadow:none}
+  .comp{border-radius:12px;box-shadow:none;border-color:#e9edef}
+  .cartao{box-shadow:none;border-color:#e9edef}
+  /* A lista de documentos como a lista de conversas: sem cartões, foto
+     redonda, linha fina entre um e outro. */
+  .doc-deslizar{margin:0 -16px;border-radius:0}
+  .doc-fundo{border-radius:0}
+  .doc{border:0;border-radius:0;box-shadow:none;margin:0;padding:10px 16px;
+       position:relative}
+  .doc::after{content:"";position:absolute;left:78px;right:0;bottom:0;height:1px;background:#e9edef}
+  .doc:active{background:#f5f6f6}
+  .doc .capa{width:50px;height:50px;border-radius:50%;background:#dfe5e7;font-size:22px}
+  .doc .nome{font-weight:500;font-size:16.5px;color:#111b21}
+  .doc .meta{font-size:14px;color:#667781}
+  #corpo .regiao.tem:not(.alcance){fill:#9fd8c6}
+  #corpo .regiao.tem:not(.ativa):not(.alcance):hover{fill:#7cc9b1}
+  .conv-badge{background:#25d366;color:#fff}
   .escondido{display:none!important}
 
   /* ── Faixa "sem conexão" ──────────────────────────────────────────────
@@ -1634,13 +1676,16 @@
   <div class="conv-lista" id="conv-lista"></div>
   <div class="conv-chat escondido" id="conv-chat">
     <div class="conv-msgs" id="conv-msgs"></div>
-    <div class="conv-atalhos" id="conv-atalhos"></div>
     <div class="conv-fechado escondido" id="conv-fechado">
       Esta clínica não envia mais para você, por isso a conversa está fechada.</div>
     <div class="conv-rodape" id="conv-rodape">
-      <textarea id="conv-campo" rows="1" maxlength="2000" placeholder="Mensagem"></textarea>
+      <div class="conv-pilula">
+        <button type="button" id="conv-btn-emoji" class="conv-btn-emoji" aria-label="Emojis">😊</button>
+        <textarea id="conv-campo" rows="1" maxlength="2000" placeholder="Mensagem"></textarea>
+      </div>
       <button type="button" id="conv-enviar" class="conv-enviar" aria-label="Enviar" disabled>➤</button>
     </div>
+    <div class="conv-emojis escondido" id="conv-emojis"></div>
   </div>
 </div>
 
