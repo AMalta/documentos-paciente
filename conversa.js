@@ -269,6 +269,12 @@
       u => `<a href="${u}" target="_blank" rel="noopener" style="color:#027eb5;text-decoration:underline">${u}</a>`);
   }
 
+  // Menu do assistente: as linhas "1. Marcar consulta" da ÚLTIMA mensagem viram botões.
+  function opcoes(html, ativo) {
+    if (!ativo) return html;
+    return html.replace(/^([1-9])\. (.+)$\n?/gm, (_, n, r) => `<button type="button" class="conv-op">${n}. ${r}</button>`);
+  }
+
   function desenharConversa(rolar) {
     const cv = aberta;
     const perto = c.msgs.scrollHeight - c.msgs.scrollTop - c.msgs.clientHeight < 80;
@@ -313,7 +319,8 @@
         ${!meu && m.autor ? (m.autor.startsWith("🤖")
           ? `<div class="conv-autor auto">${escaparHTML(m.autor)}</div>`
           : `<div class="conv-autor">${escaparHTML(m.autor)} · Recepção</div>`) : ""}
-        <div class="conv-txt">${linkar(escaparHTML(m.texto), m.de === "clinica").replace(/\n/g, "<br>")}</div>
+        <div class="conv-txt">${opcoes(linkar(escaparHTML(m.texto), m.de === "clinica"),
+          m === l[l.length - 1] && (m.autor || "").startsWith("🤖")).replace(/\n/g, "<br>")}</div>
         <div class="conv-meta">${hora(m.criado_em)}${meu ? " " + tique(m) : ""}</div>
       </div>`;
     }
@@ -419,6 +426,8 @@
 
   // Balão de documento: abre o visualizador de sempre (app.js).
   c.msgs.addEventListener("click", (e) => {
+    const op = e.target.closest(".conv-op");
+    if (op) { c.campo.value = op.textContent; ajustarCampo(); c.enviar.click(); return; }
     const b = e.target.closest("[data-doc]");
     if (!b) return;
     const d = documentos.find((x) => x.id === b.dataset.doc);
