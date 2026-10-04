@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-04.11";
+const VERSAO_APP = "2026-10-04.12";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1375,6 +1375,7 @@ async function listarRecebimentos() {
 
 /* Exames pedidos pela clínica e ainda não trazidos, no alto da lista. */
 async function carregarPedidos() {
+  if (window.DepoisConsulta) DepoisConsulta.atualizar(true);
   const caixa = document.getElementById("pedidos");
   if (!caixa || !usuario || !navigator.onLine) return;
   const { data, error } = await sb.from("exames_pedidos")

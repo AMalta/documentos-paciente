@@ -204,6 +204,8 @@
       c.lista.innerHTML = "";
       const f = faixaConsulta();
       if (f) c.lista.appendChild(f);
+      const dc = window.DepoisConsulta && DepoisConsulta.cartoesInicio();
+      if (dc) c.lista.appendChild(dc);
     }
     if (!conversas.length && noInicio) {
       c.lista.insertAdjacentHTML("beforeend", `
@@ -325,6 +327,7 @@
       html += `<div class="conv-dica">Escreva sua mensagem para a recepção.
         A recepção responde no horário de atendimento, e a resposta chega como aviso no celular.</div>`;
     }
+    if (window.DepoisConsulta) html += DepoisConsulta.htmlConversa(cv);
     if (window.PreConsulta) html += PreConsulta.htmlConversa(cv);
     c.msgs.innerHTML = html;
     if (!cv.ativa) mostrarEmojis(false);
@@ -488,6 +491,7 @@
   function inicio() {
     noInicio = true;
     if (window.PreConsulta) PreConsulta.atualizar();
+    if (window.DepoisConsulta) DepoisConsulta.atualizar();
     if (!tela.classList.contains("escondido") && aberta) return;   // uma conversa aberta continua
     tela.classList.add("como-aba");
     abrir();
