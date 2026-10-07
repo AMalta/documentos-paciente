@@ -36,6 +36,23 @@
   let timer = null;
   let enviando = false;
   let acessos = null;        // médicos desta clínica que veem o acervo (null = não deu para ler)
+  /* NOVA CONVERSA (07/10): tocar em Conversas abre sempre do começo —
+     escolher a clínica (com 2+) e depois a tela de opções. O banco segue com
+     uma conversa por (pessoa, clínica); "nova" é o que a tela mostra: só o
+     que foi dito desde `inicio`, com "Ver mensagens anteriores" no topo. */
+  let etapa = "clinicas";    // clinicas | opcoes | conversa
+  let escolhida = null;      // a conversa da tela de opções
+  let inicio = null;         // ISO: o fio mostra só o que veio DEPOIS (null = mostra tudo)
+  const OPCOES = [
+    ["📅", "Marcar consulta", "Ver horários e agendar"],
+    ["🗓️", "Minha próxima consulta", "Dia, hora e previsão"],
+    ["🔄", "Remarcar ou desmarcar", "Mudar ou cancelar"],
+    ["🔬", "Resultado de exame", "Saber se está pronto"],
+    ["💊", "Receita, atestado ou pedido", "Onde encontrar"],
+    ["💲", "Valor de consulta ou exame", "Quanto custa"],
+    ["📍", "Endereço e horário", "Como chegar"],
+    ["🏥", "Convênios atendidos", "Planos aceitos"],
+  ];
 
   const chave = (p, cl) => p + "|" + cl;
   const daConversa = (cv) => mensagens.filter((m) => m.pessoa_id === cv.pessoa_id && m.clinica_id === cv.clinica_id);
@@ -191,8 +208,10 @@
   }
 
   function desenharLista() {
+    etapa = "clinicas"; escolhida = null;
     c.titulo.textContent = "Conversas";
     c.sub.textContent = "com a recepção das suas clínicas";
+    c.voltar.textContent = "✕ Fechar";
     c.voltar.classList.remove("escondido");
     c.avatar.classList.add("escondido");
     c.chat.classList.add("escondido");
@@ -211,7 +230,7 @@
       return;
     }
     const varias = pessoas.length > 1;
-    c.lista.innerHTML = "";
+    c.lista.innerHTML = '<div class="op-pergunta">Com qual clínica você quer falar?</div>';
     for (const cv of conversas) {
       const l = daConversa(cv), n = naoLidas(cv);
       const doc = docsDa(cv).sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)))[0];
@@ -232,12 +251,65 @@
           <span class="conv-hora${n ? " nova" : ""}">${ult ? quandoNaLista(ult.criado_em) : ""}</span>
           ${n ? `<span class="conv-qtd">${n}</span>` : ""}
         </span>`;
-      linha.onclick = () => abrirConversa(cv);
+      linha.onclick = () => desenharOpcoes(cv);
       c.lista.appendChild(linha);
     }
     const ind = blocoIndicar();
     if (ind) c.lista.appendChild(ind);
   }
+
+  // TELA DE OPÇÕES: o que a pessoa quer falar com esta clínica. Tocar envia
+  // o texto da opção (o assistente responde; desligado, vai à recepção com a
+  // etiqueta do assunto); "Falar com a recepção" só abre o campo.
+  function desenharOpcoes(cv) {
+    etapa = "opcoes"; escolhida = cv; aberta = null; inicio = null;
+    c.titulo.textContent = cv.clinica_nome || "Clínica";
+    c.sub.textContent = pessoas.length > 1 ? "sobre " + nomePessoa(cv.pessoa_id) : "Recepção";
+    c.avatar.textContent = iniciais(cv.clinica_nome);
+    c.avatar.style.background = cor(cv.clinica_id);
+    c.avatar.classList.remove("escondido");
+    c.voltar.textContent = conversas.length > 1 ? "← Voltar" : "✕ Fechar";
+    c.chat.classList.add("escondido");
+    c.lista.classList.remove("escondido");
+    const n = naoLidas(cv), antes = daConversa(cv).length;
+    const nome = (nomePessoa(cv.pessoa_id) || "").split(" ")[0];
+    const fechada = !cv.ativa;
+    c.lista.innerHTML = `<div class="op-tela">
+      <div class="op-ola">
+        <span class="op-av">${escaparHTML(iniciais(cv.clinica_nome))}</span>
+        <div><b>Olá${nome ? ", " + escaparHTML(nome) : ""} 👋</b><span>Como podemos ajudar?</span></div>
+      </div>
+      ${n ? `<button type="button" class="op-novas" data-acao="antigas">🔔 <span><b>${n} mensage${n === 1 ? "m nova" : "ns novas"} da recepção</b><small>Toque para ler</small></span><i>›</i></button>` : ""}
+      ${fechada ? `<div class="op-fechada">Esta clínica não envia mais para você, por isso a conversa está fechada.</div>` : ""}
+      <div class="op-grade">${OPCOES.map(([i, t, d], k) => `
+        <button type="button" class="op-cartao" data-op="${k}"${fechada ? " disabled" : ""}>
+          <span class="op-ico">${i}</span><b>${t}</b><small>${d}</small></button>`).join("")}
+      </div>
+      <button type="button" class="op-recepcao" data-acao="recepcao"${fechada ? " disabled" : ""}>
+        <span class="op-ico">💬</span><span><b>Falar com a recepção</b><small>Escreva do seu jeito o que precisa</small></span><i>›</i></button>
+      ${antes ? `<button type="button" class="op-anteriores" data-acao="antigas">🕘 Ver mensagens anteriores <i>›</i></button>` : ""}
+      <p class="op-nota">🔒 Só a recepção lê. Em emergência, ligue <b>192</b>.</p>
+    </div>`;
+    c.lista.scrollTop = 0;
+    agendar();
+  }
+
+  c.lista.addEventListener("click", (e) => {
+    if (etapa !== "opcoes" || !escolhida) return;
+    const b = e.target.closest("[data-op],[data-acao]");
+    if (!b || b.disabled) return;
+    const cv = escolhida;
+    if (b.dataset.acao === "antigas") return abrirConversa(cv, true);
+    // A conversa nova começa depois do último item do fio — pela hora do
+    // servidor, não do relógio do celular (adiantado, esconderia a própria mensagem).
+    inicio = [...daConversa(cv).map((m) => m.criado_em), ...docsDa(cv).map((d) => d.criado_em),
+              ...consultasDa(cv).map((x) => x.criado_em)].map(String).sort().pop() || null;
+    abrirConversa(cv, false);
+    if (b.dataset.acao === "recepcao") { c.campo.focus(); return; }
+    c.campo.value = OPCOES[+b.dataset.op][1];
+    ajustarCampo();
+    c.enviar.click();
+  });
 
   function tique(m) {
     return m.entregue_em ? '<span class="conv-tq" title="Recebida pela clínica">✓✓</span>'
@@ -269,12 +341,16 @@
     c.chat.classList.remove("escondido");
 
     desenharAcesso();
-    const l = daConversa(cv);
-    const fio = [...l.map((m) => ({ k: "m", m, t: m.criado_em })),
+    const tudo = daConversa(cv);
+    const l = inicio ? tudo.filter((m) => String(m.criado_em) > inicio) : tudo;
+    const todoFio = [...tudo.map((m) => ({ k: "m", m, t: m.criado_em })),
                  ...docsDa(cv).map((d) => ({ k: "d", d, t: d.criado_em })),
                  ...consultasDa(cv).map((x) => ({ k: "c", x, t: x.criado_em }))]
       .sort((a, b) => String(a.t).localeCompare(String(b.t)));
-    let html = `<div class="conv-aviso">🔒 Só a recepção da clínica lê esta conversa.
+    const fio = inicio ? todoFio.filter((it) => String(it.t) > inicio) : todoFio;
+    const ocultas = todoFio.length - fio.length;
+    let html = ocultas ? `<button type="button" class="conv-anteriores" data-antigas="1">↑ Ver mensagens anteriores (${ocultas})</button>` : "";
+    html += `<div class="conv-aviso">🔒 Só a recepção da clínica lê esta conversa.
       <b>Não use para urgências</b>: em emergência, ligue 192.</div>`;
     let dia = "";
     for (const it of fio) {
@@ -312,7 +388,7 @@
         ? "✓✓ Recebida pela clínica. A resposta chega como aviso no celular."
         : "✓ Mensagem enviada. A recepção responde no horário de atendimento."}</div>`;
     }
-    if (!l.length) {
+    if (!l.length && !fio.length) {
       html += `<div class="conv-dica">Escreva sua mensagem para a recepção.
         A recepção responde no horário de atendimento, e a resposta chega como aviso no celular.</div>`;
     }
@@ -408,6 +484,7 @@
 
   // Balão de documento: abre o visualizador de sempre (app.js).
   c.msgs.addEventListener("click", (e) => {
+    if (e.target.closest("[data-antigas]")) { inicio = null; desenharConversa(false); c.msgs.scrollTop = 0; return; }
     const op = e.target.closest(".conv-op");
     if (op) { c.campo.value = op.textContent; ajustarCampo(); c.enviar.click(); return; }
     const b = e.target.closest("[data-doc]");
@@ -426,8 +503,11 @@
     }
   }
 
-  function abrirConversa(cv) {
-    aberta = cv;
+  // antigas = true: o histórico inteiro (aviso tocado, "Ver mensagens anteriores").
+  function abrirConversa(cv, antigas = true) {
+    if (antigas) inicio = null;
+    etapa = "conversa"; aberta = cv;
+    c.voltar.textContent = "← Voltar";
     c.voltar.classList.remove("escondido");
     mostrarEmojis(false);
     acessos = null;
@@ -452,7 +532,11 @@
         desenharConversa(false);
         marcarLidas(aberta);
       } else {
-        const y = c.lista.scrollTop; desenharLista(); c.lista.scrollTop = y;   // não volta ao topo
+        const y = c.lista.scrollTop;   // não volta ao topo
+        if (etapa === "opcoes" && escolhida) {
+          desenharOpcoes(conversas.find((x) => x.pessoa_id === escolhida.pessoa_id && x.clinica_id === escolhida.clinica_id) || escolhida);
+        } else desenharLista();
+        c.lista.scrollTop = y;
       }
     } catch (e) { /* sem rede: fica o que está na tela */ }
   }
@@ -470,18 +554,21 @@
     }
     const alvo = pessoaId && conversas.find((x) => x.pessoa_id === pessoaId && x.clinica_id === clinicaId);
     if (alvo) abrirConversa(alvo);
+    else if (conversas.length === 1) desenharOpcoes(conversas[0]);   // uma clínica só: direto às opções
     else { aberta = null; desenharLista(); agendar(); }
   }
 
   function fechar() {
     clearInterval(timer);
-    aberta = null;
+    aberta = null; escolhida = null; inicio = null; etapa = "clinicas";
     tela.classList.add("escondido");
   }
 
 
+  // Voltar: conversa → opções → clínicas (com 2+) → fecha.
   c.voltar.onclick = () => {
-    if (aberta) { aberta = null; desenharLista(); agendar(); return; }
+    if (etapa === "conversa" && aberta) { desenharOpcoes(aberta); return; }
+    if (etapa === "opcoes" && conversas.length > 1) { desenharLista(); agendar(); return; }
     fechar();
   };
 
@@ -602,7 +689,7 @@
   // números dos cartões) e a indicação da lista quando ela chega (app.js chama).
   function redesenharInicio() {
     if (window.Abas) Abas.desenharInicio();
-    if (!aberta && !tela.classList.contains("escondido")) {
+    if (etapa === "clinicas" && !tela.classList.contains("escondido")) {
       const y = c.lista.scrollTop; desenharLista(); c.lista.scrollTop = y;
     }
   }
