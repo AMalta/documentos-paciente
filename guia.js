@@ -63,11 +63,38 @@
     },
     {
       cena: `<div class="gu-mini">${linhas(3)}
+               <div class="gu-aviso">🔓 <b>Manter liberado?</b><br>Dr. Décio viu seus exames com o código. Deixar ver nas próximas consultas, sem código?
+                 <div class="gu-bts"><span class="sim">Manter liberado</span><span>Agora não</span></div></div>
+               <div class="gu-ok">✓ Liberado por 12 meses</div></div>${dedo}`,
+      titulo: "Deixe o médico ver sem código",
+      texto: "Depois que o médico usar o seu código, o indiDoc pergunta se ele pode ver nas próximas consultas <b>sem código</b>. Tocando em <b>Manter liberado</b>, vale por 12 meses e se renova a cada consulta. Para tirar, vá em <b>Mostrar ao médico → Podem ver sem código</b>.",
+    },
+    {
+      cena: `<div class="gu-mini">${linhas(3)}
+               <div class="gu-aviso">🏥 <b>Receber da clínica?</b><br>Pedidos de exame, receitas, atestados e consultas marcadas da Sancordis chegam aqui.
+                 <div class="gu-bts"><span class="sim">Receber</span><span>Agora não</span></div></div>
+               <div class="gu-perm"><b>indiDoc</b> quer enviar notificações
+                 <div class="gu-bts"><span>Bloquear</span><span class="sim">Permitir</span></div></div>
+               <div class="gu-ok gu-ok-baixo">🔔 Avisos ligados</div></div>${dedo}`,
+      titulo: "Receba da sua clínica",
+      texto: "Se a sua clínica usa o Indiclin, o indiDoc pergunta se você quer <b>receber</b> dela. Tocando em <b>Receber</b>, pedidos de exame, receitas, atestados e consultas marcadas chegam aqui. Depois toque em <b>Permitir</b>: o celular avisa quando chegar algo novo e na véspera da consulta. Para cancelar: <b>Mostrar ao médico → Clínicas que enviam</b>.",
+    },
+    {
+      cena: `<div class="gu-mini">${linhas(3)}
                <div class="gu-aviso">🔔 <b>Consulta amanhã com Dr. Décio</b><br>Deixar ele ver seus 3 exames novos?
                  <div class="gu-bts"><span class="sim">Deixar ver</span><span>Ver quais</span><span>Agora não</span></div></div>
                <div class="gu-ok">✓ Liberado para esta consulta</div></div>${dedo}`,
       titulo: "Antes da consulta, um toque",
       texto: "Se a sua clínica usa o Indiclin, o indiDoc avisa na véspera. Toque em <b>Deixar ver</b> e o médico já encontra os exames novos, só naquela consulta. Nada vai para a clínica sem você liberar.",
+    },
+    {
+      cena: `<div class="gu-mini"><div class="gu-acesso">👤 <b>Guarde seu acesso</b>
+               <div class="gu-campo"><span>maria@email.com</span></div>
+               <div class="gu-enviar">Enviar código</div>
+               <div class="gu-codigo">4 8 2 9 1 5</div></div>
+               <div class="gu-ok gu-ok-baixo">✓ Acesso guardado</div></div>${dedo}`,
+      titulo: "Guarde seu acesso",
+      texto: "Em <b>👤 Conta → Guarde seu acesso</b>, informe seu e-mail e o código que chega nele. Assim, se trocar ou perder o celular, você abre seus exames em outro: toque em <b>Já usei antes</b> e use o mesmo e-mail.",
     },
   ];
 

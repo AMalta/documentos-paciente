@@ -1410,14 +1410,48 @@
   /* 6. antes da consulta */
   .gu-ativo .gu-aviso{animation:gu-av 6s infinite}
   @keyframes gu-av{0%,8%{top:-100px}18%,100%{top:10px}}
-  .gu-ativo.gu-c6 .gu-dedo{animation:gu-d6 6s infinite}
+  .gu-ativo.gu-c8 .gu-dedo{animation:gu-d6 6s infinite}
   @keyframes gu-d6{0%,26%{left:50%;top:80%;opacity:0}36%{opacity:1;left:12%;top:36%}46%,100%{opacity:0;left:12%;top:36%}}
   .gu-ativo .gu-ok{animation:gu-okk 6s infinite}
   @keyframes gu-okk{0%,52%{opacity:0}60%,100%{opacity:1}}
+  /* 6. manter liberado (07/10) */
+  .gu-ativo.gu-c6 .gu-dedo{animation:gu-d6b 6s infinite}
+  @keyframes gu-d6b{0%,26%{left:50%;top:80%;opacity:0}36%{opacity:1;left:24%;top:34%}46%,100%{opacity:0;left:24%;top:34%}}
+  /* 7. receber da clínica + permitir avisos (07/10) */
+  .gu-perm{position:absolute;left:14%;right:14%;top:44%;background:#fff;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.25);
+           padding:10px;font-size:11px;text-align:center;opacity:0;z-index:4}
+  .gu-ok-baixo{top:82%}
+  .gu-ativo.gu-c7 .gu-aviso{animation:gu-av7 7s infinite}
+  @keyframes gu-av7{0%,6%{top:-160px}14%,40%{top:10px}46%,100%{top:-160px}}
+  .gu-ativo.gu-c7 .gu-perm{animation:gu-pm 7s infinite}
+  @keyframes gu-pm{0%,46%{opacity:0;transform:scale(.9)}52%,74%{opacity:1;transform:none}80%,100%{opacity:0}}
+  .gu-ativo.gu-c7 .gu-dedo{animation:gu-d7 7s infinite}
+  @keyframes gu-d7{0%,18%{left:50%;top:80%;opacity:0}26%{opacity:1;left:24%;top:34%}30%{transform:scale(.85)}34%{transform:none}40%{left:24%;top:34%}
+    56%{left:62%;top:66%}62%{transform:scale(.85)}66%{transform:none;opacity:1}72%,100%{opacity:0;left:62%;top:66%}}
+  .gu-ativo.gu-c7 .gu-ok{animation:gu-ok7 7s infinite}
+  @keyframes gu-ok7{0%,78%{opacity:0}84%,100%{opacity:1}}
+  /* 9. guarde seu acesso (07/10) */
+  .gu-acesso{position:absolute;left:10%;right:10%;top:10%;background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.18);
+             padding:10px 12px;font-size:11.5px}
+  .gu-campo{margin-top:8px;border:1.5px solid #d5e0e0;border-radius:8px;padding:5px 8px;white-space:nowrap;color:#14272e}
+  .gu-campo span{display:inline-block;overflow:hidden;vertical-align:bottom;width:15ch}
+  .gu-enviar{margin-top:7px;background:var(--grad-marca);color:#fff;border-radius:8px;text-align:center;padding:6px;font-weight:700}
+  .gu-codigo{margin-top:7px;text-align:center;font-size:18px;font-weight:800;letter-spacing:.12em;color:var(--petroleo);opacity:0}
+  .gu-ativo.gu-c9 .gu-campo span{animation:gu-mail 6s steps(15) infinite}
+  @keyframes gu-mail{0%,6%{width:0}30%,100%{width:15ch}}
+  .gu-ativo.gu-c9 .gu-dedo{animation:gu-d9 6s infinite}
+  @keyframes gu-d9{0%,30%{left:50%;top:85%;opacity:0}38%{opacity:1;left:48%;top:44%}42%{transform:scale(.85)}46%,100%{transform:none;opacity:0;left:48%;top:44%}}
+  .gu-ativo.gu-c9 .gu-codigo{animation:gu-cg 6s infinite}
+  @keyframes gu-cg{0%,50%{opacity:0;transform:scale(.8)}56%,100%{opacity:1;transform:none}}
+  .gu-ativo.gu-c9 .gu-ok{animation:gu-ok9 6s infinite}
+  @keyframes gu-ok9{0%,66%{opacity:0}72%,100%{opacity:1}}
+  /* Tela baixa (320×640): cena menor e letra um pouco menor, para o texto caber sem rolar. */
+  @media (max-height:680px){ .gu-cena{height:190px;flex-basis:190px} .gu-cartao p{font-size:14.5px;line-height:1.45}
+    .gu-cartao h2{font-size:19px} }
   /* Sem movimento: cada cena mostra o estado final, parado. */
   @media (prefers-reduced-motion:reduce){
     #tela-guia *{animation:none!important;transition:none!important}
-    .gu-verde,.gu-cod,.gu-med,.gu-ok,.gu-c3 .gu-filho{opacity:1}.gu-aviso{top:10px}.gu-gerar{opacity:0}}
+    .gu-verde,.gu-cod,.gu-med,.gu-ok,.gu-c3 .gu-filho,.gu-codigo{opacity:1}.gu-campo span{width:15ch}.gu-aviso{top:10px}.gu-gerar{opacity:0}}
   /* Começar o guia: o ❓ ao lado da Conta, só no início. */
   /* ── TELA INÍCIO (07/10, abas.js) ──────────────────────────────────
      Os atalhos ficam na própria tela, sem barra de baixo. Guardar exame em
