@@ -211,7 +211,7 @@
     etapa = "clinicas"; escolhida = null;
     c.titulo.textContent = "Conversas";
     c.sub.textContent = "com a recepção das suas clínicas";
-    c.voltar.textContent = "✕ Fechar";
+    c.voltar.textContent = "← Início";
     c.voltar.classList.remove("escondido");
     c.avatar.classList.add("escondido");
     c.chat.classList.add("escondido");
@@ -268,7 +268,7 @@
     c.avatar.textContent = iniciais(cv.clinica_nome);
     c.avatar.style.background = cor(cv.clinica_id);
     c.avatar.classList.remove("escondido");
-    c.voltar.textContent = conversas.length > 1 ? "← Voltar" : "✕ Fechar";
+    c.voltar.textContent = conversas.length > 1 ? "← Voltar" : "← Início";
     c.chat.classList.add("escondido");
     c.lista.classList.remove("escondido");
     const n = naoLidas(cv), antes = daConversa(cv).length;

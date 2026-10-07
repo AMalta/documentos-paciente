@@ -77,7 +77,7 @@
   tela.setAttribute("role", "dialog");
   tela.setAttribute("aria-label", "Como usar o indiDoc");
   tela.innerHTML = `
-    <div class="gu-cab"><b>Como usar</b><button type="button" class="gu-fechar" id="gu-fechar">✕ Fechar</button></div>
+    <div class="gu-cab"><b>Como usar</b><button type="button" class="gu-fechar" id="gu-fechar">← Início</button></div>
     <div class="gu-janela"><div class="gu-trilho" id="gu-trilho">${CARTOES.map((c, i) => `
       <section class="gu-cartao gu-c${i + 1}" aria-roledescription="cartão" aria-label="${i + 1} de ${CARTOES.length}">
         <div class="gu-cena">${c.cena}</div>
