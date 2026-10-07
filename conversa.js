@@ -35,7 +35,6 @@
   let aberta = null;         // {pessoa_id, clinica_id, clinica_nome}
   let timer = null;
   let enviando = false;
-  let noInicio = false;      // a lista é a aba Conversas (abas.js)
   let acessos = null;        // médicos desta clínica que veem o acervo (null = não deu para ler)
 
   const chave = (p, cl) => p + "|" + cl;
@@ -192,32 +191,12 @@
   }
 
   function desenharLista() {
-    c.titulo.textContent = noInicio ? "indiDoc" : "Conversas";
-    c.sub.textContent = noInicio ? "" : "com a recepção das suas clínicas";
-    c.voltar.classList.toggle("escondido", noInicio);
-    for (const id of ["conv-ini-conta", "conv-ini-guia", "conv-fab"]) q(id).classList.toggle("escondido", !noInicio);
+    c.titulo.textContent = "Conversas";
+    c.sub.textContent = "com a recepção das suas clínicas";
+    c.voltar.classList.remove("escondido");
     c.avatar.classList.add("escondido");
     c.chat.classList.add("escondido");
     c.lista.classList.remove("escondido");
-    if (noInicio) {
-      tela.classList.add("como-aba");
-      c.lista.innerHTML = "";
-      const f = faixaConsulta();
-      if (f) c.lista.appendChild(f);
-      const dc = window.DepoisConsulta && DepoisConsulta.cartoesInicio();
-      if (dc) c.lista.appendChild(dc);
-    }
-    if (!conversas.length && noInicio) {
-      c.lista.insertAdjacentHTML("beforeend", `
-        <div class="conv-vazio curto">
-          <b>Nenhuma clínica ainda</b>
-          <p>Quando uma clínica que usa o indiDoc enviar seus documentos, ela aparece
-          aqui e você fala com a recepção por mensagem.</p>
-        </div>`);
-      const ind = blocoIndicar();
-      if (ind) c.lista.appendChild(ind);
-      return;
-    }
     if (!conversas.length) {
       c.lista.innerHTML = `
         <div class="conv-vazio">
@@ -227,10 +206,12 @@
           documentos. Depois de você aceitar, é por aqui que você fala com a recepção:
           remarcar, tirar uma dúvida, sem ficar esperando no telefone.</p>
         </div>`;
+      const ind = blocoIndicar();
+      if (ind) c.lista.appendChild(ind);
       return;
     }
     const varias = pessoas.length > 1;
-    if (!noInicio) c.lista.innerHTML = "";
+    c.lista.innerHTML = "";
     for (const cv of conversas) {
       const l = daConversa(cv), n = naoLidas(cv);
       const doc = docsDa(cv).sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)))[0];
@@ -254,7 +235,8 @@
       linha.onclick = () => abrirConversa(cv);
       c.lista.appendChild(linha);
     }
-    if (noInicio) { const ind = blocoIndicar(); if (ind) c.lista.appendChild(ind); }
+    const ind = blocoIndicar();
+    if (ind) c.lista.appendChild(ind);
   }
 
   function tique(m) {
@@ -446,9 +428,7 @@
 
   function abrirConversa(cv) {
     aberta = cv;
-    tela.classList.remove("como-aba");
     c.voltar.classList.remove("escondido");
-    for (const id of ["conv-ini-conta", "conv-ini-guia", "conv-fab"]) q(id).classList.add("escondido");
     mostrarEmojis(false);
     acessos = null;
     desenharConversa(true);
@@ -484,8 +464,7 @@
       await carregar();
     } catch (e) {
       c.lista.innerHTML = '<div class="conv-vazio"><b>Sem conexão agora</b><p>As conversas precisam de internet. Tente de novo em instantes.</p></div>';
-      // Sem os botões o início fica sem saída; e o timer refaz a lista quando a rede voltar.
-      if (noInicio) { for (const id of ["conv-fab", "conv-ini-conta", "conv-ini-guia"]) q(id).classList.remove("escondido"); }
+      // O timer refaz a lista quando a rede voltar.
       agendar();
       return;
     }
@@ -497,26 +476,9 @@
   function fechar() {
     clearInterval(timer);
     aberta = null;
-    if (noInicio) { desenharLista(); agendar(); return; }   // o início não fecha
     tela.classList.add("escondido");
   }
 
-  function inicio() {
-    noInicio = true;
-    if (window.PreConsulta) PreConsulta.atualizar();
-    if (window.DepoisConsulta) DepoisConsulta.atualizar();
-    if (!tela.classList.contains("escondido") && aberta) return;   // uma conversa aberta continua
-    tela.classList.add("como-aba");
-    abrir();
-  }
-  function sairDoInicio() {
-    noInicio = false;
-    tela.classList.remove("como-aba");
-    fechar();
-  }
-  q("conv-ini-conta").onclick = () => q("btn-conta").click();
-  q("conv-ini-guia").onclick = () => window.Guia && Guia.abrir();
-  q("conv-fab").onclick = () => { if (window.Abas) Abas.ir("documentos"); q("btn-fotografar").click(); };
 
   c.voltar.onclick = () => {
     if (aberta) { aberta = null; desenharLista(); agendar(); return; }
@@ -608,7 +570,6 @@
     const m = /#conversa=([^&]+)/.exec(location.hash);
     if (!m) return false;
     const [p, cl] = decodeURIComponent(m[1]).split(",");
-    window.__conversaPeloAviso = true;   // app.js não abre a lista por cima
     history.replaceState(history.state, "", location.pathname + location.search);
     esperarLogin(() => abrir(p, cl));
     return true;
@@ -637,16 +598,16 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { contarNaoLidas(); atualizar(); } });
   setInterval(() => { if (!document.hidden && tela.classList.contains("escondido")) carregar().catch(() => {}); }, 120000);
 
-  // A agenda chega depois da lista: redesenha a faixa da consulta e a
-  // indicação quando ela chega (app.js chama).
+  // A agenda chega depois da lista: redesenha o Início (faixa da consulta,
+  // números dos cartões) e a indicação da lista quando ela chega (app.js chama).
   function redesenharInicio() {
-    if (noInicio && !aberta && !tela.classList.contains("escondido")) {
+    if (window.Abas) Abas.desenharInicio();
+    if (!aberta && !tela.classList.contains("escondido")) {
       const y = c.lista.scrollTop; desenharLista(); c.lista.scrollTop = y;
     }
   }
   function redesenharConversa() {
     if (aberta && !tela.classList.contains("escondido")) { desenharConversa(false); lerAcessos(aberta); }
   }
-  window.Conversa = { abrir, inicio, sairDoInicio, redesenharInicio, redesenharConversa,
-                      naLista: () => noInicio && !aberta };
+  window.Conversa = { abrir, faixaConsulta, redesenharInicio, redesenharConversa };
 })();

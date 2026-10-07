@@ -1052,46 +1052,23 @@
                  color:var(--ambar);font-size:13px;font-weight:600;
                  text-align:center;padding:9px 14px;
                  border-bottom:1px solid rgba(138,93,0,.15)}
-  /* ── ABAS DE BAIXO (abas.js): Conversas é o início, como no WhatsApp ── */
-  .nav-baixo{position:fixed;left:0;right:0;bottom:0;z-index:40;display:none;background:#fff;
-             border-top:1px solid #e9edef;padding-bottom:env(safe-area-inset-bottom)}
-  body.com-abas .nav-baixo{display:flex}
-  .nav-baixo button{flex:1;background:none;border:0;padding:7px 0 9px;font:inherit;font-size:11.5px;
-                    color:#54656f;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
-  .nav-baixo button .ico{font-size:20px;line-height:28px;width:56px;border-radius:14px}
-  .nav-baixo button.on{color:#008069;font-weight:700}
-  .nav-baixo button.on .ico{background:#d9fdd3}
-  .nav-baixo .conv-badge{top:2px;right:calc(50% - 30px);border-color:#fff;background:#25d366}
+  /* ── TELAS (abas.js): Início, Agenda e Documentos; Conversas e Mostrar
+     ao médico abrem por cima. A barra de baixo saiu em 07/10. ── */
   body.com-abas main{padding-bottom:84px}
   body.com-abas .btn-conversa{display:none}
   body.aba-documentos #agenda{display:none!important}
   body.aba-agenda main > :not(#agenda):not(#avisos){display:none!important}
   body.aba-agenda #agenda{display:block!important}
-  /* A lista de conversas como aba: abaixo das outras telas cheias (50) e
-     acima da tela de documentos; deixa a barra de baixo à mostra. */
-  #tela-conversa.como-aba{z-index:30;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom))}
   html:has(#tela-conversa:not(.escondido)),body:has(#tela-conversa:not(.escondido)){overflow:hidden;overscroll-behavior:none}
   /* Aberta, a conversa fica acima da barra de baixo (40) e abaixo das outras
      telas cheias (50): o documento tocado no fio abre POR CIMA dela. */
   #tela-conversa{z-index:45}
-  .conv-inicio-btn{background:none;border:0;color:#fff;font-size:20px;width:40px;height:40px;border-radius:50%;flex:none}
-  .conv-inicio-btn:active{background:rgba(255,255,255,.18)}
   .conv-faixa{display:flex;gap:10px;align-items:center;width:calc(100% - 24px);margin:8px 12px 4px;
               background:#fff8e1;border:0;border-radius:12px;padding:10px 12px;font:inherit;font-size:13.5px;
               color:#5d4a00;text-align:left}
-  .conv-fab{position:absolute;right:16px;bottom:16px;width:56px;height:56px;border-radius:16px;border:0;
-            background:#00a884;color:#fff;font-size:24px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
   /* ── FÁCIL DE USAR (04/10): todo botão diz o que faz; o cabeçalho diz em
      que aba se está; a barra de baixo com letra de ler sem óculos. ── */
-  :root{--nav-h:72px}
-  /* A barra mede o mesmo que --nav-h: a tela de Conversas termina ali, e
-     sobrava uma tira de 11 px mostrando a tela de trás. */
-  .nav-baixo{min-height:calc(var(--nav-h) + env(safe-area-inset-bottom))}
-  .nav-baixo button{font-size:13px;line-height:1.15;text-align:center;padding:6px 2px 8px}
-  .nav-baixo button .ico{line-height:28px}
-  body.com-abas main{padding-bottom:calc(var(--nav-h) + 30px)}
-  .conv-fab{width:auto;height:52px;padding:0 20px;border-radius:26px;font-size:16.5px;font-weight:600}
-  .conv-inicio-btn.conta{width:auto;height:44px;padding:0 14px;border-radius:22px;font-size:15.5px}
+  body.com-abas main{padding-bottom:calc(30px + env(safe-area-inset-bottom))}
   body.com-abas #btn-mostrar{display:none}
   body.com-abas header h1,body.com-abas .selo-seguranca{display:none!important}
   .titulo-aba{display:none}
@@ -1101,9 +1078,8 @@
   .btn-conta .nome-btn{display:none}
   body.com-abas #btn-conta{width:auto;height:44px;padding:0 14px;border-radius:22px;font-size:15.5px}
   body.com-abas #btn-conta .nome-btn{display:inline;margin-left:4px}
-  /* ✕ FECHAR (04/10): toda tela tem Fechar no canto de cima, e ele volta
-     para Conversas. Em Agenda e Documentos ele fica no lugar da Conta (a
-     Conta mora na tela inicial). */
+  /* ← INÍCIO (07/10): Agenda e Documentos têm o botão no canto de cima, no
+     lugar da Conta (a Conta mora na tela inicial). */
   .btn-fechar-aba{display:none}
   body.aba-agenda #btn-conta,body.aba-documentos #btn-conta{display:none}
   body.aba-agenda #btn-fechar-aba,body.aba-documentos #btn-fechar-aba{display:flex;align-items:center;
@@ -1137,13 +1113,11 @@
        box-shadow:var(--sombra-cartao)}
   .btn-conta:active{background:var(--cinza-1)}
 
-  /* Barra das conversas: branca, logo da marca no início. */
+  /* Barra das conversas: branca. */
   .conv-barra{background:#fff;color:var(--petroleo);padding:10px 14px;
               padding-top:calc(10px + env(safe-area-inset-top));border-bottom:1px solid #e6ecec}
-  .conv-voltar,.conv-inicio-btn,.conv-inicio-btn.conta{background:var(--cinza-1);color:var(--petroleo)}
-  .conv-voltar:active,.conv-inicio-btn:active{background:#dfe7e7}
-  .conv-barra:has(#conv-avatar.escondido) .conv-titulo{font-size:0;height:40px;width:150px;
-       background:url(logo_indidoc_480.png) left center/contain no-repeat}
+  .conv-voltar{background:var(--cinza-1);color:var(--petroleo)}
+  .conv-voltar:active{background:#dfe7e7}
   .conv-sub{color:var(--cinza-txt);opacity:1}
   #tela-conversa,.conv-lista{background:var(--fundo)}
 
@@ -1153,7 +1127,7 @@
   .conv-meio{border-bottom:0;padding-bottom:0;margin-bottom:0}
   .conv-av{background:var(--grad-marca)!important}
   .conv-hora.nova{color:var(--marca)}
-  .conv-qtd,.conv-badge,.nav-baixo .conv-badge{background:var(--marca-viva)}
+  .conv-qtd,.conv-badge{background:var(--marca-viva)}
   .conv-badge{border-color:#fff}
 
   /* Cartões de chamada (exames para a consulta, indicar). */
@@ -1166,16 +1140,7 @@
   .ci-item{border-top-color:#edf1f1}
 
   /* Botão de guardar exame. */
-  .conv-fab{background:var(--grad-marca);border-radius:20px;height:56px;
-            box-shadow:0 10px 24px rgba(15,155,132,.35)}
 
-  /* Barra de baixo: ícones de traço, aba ativa numa pílula. */
-  .nav-baixo{background:#fff;border-top:0;box-shadow:0 -4px 20px rgba(15,62,76,.08)}
-  .nav-baixo button{color:#6b7c80;font-weight:600}
-  .nav-baixo button .ico{display:flex;align-items:center;justify-content:center;height:30px;width:60px;border-radius:15px}
-  .nav-baixo button .ico svg{width:24px;height:24px}
-  .nav-baixo button.on{color:var(--marca-escura)}
-  .nav-baixo button.on .ico{background:var(--marca-clara)}
 
   /* Conversa aberta. */
   .conv-chat{background:#eef3f1}
@@ -1297,11 +1262,11 @@
   .mv-sec > div{padding:0 12px 12px}
   /* MINIMALISTA (04/10, 2ª rodada) */
   /* Documentos: captura flutua sobre a barra; lista numa folha só, com linhas finas. */
-  body.aba-documentos .linha-captura{position:fixed;right:16px;bottom:calc(var(--nav-h,64px) + 14px);
+  body.aba-documentos .linha-captura{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));
        z-index:39;gap:8px}
   body.aba-documentos .linha-captura .btn-grande{min-height:48px;border-radius:24px;padding:0 18px;
        font-size:15.5px;box-shadow:0 6px 18px rgba(0,0,0,.16)}
-  body.aba-documentos main{padding-bottom:calc(var(--nav-h,64px) + 90px)}
+  body.aba-documentos main{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
   body.aba-documentos .rodape{display:none}
   #lista{background:#fff;border-radius:18px;box-shadow:var(--sombra-cartao);overflow:hidden;scroll-margin-top:16px}
   #lista:empty{display:none}
@@ -1356,11 +1321,8 @@
   .gu-ld i{width:20px;height:24px;border-radius:4px;background:var(--marca-clara);flex:0 0 auto}
   .gu-ld s{display:block;height:7px;width:90px;border-radius:4px;background:#d5dde0;text-decoration:none}
   .gu-ld div s{width:60px;margin-top:3px}
-  .gu-nav{position:absolute;left:0;right:0;bottom:0;display:flex;border-top:1px solid #eef2f2;background:#fff}
-  .gu-nav span{flex:1;text-align:center;font-size:8.5px;line-height:1.25;padding:4px 0;color:#7a8a8f}
-  .gu-nav span.on{color:var(--marca-escura);font-weight:700}
-  .gu-fab{position:absolute;right:8px;bottom:40px;background:var(--grad-marca);color:#fff;border-radius:16px;
-          padding:7px 11px;font-weight:700}
+  .gu-fab{display:block;margin:8px;background:var(--grad-marca);color:#fff;border-radius:12px;
+          padding:10px;font-weight:800;text-align:center}
   .gu-dois{display:flex;gap:6px;padding:8px}
   .gu-dois span{flex:1;text-align:center;border-radius:10px;padding:7px 0;font-weight:700;background:var(--grad-marca);color:#fff}
   .gu-dois .gu-alvo{background:#fff;color:var(--marca-escura);box-shadow:0 1px 4px rgba(0,0,0,.2)}
@@ -1398,7 +1360,7 @@
          color:var(--marca-escura);border-radius:12px;padding:6px 10px;font-weight:700;opacity:0}
   /* 1. papel → foto → linha nova */
   .gu-ativo.gu-c1 .gu-dedo{animation:gu-d1 5s infinite}
-  @keyframes gu-d1{0%,8%{left:40%;top:70%;opacity:0}15%{opacity:1;left:72%;top:66%}22%{transform:scale(.85)}28%,100%{transform:none;opacity:0;left:72%;top:66%}}
+  @keyframes gu-d1{0%,8%{left:40%;top:45%;opacity:0}15%{opacity:1;left:55%;top:10%}22%{transform:scale(.85)}28%,100%{transform:none;opacity:0;left:55%;top:10%}}
   .gu-ativo.gu-c1 .gu-papel{animation:gu-p1 5s infinite}
   @keyframes gu-p1{0%,28%{opacity:0;transform:scale(.9)}34%,52%{opacity:1;transform:none}62%,100%{opacity:0;transform:translateY(30px) scale(.4)}}
   .gu-ativo.gu-c1 .gu-flash{animation:gu-fl 5s infinite}
@@ -1457,7 +1419,37 @@
     #tela-guia *{animation:none!important;transition:none!important}
     .gu-verde,.gu-cod,.gu-med,.gu-ok,.gu-c3 .gu-filho{opacity:1}.gu-aviso{top:10px}.gu-gerar{opacity:0}}
   /* Começar o guia: o ❓ ao lado da Conta, só no início. */
-  .conv-inicio-btn.guia{width:44px;height:44px;font-size:18px;font-weight:700}
+  /* ── TELA INÍCIO (07/10, abas.js) ──────────────────────────────────
+     Os atalhos ficam na própria tela, sem barra de baixo. Guardar exame em
+     destaque: é a função principal do app. */
+  .inicio{display:none}
+  body.aba-inicio .inicio{display:block}
+  body.aba-inicio main > :not(#inicio):not(#avisos):not(#faixa-instalar):not(#pessoas-barra):not(#celebrar):not(#form){display:none!important}
+  body.aba-inicio .titulo-aba{font-size:0;height:44px;width:150px;
+       background:url(logo_indidoc_480.png) left center/contain no-repeat}
+  body.aba-inicio #cabecalho-sub{margin-top:2px}
+  .ini-guardar{background:var(--grad-marca);color:#fff;border-radius:24px;padding:20px 18px 18px;
+       margin:6px 0 14px;box-shadow:0 12px 28px rgba(15,155,132,.32)}
+  .ini-g-tit{font-size:24px;font-weight:800;letter-spacing:-.01em}
+  .ini-g-sub{font-size:14.5px;opacity:.92;margin:4px 0 16px;line-height:1.4}
+  .ini-g-bts{display:flex;gap:10px}
+  .ini-g-bts button{flex:1;min-height:54px;border:0;border-radius:16px;font:inherit;font-size:17px;
+       font-weight:700;background:#fff;color:var(--marca-escura);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+  .ini-g-bts button#ini-pdf{flex:0 0 auto;min-width:100px;background:rgba(255,255,255,.18);color:#fff;
+       box-shadow:none;border:1.5px solid rgba(255,255,255,.55)}
+  .ini-g-bts button:active{transform:scale(.97)}
+  #inicio .pre-cartao,#inicio .dc,#inicio .conv-faixa{margin:0 0 12px;width:100%}
+  .ini-grade{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .ini-grade button{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+       min-height:112px;padding:14px;border:0;border-radius:20px;background:#fff;color:var(--petroleo);
+       font:inherit;text-align:left;box-shadow:var(--sombra-cartao)}
+  .ini-grade button:active{background:var(--cinza-1)}
+  .ini-ico{font-size:26px;line-height:1;margin-bottom:8px}
+  .ini-grade b{font-size:16px;line-height:1.2}
+  .ini-grade small{font-size:13px;color:var(--cinza-txt);line-height:1.3}
+  .ini-grade .conv-badge{top:12px;right:12px;left:auto}
+  .ini-guia{display:block;margin:6px auto 0;background:none;border:0;font:inherit;font-size:14.5px;
+       font-weight:600;color:var(--marca-escura);padding:10px}
 </style>
 </head>
 <body>
@@ -1473,7 +1465,7 @@
   <p id="cabecalho-sub">seus exames, laudos e receitas num lugar só</p>
   <p class="selo-seguranca">🔒 Dados salvos com segurança</p>
   <button class="btn-conta" id="btn-conta" aria-label="Minha conta">👤<span class="nome-btn"> Conta</span></button>
-  <button class="btn-conta btn-fechar-aba" id="btn-fechar-aba">✕ Fechar</button>
+  <button class="btn-conta btn-fechar-aba" id="btn-fechar-aba">← Início</button>
   <!-- Falar com a clínica (sql/018): o número em vermelho é resposta da
        recepção ainda não lida. -->
   <button class="btn-conta btn-conversa" id="btn-conversa" aria-label="Falar com a clínica">💬
@@ -1583,6 +1575,34 @@
   <div class="pessoas escondido" id="pessoas-barra" role="tablist"
        aria-label="De quem são os documentos"></div>
   <div class="celebrar" id="celebrar" aria-hidden="true">✓</div>
+
+  <!-- INÍCIO (abas.js, 07/10): os atalhos espalhados na tela, no lugar da
+       barra de baixo. Guardar exame em destaque, por ser a função principal
+       do app; Conversas só abre ao tocar no cartão. -->
+  <section class="inicio" id="inicio">
+    <div class="ini-guardar">
+      <div class="ini-g-tit">📷 Guardar exame</div>
+      <div class="ini-g-sub">Fotografe o papel ou escolha o PDF do laboratório.</div>
+      <div class="ini-g-bts">
+        <button type="button" id="ini-fotografar">📷 Fotografar</button>
+        <button type="button" id="ini-pdf">📄 PDF</button>
+      </div>
+    </div>
+    <div id="ini-avisos"></div>
+    <div class="ini-grade">
+      <button type="button" data-ir="documentos"><span class="ini-ico">📁</span>
+        <b>Meus documentos</b><small id="ini-docs-sub"></small></button>
+      <button type="button" data-ir="mostrar"><span class="ini-ico">🩺</span>
+        <b>Mostrar ao médico</b><small>Gerar código</small></button>
+      <button type="button" data-ir="agenda"><span class="ini-ico">📅</span>
+        <b>Agenda</b><small id="ini-agenda-sub"></small></button>
+      <button type="button" data-ir="conversas"><span class="ini-ico">💬</span>
+        <b>Conversas</b><small>Fale com a recepção</small>
+        <span class="conv-badge escondido" id="nav-conv-badge">0</span></button>
+    </div>
+    <div id="ini-depois"></div>
+    <button type="button" class="ini-guia" id="ini-guia">❓ Como usar o app</button>
+  </section>
 
   <!-- AGENDA ------------------------------------------------------------ -->
   <!-- Fica ACIMA do botao de fotografar de proposito. O lembrete so existe
@@ -2184,12 +2204,8 @@
       <span class="conv-titulo" id="conv-titulo">Conversas</span>
       <span class="conv-sub" id="conv-sub"></span>
     </span>
-    <button type="button" class="conv-inicio-btn guia escondido" id="conv-ini-guia"
-            aria-label="Como usar o indiDoc">?</button>
-    <button type="button" class="conv-inicio-btn conta escondido" id="conv-ini-conta">👤 Conta</button>
   </div>
   <div class="conv-lista" id="conv-lista" style="position:relative"></div>
-  <button type="button" class="conv-fab escondido" id="conv-fab">📷 Guardar exame</button>
   <div class="conv-chat escondido" id="conv-chat">
     <button type="button" class="conv-acesso escondido" id="conv-acesso"></button>
     <div class="conv-msgs" id="conv-msgs"></div>
@@ -2310,13 +2326,6 @@
 <script src="depois.js"></script>
 <script src="guia.js"></script>
 <script src="cuidar.js"></script>
-<nav class="nav-baixo" id="nav-baixo" aria-label="Seções">
-  <button type="button" data-aba="conversas" class="on"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.5a8.5 8.5 0 0 1-12.3 7.6L3.5 20.5l1.4-4.5A8.5 8.5 0 1 1 20.5 11.5z"/></svg></span>Conversas
-    <span class="conv-badge escondido" id="nav-conv-badge">0</span></button>
-  <button type="button" data-aba="agenda"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg></span>Agenda</button>
-  <button type="button" data-aba="documentos"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2v8.3a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg></span>Documentos</button>
-  <button type="button" data-aba="mostrar" aria-label="Mostrar ao médico"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5v5a4 4 0 0 0 8 0v-5"/><path d="M10 12.5v2.5a5 5 0 0 0 10 0v-2"/><circle cx="20" cy="11" r="2"/></svg></span>Ao médico</button>
-</nav>
 <script src="abas.js"></script>
 </body>
 </html>

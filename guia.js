@@ -17,31 +17,27 @@
 
   const dedo = '<span class="gu-dedo" aria-hidden="true">👆</span>';
   const linhas = (n) => '<div class="gu-ld"><i></i><s></s></div>'.repeat(n);
-  const barra = (ativo) => '<div class="gu-nav">' +
-    [["💬", "Conversas"], ["📅", "Agenda"], ["📁", "Documentos"], ["🩺", "Ao médico"]]
-      .map(([i, t]) => `<span class="${t === ativo ? "on" : ""}">${i}<br>${t}</span>`).join("") + "</div>";
 
   const CARTOES = [
     {
-      cena: `<div class="gu-mini">${linhas(2)}
-               <div class="gu-ld gu-novo"><i></i><div><b>Hemograma</b><s></s></div></div>
-               <span class="gu-fab">📷 Guardar exame</span>${barra("Conversas")}</div>
+      cena: `<div class="gu-mini"><span class="gu-fab">📷 Guardar exame</span>
+               <div class="gu-ld gu-novo"><i></i><div><b>Hemograma</b><s></s></div></div>${linhas(2)}</div>
              <div class="gu-papel gu-p1"></div><div class="gu-flash"></div>${dedo}`,
       titulo: "Guarde o exame de papel",
-      texto: "Toque em <b>📷 Guardar exame</b> e aponte para a folha. O indiDoc acerta o corte e o exame entra na sua lista, com a data.",
+      texto: "Na tela inicial, em <b>Guardar exame</b>, toque em <b>📷 Fotografar</b> e aponte para a folha. O indiDoc acerta o corte e o exame entra na sua lista, com a data.",
     },
     {
       cena: `<div class="gu-mini"><div class="gu-dois"><span>📷 Fotografar</span><span class="gu-alvo">📄 PDF</span></div>
                <div class="gu-ld gu-novo"><i></i><div><b>Resultado do laboratório</b><s></s></div></div>
-               ${linhas(2)}${barra("Documentos")}</div>
+               ${linhas(2)}</div>
              <div class="gu-arq"><div>📁 Downloads</div><div class="sel">📄 resultado_lab.pdf</div><div>📄 boleto.pdf</div></div>
              <div class="gu-papel gu-pg gu-pg1"><em>1</em></div><div class="gu-papel gu-pg gu-pg2"><em>2</em></div><div class="gu-papel gu-pg gu-pg3"><em>3</em></div>${dedo}`,
       titulo: "Recebeu o exame em PDF?",
-      texto: "Baixe o PDF do laboratório (do site, do e-mail ou do WhatsApp). Em <b>Documentos</b>, toque em <b>📄 PDF</b> e escolha o arquivo. Se o exame tem várias páginas, marque <b>“a próxima página é deste mesmo documento”</b> e elas ficam juntas.",
+      texto: "Baixe o PDF do laboratório (do site, do e-mail ou do WhatsApp). Na tela inicial, toque em <b>📄 PDF</b> e escolha o arquivo. Se o exame tem várias páginas, marque <b>“a próxima página é deste mesmo documento”</b> e elas ficam juntas.",
     },
     {
       cena: `<div class="gu-mini"><div class="gu-chips"><span class="on">Eu</span><span class="gu-filho">Pedro · filho</span></div>
-               <div class="gu-troca">${linhas(3)}</div>${barra("Documentos")}</div>
+               <div class="gu-troca">${linhas(3)}</div></div>
              <div class="gu-conta">👤 Quem está nesta conta<div class="gu-add">+ Adicionar pessoa</div></div>${dedo}`,
       titulo: "Guarde os exames da família",
       texto: "Os exames do seu filho, da sua mãe ou de quem você cuida também cabem aqui. Em <b>👤 Conta</b>, toque em <b>+ Adicionar pessoa</b>. Cada um tem o seu acervo: toque no nome para trocar, e o médico vê só o da pessoa que está na consulta.",
@@ -50,23 +46,23 @@
       cena: `<div class="gu-mini"><div class="gu-busca">🔍 <span>holter</span></div>
                <div class="gu-chips gu-tipos"><span>Todos</span><span class="gu-tipo">Exames</span><span>Receitas</span></div>
                <div class="gu-ld"><i></i><div><b>Holter 24h</b><s></s></div></div>
-               <div class="gu-ld gu-some"><i></i><s></s></div><div class="gu-ld gu-some"><i></i><s></s></div>${barra("Documentos")}</div>
+               <div class="gu-ld gu-some"><i></i><s></s></div><div class="gu-ld gu-some"><i></i><s></s></div></div>
              <svg class="gu-boneco" viewBox="0 0 60 110" aria-hidden="true"><circle cx="30" cy="12" r="10" fill="#cfd8dc"/><rect class="gu-peito" x="16" y="25" width="28" height="36" rx="10" fill="#cfd8dc"/><rect x="18" y="60" width="10" height="44" rx="5" fill="#cfd8dc"/><rect x="32" y="60" width="10" height="44" rx="5" fill="#cfd8dc"/><rect x="4" y="27" width="9" height="34" rx="4.5" fill="#cfd8dc"/><rect x="47" y="27" width="9" height="34" rx="4.5" fill="#cfd8dc"/></svg>`,
       titulo: "Ache qualquer exame em segundos",
-      texto: "Em <b>Documentos</b>, escreva o nome na <b>busca</b>, escolha o <b>tipo</b> ou toque numa parte do <b>🧍 corpo</b>: o coração mostra Holter, eco e ECG.",
+      texto: "Em <b>Meus documentos</b>, escreva o nome na <b>busca</b>, escolha o <b>tipo</b> ou toque numa parte do <b>🧍 corpo</b>: o coração mostra Holter, eco e ECG.",
     },
     {
-      cena: `<div class="gu-mini">${linhas(3)}${barra("Ao médico")}
+      cena: `<div class="gu-mini">${linhas(3)}
                <div class="gu-verde">Mostre o número ao médico
                  <div><span class="gu-gerar">Gerar código</span></div>
                  <div class="gu-cod">482 915</div>vale até o fim do dia
                  <div class="gu-med">👨‍⚕️ <b>No consultório:</b> o médico digita o número e vê seus documentos, sem senha nem cadastro.</div>
                </div></div>${dedo}`,
       titulo: "Mostre ao médico na consulta",
-      texto: "Toque em <b>Ao médico</b>, na barra de baixo, e depois em <b>Gerar código</b>. O médico digita o número no computador dele e vê os seus exames até o fim do dia.",
+      texto: "Na tela inicial, toque em <b>Mostrar ao médico</b> e depois em <b>Gerar código</b>. O médico digita o número no computador dele e vê os seus exames até o fim do dia.",
     },
     {
-      cena: `<div class="gu-mini">${linhas(3)}${barra("Conversas")}
+      cena: `<div class="gu-mini">${linhas(3)}
                <div class="gu-aviso">🔔 <b>Consulta amanhã com Dr. Décio</b><br>Deixar ele ver seus 3 exames novos?
                  <div class="gu-bts"><span class="sim">Deixar ver</span><span>Ver quais</span><span>Agora não</span></div></div>
                <div class="gu-ok">✓ Liberado para esta consulta</div></div>${dedo}`,

@@ -1203,7 +1203,6 @@ mv.botao.onclick = () => {
 mv.fechar.onclick = () => {
   mv.tela.classList.add("escondido");
   limparAvisos();
-  if (window.Abas) Abas.ir("conversas");
   // Fechar "Mostrar ao médico" é o momento logo depois de o médico usar o
   // código: é aqui que a pergunta tem mais chance de estar esperando.
   perguntarAutorizacoes();
@@ -2833,6 +2832,7 @@ function desenharLista() {
     total < MINIMO_BUSCA && !termos.length);
   el.buscaCaixa.classList.toggle("tem-texto", !!el.busca.value);
   desenharPessoas();
+  if (window.Abas) Abas.desenharInicio();   // nº de documentos no cartão do Início
   pintarCorpo();
   desenharRecentes();
 
@@ -4037,7 +4037,7 @@ async function confirmarCodigo() {
 
 ct.botao.onclick = () => abrirConta(false);
 ct.bvVoltar.onclick = () => { fecharBoasVindas(); abrirConta(true); };
-ct.fechar.onclick = () => { ct.tela.classList.add("escondido"); if (window.Abas) Abas.ir("conversas"); };
+ct.fechar.onclick = () => { ct.tela.classList.add("escondido"); };
 ct.comoFunciona.onclick = () => abrirBoasVindas(true);
 $("conta-como-usar").onclick = () => { ct.tela.classList.add("escondido"); if (window.Guia) Guia.abrir(); };
 ct.pessoaAdicionar.onclick = adicionarPessoa;
@@ -4298,7 +4298,7 @@ for (const b of botoesTextoOpcao) {
 
   if (await entrar()) {
     await carregar();
-    if (window.Abas && !window.__conversaPeloAviso) Abas.ir("conversas");
+    if (window.Abas) Abas.ir("inicio");
     // O que ficou da sessão anterior sobe agora, sem o usuário pedir.
     if (navigator.onLine) enviarFila();
     /* O TERMO NA ABERTURA, para quem nao aceitou a versao atual.
@@ -4399,14 +4399,13 @@ function fecharTelaAtual() {
   }
   for (const [telaId, botaoId] of Object.entries(FECHAR_TELA_CHEIA)) {
     const tela = document.getElementById(telaId);
-    if (telaId === "tela-conversa" && window.Conversa && Conversa.naLista()) continue;
     if (tela && !tela.classList.contains("escondido")) {
       const botao = document.getElementById(botaoId);
       if (botao) { botao.click(); return true; }
     }
   }
   if (!el.form.classList.contains("escondido")) { cancelar(); return true; }
-  if (window.Abas && Abas.atual() !== "conversas") { Abas.ir("conversas"); return true; }
+  if (window.Abas && Abas.atual() !== "inicio") { Abas.ir("inicio"); return true; }
   return false;
 }
 
