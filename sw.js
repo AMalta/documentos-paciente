@@ -3,7 +3,7 @@
    elas vêm por URL assinada que expira, e cache de dado de saúde no disco do
    navegador é risco sem ganho — quem precisa do acervo offline é o dono, e
    isso é assunto da fila de envio, não deste arquivo. */
-const VERSAO = "casca-v130";
+const VERSAO = "casca-v131";
 const CASCA = ["./", "./index.html", "./app.js", "./config.js",
                 "./manifest.webmanifest", "./worker.js", "./comum.js", "./fila.js", "./agenda.js", "./termo.js", "./conversa.js", "./preconsulta.js", "./depois.js", "./farmacia_popular.js", "./abas.js", "./guia.js", "./cuidar.js",
                 // Sem esta linha o aplicativo NAO ABRE sem rede: e a
@@ -41,7 +41,9 @@ self.addEventListener("push", (e) => {
     data: d.abrir === "conversa" ? { abrir: "conversa", pessoa_id: d.pessoa_id, clinica_id: d.clinica_id }
         : d.abrir === "preconsulta" ? { abrir: "preconsulta", compromisso_id: d.compromisso_id }
         // Véspera sem exame novo (sql/023): o toque abre o "Como usar".
-        : d.abrir === "guia" ? { abrir: "guia", cartao: d.cartao || "0" } : {},
+        : d.abrir === "guia" ? { abrir: "guia", cartao: d.cartao || "0" }
+        // Exame pedido e não feito (sql/025): o toque abre o cartão da consulta.
+        : d.abrir === "pedidos" ? { abrir: "pedidos", chave: d.chave } : {},
   }));
 });
 self.addEventListener("notificationclick", (e) => {
@@ -50,13 +52,15 @@ self.addEventListener("notificationclick", (e) => {
   const destino = dados.abrir === "conversa"
     ? "./#conversa=" + encodeURIComponent(dados.pessoa_id + "," + dados.clinica_id)
     : dados.abrir === "preconsulta" ? "./#preconsulta=" + encodeURIComponent(dados.compromisso_id)
-    : dados.abrir === "guia" ? "./#guia=" + encodeURIComponent(dados.cartao) : "./";
+    : dados.abrir === "guia" ? "./#guia=" + encodeURIComponent(dados.cartao)
+    : dados.abrir === "pedidos" ? "./#pedidos=" + encodeURIComponent(dados.chave) : "./";
   e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((abertas) => {
     const app = abertas.find((c) => !c.url.includes("/medico"));
     if (!app) return clients.openWindow(destino);
     if (dados.abrir === "conversa") app.postMessage({ abrir: "conversa", pessoa_id: dados.pessoa_id, clinica_id: dados.clinica_id });
     if (dados.abrir === "preconsulta") app.postMessage({ abrir: "preconsulta", compromisso_id: dados.compromisso_id });
     if (dados.abrir === "guia") app.postMessage({ abrir: "guia", cartao: dados.cartao });
+    if (dados.abrir === "pedidos") app.postMessage({ abrir: "pedidos", chave: dados.chave });
     return app.focus();
   }));
 });

@@ -193,10 +193,15 @@
       + `Leve a receita, um documento com foto e o CPF a uma farmácia com o selo “Aqui Tem Farmácia Popular”.</div>`;
   }
 
-  // Alto das Conversas: as duas consultas mais recentes em aberto.
+  // Alto das Conversas: as duas consultas mais recentes em aberto. A que o
+  // aviso do pedido abriu (sql/025) vem primeiro.
+  let foco = "";
   function cartoesInicio() {
     const div = document.createElement("div");
-    div.innerHTML = consultas().slice(0, 2).map((v) => html(v, false)).join("");
+    const lista = consultas();
+    const i = foco ? lista.findIndex((v) => v.chave === foco) : -1;
+    if (i > 0) lista.unshift(lista.splice(i, 1)[0]);
+    div.innerHTML = lista.slice(0, 2).map((v) => html(v, false)).join("");
     return div.children.length ? div : null;
   }
   // No fio da conversa daquela clínica e pessoa: a mais recente.
@@ -254,6 +259,39 @@
     const b = e.target.closest("[data-dc]");
     if (b) { e.stopPropagation(); acao(b); }
   }, true);
+
+  // Toque no aviso "Exames pedidos" (sql/025): o Início com o cartão daquela
+  // consulta em primeiro e aberto. Espera o login, como o guia.
+  async function abrirPeloAviso(chave, tentativas = 40) {
+    let pronto = false;
+    try { pronto = !!usuario && jaAceitou(); } catch (e) {}
+    if (!pronto) {
+      if (tentativas > 0) setTimeout(() => abrirPeloAviso(chave, tentativas - 1), 500);
+      return;
+    }
+    // Quem tocou no aviso quer ver o cartão, mesmo tendo dispensado antes.
+    try { localStorage.removeItem("dc-fora-" + chave); } catch (e) {}
+    foco = chave;
+    abertos.add(chave);
+    await atualizar(true);
+    if (window.Abas) Abas.ir("inicio"); else redesenhar();
+    if (!consultas().some((v) => v.chave === chave)) {
+      aviso("Os exames deste pedido já estão marcados como feitos.", "info");
+      return;
+    }
+    const alvo = document.getElementById("ini-depois");
+    if (alvo) alvo.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  const pedidoAviso = /#pedidos=([^&]+)/.exec(location.hash);
+  if (pedidoAviso) {
+    history.replaceState(history.state, "", location.pathname + location.search);
+    abrirPeloAviso(decodeURIComponent(pedidoAviso[1]));
+  }
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener("message", (e) => {
+      if ((e.data || {}).abrir === "pedidos") abrirPeloAviso(e.data.chave);
+    });
+  }
 
   window.DepoisConsulta = { atualizar, cartoesInicio, htmlConversa };
 })();
