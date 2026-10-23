@@ -711,16 +711,15 @@ function pintarCorpo() {
   }
 }
 
-/* Recolher o boneco (23/10/2026). Dentro do prontuário do Indiclin abre
-   recolhido: ali o espaço é do documento. A escolha do médico fica
-   guardada neste navegador. */
+/* Recolher o boneco (23/10/2026). Abre com o boneco (pedido do usuário);
+   recolher fica guardado neste navegador. */
 const CHAVE_BONECO = "idoc_medico_boneco";
 function bonecoRecolhido() {
   try {
     const v = localStorage.getItem(CHAVE_BONECO);
     if (v === "recolhido" || v === "aberto") return v === "recolhido";
   } catch (e) { /* sem armazenamento: vale o padrão */ }
-  return window.parent !== window;
+  return false;
 }
 function aplicarBoneco(recolhido) {
   el.corpoBloco.classList.toggle("recolhido", recolhido);
