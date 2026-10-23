@@ -49,6 +49,7 @@ const el = {
   busca: $("busca"), filtroTipo: $("filtro-tipo"), filtroOrdem: $("filtro-ordem"),
   corpoBloco: $("corpo-bloco"), corpo: $("corpo"),
   corpoDica: $("corpo-dica"), folhinhas: $("folhinhas"), verTodos: $("ver-todos"),
+  corpoRecolher: $("corpo-recolher"),
   subs: $("subs"),
   contaDocs: $("conta-docs"), grade: $("grade"),
   modoGrade: $("modo-grade"), modoLista: $("modo-lista"),
@@ -671,11 +672,13 @@ function pintarCorpo() {
   pintarBolhas(el.corpo, conta, regiaoAtiva);
 
   el.folhinhas.innerHTML = "";
-  for (const r of REGIOES.filter((x) => !x.corpo && conta[x.id])) {
+  // Boneco recolhido: as partes do corpo também viram etiquetas.
+  const recolhido = el.corpoBloco.classList.contains("recolhido");
+  for (const r of REGIOES.filter((x) => (recolhido || !x.corpo) && conta[x.id])) {
     const b = document.createElement("button");
     b.className = "folhinha" + (regiaoAtiva === r.id ? " ativa" : "");
     b.dataset.regiao = r.id;
-    b.innerHTML = `<span>${r.icone}</span><span>${r.rotulo}</span>`
+    b.innerHTML = `<span>${r.icone || "🧍"}</span><span>${r.rotulo}</span>`
                 + `<span class="n">${conta[r.id]}</span>`;
     b.onclick = () => alternarRegiao(r.id);
     el.folhinhas.appendChild(b);
@@ -707,6 +710,29 @@ function pintarCorpo() {
     el.subs.appendChild(b);
   }
 }
+
+/* Recolher o boneco (23/10/2026). Abre com o boneco (pedido do usuário);
+   recolher fica guardado neste navegador. */
+const CHAVE_BONECO = "idoc_medico_boneco";
+function bonecoRecolhido() {
+  try {
+    const v = localStorage.getItem(CHAVE_BONECO);
+    if (v === "recolhido" || v === "aberto") return v === "recolhido";
+  } catch (e) { /* sem armazenamento: vale o padrão */ }
+  return false;
+}
+function aplicarBoneco(recolhido) {
+  el.corpoBloco.classList.toggle("recolhido", recolhido);
+  el.corpoRecolher.textContent = recolhido ? "Boneco ▾" : "Recolher ▴";
+  el.corpoRecolher.setAttribute("aria-expanded", recolhido ? "false" : "true");
+}
+aplicarBoneco(bonecoRecolhido());
+el.corpoRecolher.addEventListener("click", () => {
+  const recolhido = !el.corpoBloco.classList.contains("recolhido");
+  try { localStorage.setItem(CHAVE_BONECO, recolhido ? "recolhido" : "aberto"); } catch (e) { /* ok */ }
+  aplicarBoneco(recolhido);
+  pintarCorpo();
+});
 
 function alternarRegiao(id) {
   regiaoAtiva = regiaoAtiva === id ? null : id;

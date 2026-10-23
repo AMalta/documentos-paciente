@@ -178,6 +178,26 @@
   #corpo .regiao:focus{outline:none}
   #corpo .regiao:focus-visible{outline:2px solid var(--verde);outline-offset:2px}
   .folhinhas{flex:1;min-width:0;display:grid;grid-template-columns:1fr;gap:5px}
+  /* Cabeçalho do bloco com o botão Recolher/Mostrar boneco. */
+  .corpo-cab{display:flex;align-items:center;justify-content:space-between;
+             gap:8px;margin:0 0 9px}
+  .corpo-cab h2{margin:0;white-space:nowrap}
+  .corpo-recolher{background:none;border:0;color:var(--suave);font-size:12px;
+                  padding:2px 4px;cursor:pointer;white-space:nowrap}
+  .corpo-recolher:hover{color:var(--verde)}
+  /* Recolhido: sem o desenho; todas as partes viram etiquetas em linha. */
+  #corpo-bloco.recolhido #corpo{display:none}
+  #corpo-bloco.recolhido .folhinhas{display:flex;flex-wrap:wrap;gap:5px}
+  #corpo-bloco.recolhido .folhinha{border-radius:999px;padding:4px 9px;font-size:12px}
+  #corpo-bloco.recolhido .folhinha .n{margin-left:4px}
+  /* Computador: trilho e boneco menores — a grade de documentos é o que o
+     médico veio ver, sobretudo dentro do prontuário do Indiclin. No
+     celular fica como antes (o dedo precisa das regiões grandes). */
+  @media (min-width:821px){
+    .palco{grid-template-columns:276px 1fr}
+    #corpo{width:108px}
+    .folhinha{padding:5px 7px;font-size:12px}
+  }
   .folhinha{display:flex;align-items:center;gap:6px;background:var(--papel);
             border:1px solid var(--linha);border-radius:8px;padding:7px 8px;
             font-size:12.5px;color:var(--tinta);text-align:left;line-height:1.15}
@@ -441,7 +461,13 @@
       </div>
 
       <div class="caixa escondido" id="corpo-bloco">
-        <h2 id="corpo-dica">Por parte do corpo</h2>
+        <div class="corpo-cab">
+          <h2 id="corpo-dica">Por parte do corpo</h2>
+          <!-- Recolher troca o desenho por etiquetas de todas as partes:
+               o filtro continua, sem os 250px do boneco (23/10/2026). -->
+          <button class="corpo-recolher" id="corpo-recolher" type="button"
+                  aria-controls="corpo" aria-expanded="true">Recolher ▴</button>
+        </div>
         <div class="corpo-linha">
           <svg id="corpo" viewBox="0 0 100 245" role="group"
                aria-label="Filtrar por parte do corpo">
@@ -531,9 +557,9 @@
      GitHub Pages manda guardar cada arquivo por 10 min, e esta pagina fica
      FORA do service worker: sem a versao no endereco, o navegador do medico
      seguia com o medico.js antigo ate 10 min depois de publicar. -->
-<script src="../supabase.min.js?v=2026-10-04.23"></script>
-<script src="../config.js?v=2026-10-04.23"></script>
-<script src="../comum.js?v=2026-10-04.23"></script>
-<script src="medico.js?v=2026-10-04.23"></script>
+<script src="../supabase.min.js?v=2026-10-23.1"></script>
+<script src="../config.js?v=2026-10-23.1"></script>
+<script src="../comum.js?v=2026-10-23.1"></script>
+<script src="medico.js?v=2026-10-23.1"></script>
 </body>
 </html>
