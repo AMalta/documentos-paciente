@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-24.3";
+const VERSAO_APP = "2026-10-24.4";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -515,10 +515,10 @@ async function carregarPessoas() {
     .order("criado_em", { ascending: true });
   if (error) { console.warn("[pessoas]", error.message); return; }
   // Sem o sql/024 a tabela não existe: a leitura falha e tudo segue como antes.
-  const cp = await sb.from("compartilhamentos")
+  const comp = await sb.from("compartilhamentos")
     .select("id, pessoa_id, conta_dona, conta_convidada, dona_nome, convidado_nome, codigo, convite_expira, aceito_em")
     .is("revogado_em", null);
-  compartilhamentos = cp.error ? [] : (cp.data || []);
+  compartilhamentos = comp.error ? [] : (comp.data || []);
   const meu = (p) => !p.conta_id || p.conta_id === usuario.id;
   pessoas = (data || []).map((p) => meu(p) ? p : {
     ...p, compartilhada: true,

@@ -25,7 +25,7 @@
     window.__mapaPaciente = true;          // o coracao.js nasce em modo paciente
     carregado = new Promise((ok, falha) => {
       const s = document.createElement("script");
-      s.src = BASE + "coracao.js?v=2";
+      s.src = BASE + "coracao.js?v=3";
       s.onload = () => ok();
       s.onerror = () => { carregado = null; falha(new Error("coracao.js")); };
       document.head.appendChild(s);
@@ -82,6 +82,7 @@
     window.MapaAnatomico.mostrar({
       paciente_id: (docAberto && docAberto.pessoa_id) || "",
       modelo: dadosAbertos.modelo, catalogo: dadosAbertos.catalogo, mapa: dadosAbertos.mapa,
+      plano: dadosAbertos.plano || [],   // 🩺 "Plano combinado com o seu médico" (só as aceitas)
       three: BASE + "three-0.149.0.min.js",
     });
   }

@@ -28,6 +28,7 @@
     three: null, prontoThree: false, dirty: false,
     ia: false, fontes: [], linhaTempo: [], extraindo: false, sugestao: null, tocando: null,
     modelo: "", modelos: [], indidocAuto: false, indidocAtivo: false,
+    plano: {}, planoPaciente: [],   // 🩺 plano de cuidado: {mapa_id: {sugestoes, aceitas}} / o combinado
     paciente: !!window.__mapaPaciente   // app do indiDoc: só leitura
   };
   var G = {}; // objetos do three.js
@@ -279,6 +280,7 @@
     if (!ed) obs.disabled = true;
     c4.appendChild(obs);
     lado.appendChild(c4);
+    if (S.atual.id && S.plano[S.atual.id]) lado.appendChild(cartaoPlano(S.plano[S.atual.id]));
 
     // legenda e ações
     lado.appendChild(el("div", { cls: "card" }, [el("h6", { text: "Legenda" }), el("div", { cls: "cor-legenda", id: "cor_legenda" })]));
@@ -317,6 +319,46 @@
     legenda();
     linhaTempo();
     if (S.dirty) aviso("Alterações não salvas.");
+  }
+
+  // ── 🩺 plano de cuidado: o mapa salvo sugere, o médico aceita ou descarta ──
+  function dm(iso) { iso = String(iso || ""); return iso.length >= 10 ? iso.slice(8, 10) + "/" + iso.slice(5, 7) : ""; }
+  function planoAcao(acao, s) {
+    var dados = { acao: acao, mapa: S.atual.id, regra: s.regra_id, origem: "mapa", t: Date.now() };
+    if (acao === "descartar") {
+      var m = window.prompt("Motivo do descarte (opcional):", "");
+      if (m === null) return;
+      dados.motivo = m;
+    }
+    Shiny.setInputValue("plano_acao", dados, { priority: "event" });
+  }
+  function cartaoPlano(pl) {
+    var c = el("div", { cls: "card" }, [el("h6", { text: "🩺 Plano de cuidado" })]);
+    if (S.dirty) c.appendChild(el("div", { cls: "cor-sub", text: "Salve o mapa para atualizar as sugestões." }));
+    var sugs = pl.sugestoes || [], ac = pl.aceitas || [];
+    if (!sugs.length && !ac.length) c.appendChild(el("div", { cls: "cor-sub", text: "Nenhuma sugestão para este mapa." }));
+    sugs.forEach(function (s) {
+      var partes = [];
+      if ((s.exames || []).length) partes.push("📋 " + s.exames.map(function (e) { return e.nome; }).join(", "));
+      if (s.retorno_dias) partes.push("📅 retorno em " + s.retorno_dias + " dias (" + dm(s.retorno_em) + ")");
+      if ((s.ja_pedidos || []).length) partes.push("já pedido: " + s.ja_pedidos.join(", "));
+      c.appendChild(el("div", { cls: "cor-achado", style: "display:block" }, [
+        el("div", { style: "font-weight:600", text: s.nome }),
+        el("div", { cls: "cor-sub", text: s.motivo }),
+        el("div", { text: partes.join(" · ") }),
+        s.texto_paciente ? el("div", { cls: "cor-sub", style: "font-style:italic", text: "Para o paciente: " + s.texto_paciente }) : null,
+        el("div", { cls: "cor-bts" }, [
+          el("button", { type: "button", text: "✅ Aceitar", onclick: function () { planoAcao("aceitar", s); } }),
+          el("button", { type: "button", text: "✖ Descartar", onclick: function () { planoAcao("descartar", s); } })])
+      ]));
+    });
+    ac.forEach(function (a) {
+      var det = (a.exames || []).filter(Boolean).join(", ");
+      if (a.retorno_em) det += (det ? " · " : "") + "retorno " + dm(a.retorno_em);
+      c.appendChild(el("div", { cls: "cor-sub", style: "color:#15803d", text: "✔ Combinado: " + a.nome + (det ? " (" + det + ")" : "") }));
+    });
+    if (ac.length) c.appendChild(el("div", { cls: "cor-sub", text: "O combinado vai ao paciente no próximo 📱 envio do mapa." }));
+    return c;
   }
 
   // ── add-on: extrair do laudo com IA ───────────────────────────────────
@@ -370,6 +412,18 @@
     lado.appendChild(c);
     if (S.atual.observacoes) lado.appendChild(el("div", { cls: "card" }, [el("h6", { text: "Observações" }),
       el("div", { text: S.atual.observacoes })]));
+    // 🩺 só o que o médico aceitou (o pedido e a agenda continuam no app, sem repetir)
+    if ((S.planoPaciente || []).length) {
+      var pc = el("div", { cls: "card" }, [el("h6", { text: "Plano combinado com o seu médico" })]);
+      S.planoPaciente.forEach(function (p) {
+        pc.appendChild(el("div", { cls: "cor-achado", style: "display:block" }, [
+          p.texto ? el("div", { text: p.texto }) : null,
+          (p.exames || []).length ? el("div", { cls: "cor-sub", text: "📋 Exame pedido: " + p.exames.join(", ") + " (veja em Exames pedidos)" }) : null,
+          p.retorno_em ? el("div", { cls: "cor-sub", text: "📅 Retorno sugerido para " + br(p.retorno_em) + " — a clínica marca; aparece na sua Agenda" }) : null
+        ]));
+      });
+      lado.appendChild(pc);
+    }
     lado.appendChild(el("div", { cls: "card" }, [el("h6", { text: "Legenda" }), el("div", { cls: "cor-legenda", id: "cor_legenda" })]));
     legenda();
   }
@@ -1259,6 +1313,7 @@
     S.consulta = !!d.somente_consulta;
     S.ia = !!d.ia; S.fontes = d.fontes || []; S.linhaTempo = d.linha_tempo || []; S.extraindo = false;
     S.indidocAuto = !!d.indidoc_auto; S.indidocAtivo = !!d.indidoc_ativo;
+    S.plano = d.plano || {};
     var np = document.getElementById("coracao_paciente");
     if (np) np.textContent = d.paciente_nome || "";
     if (trocou) { S.atual = null; S.sel = null; S.dirty = false; }
@@ -1285,6 +1340,7 @@
   window.MapaAnatomico = {
     mostrar: function (d) {
       S.paciente = true;
+      S.planoPaciente = d.plano || [];
       receber({ paciente_id: d.paciente_id || "paciente", catalogo: d.catalogo, modelo: d.modelo,
                 mapas: [Object.assign({ id: "mapa", editavel: false }, d.mapa || {})],
                 somente_consulta: true, three: d.three });
@@ -1299,6 +1355,7 @@
     Shiny.addCustomMessageHandler("coracao_dados", function (d) { receber(d); });
     Shiny.addCustomMessageHandler("coracao_salvo", function (d) { S.salvoId = d && d.id; S.dirty = false; });
     Shiny.addCustomMessageHandler("coracao_sugestao", function (d) { sugestao(d); });
+    Shiny.addCustomMessageHandler("coracao_plano", function (d) { if (d && d.mapa_id) { S.plano[d.mapa_id] = d.plano || {}; painel(); } });
   }
 
   // A IA devolveu um RASCUNHO: entra como mapa novo, não salvo, para revisar
