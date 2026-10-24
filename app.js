@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-23.1";
+const VERSAO_APP = "2026-10-24.1";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -285,6 +285,11 @@ function explicar(erro) {
     return "Este convite é seu. Mande o link para a pessoa que vai cuidar junto.";
   if (/LIMITE_CUIDADORES/.test(cru))
     return "Esta pessoa já tem 5 convites ou pessoas cuidando junto.";
+  // sql/026: o banco confere o que o app grava (Indiclin Fase 10h)
+  if (/DADO_INVALIDO/.test(cru)) {
+    const m = cru.match(/DADO_INVALIDO:\s*([^\n]+)/);
+    return "Não deu para guardar: " + (m ? m[1].trim() : "algum dado não está certo") + ".";
+  }
   if (/LIMITE_PAGINAS/.test(cru))
     return "Este documento já tem páginas demais. Guarde o restante como um "
          + "segundo documento.";
@@ -2080,6 +2085,7 @@ async function abrirDocumento(doc) {
   }
   visuIndice = 0;
   mostrarPagina();
+  if (window.Mapa3D) Mapa3D.aoAbrir(doc);   // 🧍 Ver em 3D, no mapa mais recente
 }
 
 function visuTitulo(doc) {
@@ -2102,6 +2108,7 @@ el.visuDepois.onclick = () => {
 };
 el.visuFechar.onclick = () => {
   el.telaVisu.classList.add("escondido");
+  if (window.Mapa3D) Mapa3D.aoAbrir(null);
   el.visuImg.removeAttribute("src");
   visuPaginas = [];
   visuOrigem = null; visuCaminhos = []; visuEntrada = null; visuDoc = null;
@@ -3096,7 +3103,7 @@ function desenharAgrupadoApp(lista) {
    ela continua separando as espécies como sempre. */
 function desenharPorTipoApp(lista) {
   const pularFaixa = !!el.filtroTipo.value;
-  const ORDEM_TIPOS = ["exame", "laudo", "receita", "relatorio", "outro"];
+  const ORDEM_TIPOS = ["exame", "laudo", "receita", "relatorio", "mapa", "outro"];
   const porTipo = new Map();
   for (const d of lista) {
     if (!porTipo.has(d.tipo)) porTipo.set(d.tipo, []);

@@ -12,9 +12,9 @@
    Carregado ANTES de app.js e de medico.js, que so consomem.
    ═══════════════════════════════════════════════════════════════════════ */
 const ROTULOS = { exame: "Exame", laudo: "Laudo", receita: "Receita",
-                  relatorio: "Relatório", outro: "Documento" };
+                  relatorio: "Relatório", mapa: "Mapa anatômico", outro: "Documento" };
 const ICONES = { exame: "🧪", laudo: "📄", receita: "💊",
-                 relatorio: "📋", outro: "📎" };
+                 relatorio: "📋", mapa: "🧍", outro: "📎" };
 
 // A faixa U+0300 a U+036F sao os acentos que o NFD separa da letra.
 // Montada com fromCharCode e nao escrita direto no regex: esses
@@ -257,12 +257,15 @@ const REGIOES = [
     chaves: ["cranio", "encefalo", "cerebro", "eeg", "enxaqueca", "hipofise",
              "sela turcica", "seios da face", "olho", "oftalm", "retina",
              "oculos", "visao", "acuidade", "fundo de olho", "ouvido",
-             "audiometria", "otorrino", "nasal", "sinusite"],
+             "audiometria", "otorrino", "nasal", "sinusite",
+             // mapas anatômicos do Indiclin (sql/027): laringe, olho, dentes
+             "laringe", "segmento anterior", "odontograma"],
     sub: [
       { id: "olhos", rotulo: "Olhos",
         chaves: ["olho", "oftalm", "retina", "oculos", "visao", "acuidade",
                  "fundo de olho", "catarata", "glaucoma", "tonometr",
-                 "campimetr", "refra", "ocular", "cristalino", "macula"] },
+                 "campimetr", "refra", "ocular", "cristalino", "macula",
+                 "segmento anterior"] },
       { id: "ouvidos", rotulo: "Ouvidos",
         chaves: ["ouvido", "audiometr", "otoscop", "timpano", "auditiv",
                  "impedanciometr", "labirint", "otoneurolog"] },
@@ -272,7 +275,7 @@ const REGIOES = [
       { id: "garganta", rotulo: "Boca e garganta",
         chaves: ["otorrino", "garganta", "faringe", "laringe", "amigdal",
                  "laringoscop", "degluticao", "boca", "bucal", "dentar",
-                 "panoramica", "odontolog"] },
+                 "panoramica", "odontolog", "odontograma"] },
       { id: "miolo", rotulo: "Crânio e cérebro",
         chaves: ["cranio", "encefalo", "cerebro", "=eeg", "enxaqueca",
                  "hipofise", "sela turcica", "neurolog", "eletroencefalo",
@@ -599,7 +602,10 @@ function pintarBolhas(raiz, conta, ativa) {
 }
 
 function regioesDoDocumento(d) {
-  const texto = semAcento((d.nome || "") + " " + (ROTULOS[d.tipo] || ""));
+  // Mapa anatômico (sql/027): só o nome ("🦷 Odontograma — …"). O rótulo
+  // "Mapa anatômico" casaria com "mapa" (a MAPA da pressão) e acenderia o
+  // tórax em todo mapa.
+  const texto = semAcento((d.nome || "") + " " + (d.tipo === "mapa" ? "" : (ROTULOS[d.tipo] || "")));
   const achadas = new Set();
   for (const r of REGIOES) {
     if (r.tipos && r.tipos.includes(d.tipo)) { achadas.add(r.id); continue; }

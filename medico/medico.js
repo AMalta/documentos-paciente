@@ -535,7 +535,7 @@ function cartaoDocumento(d) {
    resto; aqui aparecem TODOS, organizados e contados. É a diferença entre
    "só os laudos" e "o que este paciente tem, por espécie de papel". */
 function desenharPorTipo(lista) {
-  const ORDEM_TIPOS = ["exame", "laudo", "receita", "relatorio", "outro"];
+  const ORDEM_TIPOS = ["exame", "laudo", "receita", "relatorio", "mapa", "outro"];
   const porTipo = new Map();
   for (const d of lista) {
     if (!porTipo.has(d.tipo)) porTipo.set(d.tipo, []);

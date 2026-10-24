@@ -662,6 +662,10 @@
   .paginacao button:disabled{opacity:.35}
   /* Separado dos de navegar: girar MUDA o arquivo, ‹ › só andam nele. */
   #visu-girar{margin-left:18px;background:rgba(255,255,255,.22)}
+  #visu-3d{margin-left:12px;background:#1c6b4a;border-radius:9px;font-weight:600;padding:8px 12px}
+  /* Mapa 3D: fundo claro (o desenho é pensado para ele) e rolagem do painel */
+  #tela-mapa3d .mapa3d-corpo{flex:1;overflow:auto;background:#f8fafc;color:#1f2937;padding:8px 10px 24px}
+  #tela-mapa3d .cor-palco{height:58vh;min-height:300px}
   /* Vermelho discreto: precisa ser distinguivel de Fechar sem virar o
      elemento mais chamativo de uma tela que existe para LER o documento. */
   .tela-cheia .barra .perigo{color:#ff9d94}
@@ -1859,6 +1863,7 @@
       <option value="laudo">Laudos</option>
       <option value="receita">Receitas</option>
       <option value="relatorio">Relatórios</option>
+      <option value="mapa">Mapas anatômicos</option>
       <option value="outro">Outros</option>
     </select>
     <select id="filtro-ordem">
@@ -2168,7 +2173,18 @@
          percebe que três saíram deitados quando o papel já voltou para a
          gaveta. Sem isto, a única saída seria apagar e refotografar. -->
     <button id="visu-girar" aria-label="Girar a página">↻</button>
+    <!-- Mapa anatômico (sql/027): só no mais recente de cada especialidade -->
+    <button id="visu-3d" class="escondido">🧍 Ver em 3D</button>
   </div>
+</div>
+
+<!-- MAPA ANATÔMICO EM 3D (mapa3d.js) ------------------------------------- -->
+<div class="tela-cheia escondido" id="tela-mapa3d">
+  <div class="barra">
+    <span class="titulo" id="mapa3d-titulo">Mapa anatômico</span>
+    <button id="mapa3d-fechar">← Voltar</button>
+  </div>
+  <div class="mapa3d-corpo"><div id="coracao_app" class="coracao-app"></div></div>
 </div>
 
 <!-- COMPROMISSO: marcar e editar ------------------------------------------ -->
@@ -2255,6 +2271,7 @@
           <option value="laudo">Laudo</option>
           <option value="receita">Receita</option>
           <option value="relatorio">Relatório</option>
+          <option value="mapa">Mapa anatômico</option>
           <option value="outro">Outro</option>
         </select>
       </div>
@@ -2402,6 +2419,7 @@
 <script src="agenda.js"></script>
 <script src="termo.js"></script>
 <script src="app.js"></script>
+<script src="mapa3d.js"></script>
 <script src="conversa.js"></script>
 <script src="preconsulta.js"></script>
 <script src="farmacia_popular.js"></script>
