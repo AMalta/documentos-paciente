@@ -965,6 +965,29 @@
       G.corpo.add(sp);
       return sp;
     }
+    // Modo paciente (indiDoc): o desenho do dente (coroa e raiz) por fora do
+    // número, como na ficha de papel — quem não é dentista reconhece o dente
+    // pelo desenho, não pelo quadrado. Pinta com o achado do dente inteiro.
+    // Pontos: x, e t = distância da borda incisal/oclusal para a raiz.
+    var SILHUETAS = {
+      incisivo: [[-0.10, 0], [0.10, 0], [0.075, 0.17], [0.02, 0.45], [0, 0.47], [-0.02, 0.45], [-0.075, 0.17]],
+      canino: [[-0.10, 0.06], [0, 0], [0.10, 0.06], [0.08, 0.19], [0.025, 0.53], [0, 0.55], [-0.025, 0.53], [-0.08, 0.19]],
+      premolar: [[-0.11, 0.03], [-0.06, 0], [0, 0.03], [0.06, 0], [0.11, 0.03], [0.09, 0.17], [0.03, 0.44], [0, 0.46],
+                 [-0.03, 0.44], [-0.09, 0.17]],
+      molar: [[-0.13, 0.03], [-0.09, 0], [-0.045, 0.025], [0, 0], [0.045, 0.025], [0.09, 0], [0.13, 0.03], [0.12, 0.17],
+              [0.10, 0.38], [0.075, 0.40], [0.045, 0.20], [0, 0.19], [-0.045, 0.20], [-0.075, 0.40], [-0.10, 0.38],
+              [-0.12, 0.17]]
+    };
+    function silhueta(T, k, id, cx, y0, fora) {
+      var tipo = k <= 2 ? "incisivo" : k === 3 ? "canino" : k <= 5 ? "premolar" : "molar";
+      var esc = k === 2 ? 0.85 : k === 7 ? 0.92 : k === 8 ? 0.85 : 1;
+      var pts = SILHUETAS[tipo].map(function (p) { return [p[0] * esc, fora * p[1]]; });
+      var m = forma(T, pts, id, "dente", cx, y0);
+      var segs = pts.map(function (p, i) { var q = pts[(i + 1) % pts.length]; return [p[0], p[1], q[0], q[1]]; });
+      var c = fora * 0.17;                    // a linha do colo: coroa | raiz
+      segs.push([-0.085 * esc, c, 0.085 * esc, c]);
+      return [m, linhas(T, segs, cx, y0)];
+    }
     // [quadrante, superior?, lado na tela (-1 = esquerda), decíduo?, y]
     [[1, true, -1, false, 1.15], [2, true, 1, false, 1.15], [4, false, -1, false, -1.15], [3, false, 1, false, -1.15],
      [5, true, -1, true, 0.42], [6, true, 1, true, 0.42], [8, false, -1, true, -0.42], [7, false, 1, true, -0.42]]
@@ -994,12 +1017,15 @@
           malhas.push(forma(T, [[-S2, -hb], [S2, -hb], [S2, hb], [-S2, hb]], id, "dente", cx, yb));
           malhas.push(linhas(T, [[-S2, -hb, S2, -hb], [S2, -hb, S2, hb], [S2, hb, -S2, hb], [-S2, hb, -S2, -hb]], cx, yb));
           malhas.push(numero(T, String(num), cx, cy + fora * (S2 + 0.2), dec));
+          if (S.paciente && !dec) malhas.push.apply(malhas, silhueta(T, k, id, cx, cy + fora * (S2 + 0.29), fora));
           if (dec) G.camaras.push.apply(G.camaras, malhas);
         }
       });
     // linhas da arcada (meio da boca e entre superiores e inferiores)
-    referencia(T, new T.PlaneGeometry(0.012, 3.3), [0, 0, -0.01], 0x94a3b8);
-    referencia(T, new T.PlaneGeometry(5.4, 0.012), [0, 0, -0.01], 0x94a3b8);
+    // (ficam sempre: o ◐ esconde só os decíduos)
+    var meio = referencia(T, new T.PlaneGeometry(0.012, 3.3), [0, 0, -0.01], 0x94a3b8);
+    var arcada = referencia(T, new T.PlaneGeometry(5.4, 0.012), [0, 0, -0.01], 0x94a3b8);
+    G.camaras = G.camaras.filter(function (m) { return m !== meio && m !== arcada; });
   }
 
   // Registro dos modelos: forma, inclinação fixa, vistas e o botão ◐
@@ -1042,6 +1068,9 @@
     G.corpo.rotation.set(0, 0, M.incl);
     G.corpo.position.set(0, M.y, 0);
     M.construir(T);
+    // Odontograma do paciente: abre sem os decíduos, a não ser que o mapa
+    // tenha achado num deles (esconder achado seria pior). ◐ mostra.
+    if (S.paciente && nome === "odonto" && !temDeciduo()) alternarCamaras();
     G.marcasGrupo = new T.Group();
     G.corpo.add(G.marcasGrupo);
     G.modeloMontado = nome;
@@ -1056,6 +1085,10 @@
       bar.appendChild(el("button", { type: "button", text: "－", title: "Afastar", "aria-label": "Afastar", onclick: function () { zoom(1.25); } }));
     }
     vista(M.vistas[0][0]);
+  }
+
+  function temDeciduo() {
+    return Object.keys((S.atual && S.atual.regioes) || {}).some(function (id) { return /^d[5-8]\d/.test(id); });
   }
 
   function alternarCamaras() {
