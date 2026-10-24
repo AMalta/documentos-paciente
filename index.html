@@ -662,7 +662,16 @@
   .paginacao button:disabled{opacity:.35}
   /* Separado dos de navegar: girar MUDA o arquivo, ‹ › só andam nele. */
   #visu-girar{margin-left:18px;background:rgba(255,255,255,.22)}
-  #visu-3d{margin-left:12px;background:#1c6b4a;border-radius:9px;font-weight:600;padding:8px 12px}
+  /* Botão 3D com cara de 3D: letras em relevo (sombras empilhadas) e o
+     botão saltado (borda de baixo grossa); afunda ao toque. */
+  #visu-3d{margin-left:14px;padding:9px 18px 10px;border-radius:12px;border:0;cursor:pointer;
+    font:900 23px/1 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.5px;color:#fff;
+    background:linear-gradient(160deg,#3fae84 0%,#1c6b4a 55%,#134d35 100%);
+    box-shadow:0 5px 0 #0b3424,0 9px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.35);
+    text-shadow:1px 1px 0 #0f5a3d,2px 2px 0 #0d4f35,3px 3px 0 #0b442d,4px 4px 6px rgba(0,0,0,.45);
+    transform:perspective(220px) rotateX(10deg);transition:transform .08s,box-shadow .08s}
+  #visu-3d:active{transform:perspective(220px) rotateX(10deg) translateY(4px);
+    box-shadow:0 1px 0 #0b3424,0 3px 6px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.25)}
   /* Mapa 3D: fundo claro (o desenho é pensado para ele) e rolagem do painel */
   #tela-mapa3d .mapa3d-corpo{flex:1;overflow:auto;background:#f8fafc;color:#1f2937;padding:8px 10px 24px}
   #tela-mapa3d .cor-palco{height:58vh;min-height:300px}
@@ -2174,7 +2183,7 @@
          gaveta. Sem isto, a única saída seria apagar e refotografar. -->
     <button id="visu-girar" aria-label="Girar a página">↻</button>
     <!-- Mapa anatômico (sql/027): só no mais recente de cada especialidade -->
-    <button id="visu-3d" class="escondido">🧍 Ver em 3D</button>
+    <button id="visu-3d" class="escondido" aria-label="Ver o mapa em 3D" title="Ver o mapa em 3D">3D</button>
   </div>
 </div>
 
