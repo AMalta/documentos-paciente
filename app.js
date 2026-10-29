@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-29.1";
+const VERSAO_APP = "2026-10-29.2";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1130,6 +1130,7 @@ async function guardar() {
   await carregar();
   await enviarFila();
   convidarAProteger();
+  if (window.Plano) Plano.talvez();      // passou de 80%: oferece o plano
   return true;
 }
 
@@ -3631,6 +3632,8 @@ function avisarSeApertando() {
   const usados = consumo.documentos + naFila.length;
   const restam = consumo.teto - usados;
   if (restam > 5 || restam < 0) return;
+  // No limite, a oferta do plano (plano.js) explica e leva até ele.
+  if (restam <= 0 && window.Plano) { Plano.oferecer("documentos"); return; }
   aviso(restam <= 0
     ? "Você chegou ao limite de documentos guardados. Para guardar mais, veja "
       + "os planos em Conta → ⭐ Seu plano, ou apague algum que não precise mais."
@@ -3768,7 +3771,11 @@ function desenharContaPessoas() {
     ct.pessoaPago.innerHTML = teto > 2
       ? `<b>${teto} pessoas é o limite do seu plano</b>Para outra pessoa, remova uma da lista.`
       : "<b>Duas pessoas é o limite gratuito</b>"
-        + "O plano Família guarda até 6 pessoas — veja em ⭐ Seu plano, logo abaixo.";
+        + "O plano Família guarda até 6 pessoas — veja em ⭐ Seu plano, logo abaixo."
+        + '<button type="button" class="btn-linha" id="pessoa-ver-planos" '
+        + 'style="width:100%;margin-top:8px">⭐ Ver o plano Família</button>';
+    const ver = document.getElementById("pessoa-ver-planos");
+    if (ver && window.Plano) ver.onclick = () => Plano.verPlanos();
   }
 }
 

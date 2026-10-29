@@ -136,6 +136,58 @@
     aviso("Renovação cancelada.", "ok");
   }
 
+  /* ── A oferta na hora certa (29/10/2026) ────────────────────────────
+     Antes o paciente só via o plano ao bater no limite, como erro. Agora:
+     - "quase": depois de guardar, ao passar de 80% (uma vez por semana, e
+       só em conta com e-mail — a anônima recebe antes o convite de guardar
+       o acesso);
+     - "documentos": no limite, ao tocar em fotografar ou PDF;
+     - "pessoas": botão no aviso da terceira pessoa.                     */
+  const CHAVE_OFERTA = "indidoc_oferta_plano";
+  const SEMANA = 7 * 86400000;
+  const ofereceuHaPouco = () => {
+    try { return Date.now() - Number(localStorage.getItem(CHAVE_OFERTA) || 0) < SEMANA; }
+    catch (e) { return false; }
+  };
+
+  function verPlanos() {
+    abrirConta(false);
+    setTimeout(() => caixa.scrollIntoView({ block: "start", behavior: "smooth" }), 80);
+  }
+
+  async function oferecer(motivo) {
+    const c = consumo || {};
+    const familia = c.plano === "familia";
+    let titulo, texto;
+    if (motivo === "pessoas") {
+      titulo = "Guardar mais pessoas";
+      texto = "O plano gratuito guarda 2 pessoas. O Família guarda até 6 pessoas e 500 "
+        + "documentos, por R$ 9,90/mês ou R$ 89,90/ano.";
+    } else if (familia) {
+      titulo = motivo === "quase" ? "Seu espaço está acabando" : "Seu espaço acabou";
+      texto = `Você usou ${c.documentos ?? 0} de ${c.teto ?? 0} documentos. O pacote soma `
+        + "+100 documentos para sempre, por R$ 19,90, uma vez só.";
+    } else {
+      titulo = motivo === "quase" ? "Seu espaço está acabando" : "Seu espaço gratuito acabou";
+      texto = `Você usou ${c.documentos ?? 0} de ${c.teto ?? 100} documentos. O plano Família `
+        + "guarda até 500 documentos e 6 pessoas, por R$ 9,90/mês. Ou some +100 documentos "
+        + "para sempre, por R$ 19,90.";
+    }
+    const ok = await confirmarModal(texto, { titulo, textoConfirmar: "Ver os planos",
+                                             textoCancelar: "Agora não" });
+    if (ok) verPlanos();
+  }
+
+  // Depois de guardar um documento.
+  function talvez() {
+    const c = consumo || {};
+    if (!c.teto || contaAnonima() || ofereceuHaPouco()) return;
+    const usados = (c.documentos || 0) + naFila.length;
+    if (usados < c.teto * 0.8 || usados >= c.teto) return;   // no limite: avisarSeApertando
+    try { localStorage.setItem(CHAVE_OFERTA, String(Date.now())); } catch (e) { /* sem storage */ }
+    oferecer("quase");
+  }
+
   // Voltou da página de pagamento: relê o plano (o webhook pode ter liberado).
   document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible" && escolhido) {
@@ -144,5 +196,5 @@
     }
   });
 
-  window.Plano = { desenhar };
+  window.Plano = { desenhar, oferecer, talvez, verPlanos };
 })();
