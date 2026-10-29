@@ -558,6 +558,7 @@
     if (!e || !S.atual) return null;
     if (e.tipo === "retinopatia") return retinopatia(e);
     if (e.tipo === "cpod") return cpod(e);
+    if (e.tipo === "birads") return birads(e);
     var lados = {}, total = 0, sem = 0;
     Object.keys(e.lados).forEach(function (l) {
       var soma = 0;
@@ -618,6 +619,18 @@
     if (pe.marcados) partes.push("CPO-D " + pe.total + " (C " + pe.c + ", P " + pe.p + ", O " + pe.o + ")");
     if (de.marcados) partes.push("ceo-d " + de.total + " (c " + de.c + ", e " + de.p + ", o " + de.o + ")");
     return { texto: partes.length ? partes.join(" · ") : "CPO-D: marque os dentes para contar" };
+  }
+
+  // BI-RADS por mama: a mesma conta de classificar_birads (mapas_anatomicos.py)
+  function birads(e) {
+    var R = e.regra, partes = [];
+    Object.keys(e.mamas).forEach(function (m) {
+      var cats = e.mamas[m].map(function (rid) { var v = S.atual.regioes[rid]; return v && R.categorias[v.achado]; })
+        .filter(function (c) { return c && R.ordem.indexOf(c) >= 0; });
+      if (!cats.length) return;
+      partes.push(m + " " + cats.reduce(function (a, b) { return R.ordem.indexOf(b) > R.ordem.indexOf(a) ? b : a; }));
+    });
+    return { texto: partes.length ? e.nome + ": " + partes.join(" · ") : e.nome + ": marque os achados para classificar" };
   }
 
   function trocarModelo(id) {
@@ -982,6 +995,53 @@
     });
   }
 
+  // ── 🎀 Mamas em 2D, de frente (25/10/2026) ───────────────────────────
+  // A mama DIREITA à esquerda da tela. Cada uma: os 4 quadrantes, a região
+  // retroareolar e o complexo areolopapilar no centro, o prolongamento axilar
+  // e a axila (para cima e para fora). "◐ Relógio" mostra/esconde as horas.
+  function textoSprite(T, txt, x, y, tam, cor) {
+    var cv = document.createElement("canvas"); cv.width = 512; cv.height = 64;
+    var ctx = cv.getContext("2d");
+    ctx.fillStyle = cor; ctx.font = "bold 40px sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(txt, 256, 34);
+    var sp = new T.Sprite(new T.SpriteMaterial({ map: new T.CanvasTexture(cv), depthTest: false }));
+    sp.scale.set(tam * 8, tam, 1);
+    sp.position.set(x, y, 0.05);
+    G.corpo.add(sp);
+    return sp;
+  }
+  function construirMama(T) {
+    G.camaras = [];
+    var R = 0.95, Q = Math.PI / 2, g = 0.015;
+    // [lado, centro x, lado lateral (-1 = para a esquerda da tela), rótulo]
+    [["d", -1.3, -1, "Mama direita"], ["e", 1.3, 1, "Mama esquerda"]].forEach(function (p) {
+      var l = p[0], cx = p[1], lat = p[2];
+      var q = lat < 0 ? { qsm: 0, qsl: 1, qil: 2, qim: 3 } : { qsl: 0, qsm: 1, qim: 2, qil: 3 };
+      Object.keys(q).forEach(function (k) {
+        setor(T, k + "_" + l, "parenquima", cx, 0.3, R, q[k] * Q + g, (q[k] + 1) * Q - g, 0);
+      });
+      setor(T, "retro_" + l, "parenquima", cx, 0.135, 0.285, 0, 2 * Math.PI, 0.01);
+      var cap = add(T, new T.CircleGeometry(0.12, 32), "cap_" + l, "cap");
+      cap.position.set(cx, 0, 0.02);
+      // prolongamento axilar e axila: na diagonal superolateral
+      var ang = lat < 0 ? 3 * Math.PI / 4 : Math.PI / 4;
+      var pro = add(T, new T.CircleGeometry(0.2, 32), "prolong_" + l, "parenquima");
+      pro.scale.set(1.7, 0.75, 1); pro.rotation.z = ang;
+      pro.position.set(cx + Math.cos(ang) * 1.13, Math.sin(ang) * 1.13, 0);
+      var ax = add(T, new T.CircleGeometry(0.24, 32), "axila_" + l, "axila");
+      ax.position.set(cx + Math.cos(ang) * 1.68, Math.sin(ang) * 1.68, 0);
+      var pts = [];
+      for (var i = 0; i <= 64; i++) pts.push([cx + Math.cos(i / 64 * 2 * Math.PI) * (R + 0.02),
+                                              Math.sin(i / 64 * 2 * Math.PI) * (R + 0.02), 0.03]);
+      contorno(T, pts);
+      textoSprite(T, p[3], cx, -R - 0.36, 0.2, "#475569");
+      // as horas do relógio, como vistas de frente
+      [["12", 0, 1], ["3", 1, 0], ["6", 0, -1], ["9", -1, 0]].forEach(function (h) {
+        G.camaras.push(textoSprite(T, h[0], cx + h[1] * (R + 0.16), h[2] * (R + 0.14), 0.17, "#64748b"));
+      });
+    });
+  }
+
   // ── 🦷 Odontograma (FDI) em 2D ────────────────────────────────────────
   // Lado direito do paciente à esquerda da tela; superiores em cima (a
   // vestibular para fora), decíduos nas fileiras de dentro. Cada dente: as
@@ -1106,7 +1166,10 @@
       alternar: ["◐ Vasos", "Vasos e fóvea: mostrar/esconder"] },
     odonto: { construir: construirOdonto, incl: 0, y: 0, dist: 8.6,
       vistas: [["frente", "Odontograma", [0, 0, 0]]],
-      alternar: ["◐ Decíduos", "Dentes decíduos (fileiras de dentro): mostrar/esconder"] }
+      alternar: ["◐ Decíduos", "Dentes decíduos (fileiras de dentro): mostrar/esconder"] },
+    mama: { construir: construirMama, incl: 0, y: -0.2, dist: 8.4,
+      vistas: [["frente", "De frente", [0, 0, 0]]],
+      alternar: ["◐ Relógio", "As horas (12, 3, 6, 9) em volta de cada mama: mostrar/esconder"] }
   };
 
   function montarModelo(nome) {

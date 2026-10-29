@@ -63,8 +63,12 @@ window.TERMO = {
      2026-09-26: receitas simples entram na lista do que a clínica envia.
 
      2026-09-26.2: a mesma permissão passa a incluir as consultas marcadas
-     (entram na agenda) e os avisos no celular. */
-  versao: "2026-09-26.2",
+     (entram na agenda) e os avisos no celular.
+
+     2026-10-29: planos pagos opcionais (Família e pacote de documentos), com
+     o CPF enviado ao Asaas na hora de pagar. É dado novo saindo daqui, então
+     o aceite anterior não vale para isto. */
+  versao: "2026-10-29",
 
   // As seis frases da tela. Cada uma responde uma pergunta da LGPD sem
   // usar a palavra da LGPD.
@@ -95,6 +99,11 @@ window.TERMO = {
     ["⏳", "Fica enquanto você quiser",
      "Não há prazo de validade. Seus documentos ficam até você apagá-los ou "
      + "encerrar a conta."],
+    ["💳", "O básico é grátis; o plano pago é opcional",
+     "Duas pessoas e 100 documentos seus, sem pagar nada — o que a clínica "
+     + "envia não entra nessa conta. Para mais pessoas ou documentos há planos "
+     + "pagos, e só quem assina informa o CPF, que vai para quem processa o "
+     + "pagamento."],
     ["📋", "Isto não é o seu prontuário",
      "É a sua cópia pessoal dos documentos. Não substitui o registro do seu "
      + "médico, e durante esta fase de testes guarde também os papéis "
@@ -195,22 +204,42 @@ Usado apenas para você conseguir voltar aos seus documentos em outro celular,
 ou neste mesmo caso ele seja trocado ou limpo. Não é usado para propaganda e
 não é repassado a médicos, clínicas ou laboratórios.
 
-9. O QUE ESTE APLICATIVO NÃO É
+9. PLANOS E PAGAMENTO
+O uso básico é gratuito e continua gratuito: duas pessoas por conta e 100
+documentos enviados por você. Os documentos que uma clínica envia para o seu
+acervo não entram nesse limite.
+
+Para guardar mais, há planos opcionais: o Família (até 6 pessoas e 500
+documentos, mensal ou anual) e o pacote de +100 documentos, de pagamento
+único. Os preços aparecem no aplicativo antes da compra.
+
+O pagamento é feito na página da Asaas Gestão Financeira Instituição de
+Pagamento S.A., por cartão de crédito, PIX ou boleto. Para emitir a cobrança,
+o aplicativo envia à Asaas seu nome, seu e-mail e seu CPF. O CPF não fica
+guardado no indiDoc, e os números do cartão nunca passam pelo aplicativo.
+Nenhum documento do seu acervo é enviado à Asaas.
+
+Você cancela a renovação do Família quando quiser, na tela da conta; o que já
+foi pago vale até o fim do período. Se o plano terminar, nada é apagado:
+você continua vendo tudo, só não guarda documento ou pessoa nova acima do
+limite gratuito.
+
+10. O QUE ESTE APLICATIVO NÃO É
 Não é o seu prontuário médico e não substitui os registros do seu médico ou
 da clínica, que seguem com as obrigações legais deles. Não é laudo, não é
 diagnóstico e não interpreta resultados. É a sua cópia pessoal, organizada,
 de documentos que já são seus.
 
-10. FASE DE TESTES
+11. FASE DE TESTES
 Este aplicativo está em fase de testes com um grupo pequeno de pessoas.
 Durante esse período, continue guardando os documentos originais em papel.
 
-11. SEUS DIREITOS
+12. SEUS DIREITOS
 Você pode, a qualquer momento, consultar, corrigir, apagar seus dados ou
 retirar este consentimento, sem precisar justificar. Retirar o consentimento
 significa encerrar a conta e apagar os documentos guardados.
 
-12. QUEM RESPONDE POR ISTO
+13. QUEM RESPONDE POR ISTO
 ${RESPONSAVEL.nome}
 ${RESPONSAVEL.documento}
 

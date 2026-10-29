@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-24.4";
+const VERSAO_APP = "2026-10-29.1";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -273,11 +273,11 @@ function explicar(erro) {
   // com /limit/ e o paciente lia "muitas tentativas seguidas" ao chegar no
   // teto de documentos.
   if (/LIMITE_DOCUMENTOS/.test(cru))
-    return "Você chegou ao limite de documentos guardados. Para guardar mais, "
-         + "apague algum que não precise mais.";
+    return "Você chegou ao limite de documentos guardados. Para guardar mais, veja "
+         + "os planos em Conta → ⭐ Seu plano, ou apague algum que não precise mais.";
   if (/LIMITE_PESSOAS/.test(cru))
-    return "Duas pessoas é o limite gratuito desta conta. Guardar o acervo "
-         + "de uma terceira vai ser um recurso pago, ainda não disponível.";
+    return "Você chegou ao limite de pessoas desta conta. O plano Família guarda "
+         + "até 6 pessoas: veja em Conta → ⭐ Seu plano.";
   if (/CONVITE_INVALIDO/.test(cru))
     return "Este convite não vale mais: já foi usado, foi cancelado ou passou "
          + "de 24 horas. Peça um novo a quem convidou.";
@@ -285,7 +285,7 @@ function explicar(erro) {
     return "Este convite é seu. Mande o link para a pessoa que vai cuidar junto.";
   if (/LIMITE_CUIDADORES/.test(cru))
     return "Esta pessoa já tem 5 convites ou pessoas cuidando junto.";
-  // sql/026: o banco confere o que o app grava (Indiclin Fase 10h)
+  // sql/028: o banco confere o que o app grava (Indiclin Fase 10h)
   if (/DADO_INVALIDO/.test(cru)) {
     const m = cru.match(/DADO_INVALIDO:\s*([^\n]+)/);
     return "Não deu para guardar: " + (m ? m[1].trim() : "algum dado não está certo") + ".";
@@ -3611,8 +3611,12 @@ async function lerConsumo() {
     // sem ele, desenharContaPessoas caia no `|| 2` e o teto virava um
     // numero cravado no aplicativo — o contrario do que o resto do modulo
     // faz, que e perguntar ao banco. Nada quebrava; so parava de obedecer.
+    // sql/029: o plano e o que a clínica enviou (fora do limite)
     if (l) consumo = { documentos: l.documentos, teto: l.teto, bytes: l.bytes,
-                       pessoas: l.pessoas, teto_pessoas: l.teto_pessoas };
+                       pessoas: l.pessoas, teto_pessoas: l.teto_pessoas,
+                       da_clinica: l.da_clinica || 0, plano: l.plano || "gratis",
+                       plano_ate: l.plano_ate || null, periodo: l.periodo || null,
+                       docs_extra: l.docs_extra || 0, assinatura_ativa: !!l.assinatura_ativa };
   } catch (e) {
     console.warn("[consumo]", e.message || e);
   }
@@ -3628,8 +3632,8 @@ function avisarSeApertando() {
   const restam = consumo.teto - usados;
   if (restam > 5 || restam < 0) return;
   aviso(restam <= 0
-    ? "Você chegou ao limite de documentos guardados. Para guardar mais, apague "
-      + "algum que não precise mais."
+    ? "Você chegou ao limite de documentos guardados. Para guardar mais, veja "
+      + "os planos em Conta → ⭐ Seu plano, ou apague algum que não precise mais."
     : `Restam ${restam} documento(s) dentro do seu limite de ${consumo.teto}.`,
     restam <= 0 ? "erro" : "info");
 }
@@ -3693,9 +3697,8 @@ const contaAnonima = () => !confirmado(usuario);
    tela é sugestão. Aqui o trabalho é outro — avisar ANTES, para a pessoa
    não digitar um nome e levar uma recusa seca.
 
-   NÃO HÁ COBRANÇA ainda: o aplicativo não tem gateway, assinatura nem
-   webhook, e isso é um projeto próprio. O que existe é a trava e o aviso
-   honesto de que o recurso vai ser pago.                                   */
+   29/10/2026: a terceira pessoa é do plano Família (plano.js, sql/029,
+   função `cobranca` com o Asaas); o teto vem de meu_consumo.              */
 const ROTULO_PARENTESCO = { eu: "você", filho: "filho", filha: "filha",
                             mae: "mãe", pai: "pai", conjuge: "cônjuge",
                             outro: "" };
@@ -3762,9 +3765,10 @@ function desenharContaPessoas() {
   ct.pessoaAdicionar.classList.toggle("escondido", cheio);
   ct.pessoaPago.classList.toggle("escondido", !cheio);
   if (cheio) {
-    ct.pessoaPago.innerHTML = "<b>Duas pessoas é o limite gratuito</b>"
-      + "Guardar o acervo de uma terceira pessoa vai ser um recurso pago. "
-      + "Ainda não está disponível — quando estiver, avisamos por aqui.";
+    ct.pessoaPago.innerHTML = teto > 2
+      ? `<b>${teto} pessoas é o limite do seu plano</b>Para outra pessoa, remova uma da lista.`
+      : "<b>Duas pessoas é o limite gratuito</b>"
+        + "O plano Família guarda até 6 pessoas — veja em ⭐ Seu plano, logo abaixo.";
   }
 }
 
@@ -3915,6 +3919,7 @@ function pintarConta() {
   if (protegida) ct.emailAtual.textContent = usuario.email;
 
   desenharContaPessoas();
+  if (window.Plano) Plano.desenhar();     // ⭐ Seu plano (plano.js, sql/029)
   const uso = ct.tela.querySelector("#conta-uso");
   if (uso && consumo.teto) {
     const usados = consumo.documentos + naFila.length;

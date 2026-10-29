@@ -25,7 +25,7 @@
     window.__mapaPaciente = true;          // o coracao.js nasce em modo paciente
     carregado = new Promise((ok, falha) => {
       const s = document.createElement("script");
-      s.src = BASE + "coracao.js?v=3";
+      s.src = BASE + "coracao.js?v=4";
       s.onload = () => ok();
       s.onerror = () => { carregado = null; falha(new Error("coracao.js")); };
       document.head.appendChild(s);
