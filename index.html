@@ -822,6 +822,7 @@
   #tela-conta .conta-cartao.secao:not(.fechada)>h3{margin-bottom:8px}
   .secao-resumo{font-size:13.5px;color:var(--tinta-2);margin-top:3px;line-height:1.4}
   #tela-conta #conta-uso,#tela-conta #conta-estado{display:none!important}
+  .conta-versao{color:#5b6b7a;font-size:13px;font-weight:600;text-align:center;margin-top:16px}
   .conta-cartao p{margin:0 0 14px;font-size:14.5px;color:var(--tinta-2);line-height:1.5}
   .conta-estado{display:flex;gap:11px;align-items:center;background:var(--verde-fundo);
                 border-radius:11px;padding:12px 14px;margin-bottom:14px}
@@ -2103,6 +2104,8 @@
            os outros cartões (conta_secoes.js) — a Conta cabe sem rolar. -->
       <div class="conta-cartao" id="conta-ajuda" style="margin-top:12px">
       <h3>❓ Ajuda e privacidade</h3>
+      <p>Usamos o e-mail só para você voltar ao seu acervo. Nada é enviado a
+        médico, clínica ou laboratório sem a sua autorização.</p>
       <button class="btn-linha" id="conta-como-funciona"
               style="width:100%;margin-top:4px">Como o indiDoc funciona</button>
 
@@ -2121,11 +2124,10 @@
               style="width:100%;margin-top:22px">Encerrar conta e apagar tudo</button>
       </div>
 
-      <div style="color:#cfe2ef;font-size:12.5px;line-height:1.6;margin-top:18px;
-                  text-align:center">
-        Usamos o e-mail só para você voltar ao seu acervo.<br>
-        Nada é enviado a médico, clínica ou laboratório.
-      </div>
+      <!-- Rodapé só com a versão (pintarConta escreve aqui). O texto do
+           e-mail foi para Ajuda e privacidade; a cor clara de antes era
+           para o fundo azul antigo e sumia no fundo claro. -->
+      <div class="conta-versao"></div>
     </div>
   </div>
 </div>

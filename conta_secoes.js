@@ -30,18 +30,37 @@
 
   function resumoDe(id) {
     const c = (typeof consumo !== "undefined" && consumo) || {};
-    if (id === "conta-pessoas-cartao") {
-      const n = c.pessoas ?? 1, teto = c.teto_pessoas || 2;
-      return `${n} de ${teto} pessoa${teto > 1 ? "s" : ""}`;
+    if (id === "conta-pessoas-cartao") {   // os nomes, sem precisar abrir
+      const proprias = pessoasProprias();
+      const nomes = proprias.map((p) => {
+        const rot = ROTULO_PARENTESCO[p.parentesco];
+        return nomeDaPessoa(p) + (rot && p.parentesco !== "eu" ? ` (${rot})` : "");
+      });
+      const teto = c.teto_pessoas || 2;
+      return (nomes.length ? nomes.join(", ") : "Só você") + ` · ${proprias.length || 1} de ${teto}`;
     }
     if (id === "conta-plano") {   // o uso (antes num cartão próprio, #conta-uso) mora aqui
       const usados = (c.documentos ?? 0) + ((typeof naFila !== "undefined" && naFila) ? naFila.length : 0);
-      return `${usados} de ${c.teto ?? 100} documentos seus`
+      let t = `${usados} de ${c.teto ?? 100} documentos seus`
         + (c.bytes ? ` · ${(c.bytes / 1048576).toFixed(1).replace(".", ",")} MB` : "");
+      if (c.plano === "familia" && c.plano_ate) {
+        t += ` · vale até ${new Date(c.plano_ate).toLocaleDateString("pt-BR")}`;
+      }
+      return t;
     }
-    if (id === "conta-cuidar-cartao") {
-      const n = tela.querySelectorAll("#cuidar-lista > *").length;
-      return n ? `${n} na lista` : "Convide quem cuida junto, ou aceite um convite";
+    if (id === "conta-cuidar-cartao") {   // quem cuida junto, já na linha do título
+      const eu = (usuario && usuario.id) || "";
+      const comp = (typeof compartilhamentos !== "undefined" && compartilhamentos) || [];
+      const agora = new Date().toISOString();
+      const cuidam = comp.filter((x) => x.conta_dona === eu && x.aceito_em)
+        .map((x) => x.convidado_nome || "outra conta");
+      const abertos = comp.filter((x) => x.conta_dona === eu && !x.aceito_em && x.convite_expira > agora).length;
+      const cuido = pessoas.filter((p) => p.compartilhada).map((p) => nomeDaPessoa(p));
+      const partes = [];
+      if (cuidam.length) partes.push("Cuidam junto: " + [...new Set(cuidam)].join(", "));
+      if (cuido.length) partes.push("Você cuida de: " + cuido.join(", "));
+      if (abertos) partes.push(abertos === 1 ? "1 convite aberto" : `${abertos} convites abertos`);
+      return partes.length ? partes.join(" · ") : "Só você, por enquanto. Toque para convidar alguém";
     }
     if (id === "conta-proteger") return "⚠️ Ainda não guardado: se o celular for limpo ou trocado, você perde o acervo";
     if (id === "conta-pronta") {

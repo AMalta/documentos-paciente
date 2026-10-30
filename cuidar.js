@@ -75,6 +75,7 @@
       lista.appendChild(bloco);
     }
     if (cartao) cartao.classList.toggle("escondido", !usuario);
+    if (window.ContaSecoes) ContaSecoes.organizar();   // o resumo mostra quem cuida junto
   }
 
   async function atualizar() {

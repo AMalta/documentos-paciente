@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-30.1";
+const VERSAO_APP = "2026-10-30.2";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -3908,12 +3908,8 @@ async function removerPessoa(p, quantos) {
 }
 
 function pintarConta() {
-  const rodape = ct.tela.querySelector(".conta-caixa > div:last-child");
-  if (rodape && !rodape.dataset.versao) {
-    rodape.dataset.versao = "1";
-    rodape.insertAdjacentHTML("beforeend",
-      `<br><span style="opacity:.55">versão ${VERSAO_APP}</span>`);
-  }
+  const rodape = ct.tela.querySelector(".conta-versao");
+  if (rodape) rodape.textContent = "indiDoc · versão " + VERSAO_APP;
   const protegida = !contaAnonima();
   ct.pronta.classList.toggle("escondido", !protegida);
   ct.proteger.classList.toggle("escondido", protegida);
