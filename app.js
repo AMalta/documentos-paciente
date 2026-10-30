@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-29.2";
+const VERSAO_APP = "2026-10-30.1";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -3933,6 +3933,7 @@ function pintarConta() {
     uso.innerHTML = `<b>${usados} de ${consumo.teto} documentos</b>`
       + (consumo.bytes ? ` · ${(consumo.bytes / 1048576).toFixed(1)} MB` : "");
   }
+  if (window.ContaSecoes) ContaSecoes.organizar();   // seções e resumos (conta_secoes.js)
 }
 
 function abrirConta(paraRecuperar = false) {
@@ -3943,16 +3944,18 @@ function abrirConta(paraRecuperar = false) {
   pintarConta();
   if (paraRecuperar) {
     ct.proteger.classList.remove("escondido");
-    ct.proteger.querySelector("h3").textContent = "Voltar ao meu acervo";
+    ct.proteger.querySelector("h3").textContent = "🔐 Voltar ao meu acervo";
     ct.proteger.querySelector("p").textContent =
       "Informe o e-mail que você usou antes. Enviamos um código para confirmar "
       + "que é você.";
   } else {
-    ct.proteger.querySelector("h3").textContent = "Guarde seu acesso";
+    ct.proteger.querySelector("h3").textContent = "🔐 Guarde seu acesso";
     ct.proteger.querySelector("p").textContent =
       "Informe um e-mail para conseguir abrir seus documentos em outro celular "
       + "— ou neste mesmo, se um dia ele for limpo ou trocado.";
   }
+  // Tudo fechado, menos o que pede ação (guardar o acesso / voltar ao acervo).
+  if (window.ContaSecoes) ContaSecoes.aoAbrir(paraRecuperar);
   ct.tela.classList.remove("escondido");
 }
 
@@ -4007,7 +4010,7 @@ async function enviarCodigo() {
       ct.enviar.textContent = "Enviar código";
       if (ok) {
         recuperando = true;
-        ct.proteger.querySelector("h3").textContent = "Voltar ao meu acervo";
+        ct.proteger.querySelector("h3").textContent = "🔐 Voltar ao meu acervo";
         return enviarCodigo();
       }
       return;

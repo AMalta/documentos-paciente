@@ -811,6 +811,17 @@
   body.texto-g .conta-cartao p{font-size:17px}
   body.texto-g .corpo-dica{font-size:15.5px}
   .conta-cartao h3{margin:0 0 4px;font-size:17px}
+  /* Minha conta em seções (conta_secoes.js): título + resumo; abre no toque */
+  #tela-conta .conta-cartao.secao{padding:14px 18px;margin-top:10px!important}
+  #tela-conta .conta-cartao.secao>h3{cursor:pointer;display:flex;justify-content:space-between;
+    align-items:center;gap:10px;margin:0;user-select:none}
+  #tela-conta .conta-cartao.secao>h3::after{content:"▾";font-size:15px;opacity:.55;transition:transform .2s}
+  #tela-conta .conta-cartao.secao.fechada>h3::after{transform:rotate(-90deg)}
+  #tela-conta .conta-cartao.secao.fechada>:not(h3):not(.secao-resumo){display:none!important}
+  #tela-conta .conta-cartao.secao:not(.fechada)>.secao-resumo{display:none}
+  #tela-conta .conta-cartao.secao:not(.fechada)>h3{margin-bottom:8px}
+  .secao-resumo{font-size:13.5px;color:var(--tinta-2);margin-top:3px;line-height:1.4}
+  #tela-conta #conta-uso,#tela-conta #conta-estado{display:none!important}
   .conta-cartao p{margin:0 0 14px;font-size:14.5px;color:var(--tinta-2);line-height:1.5}
   .conta-estado{display:flex;gap:11px;align-items:center;background:var(--verde-fundo);
                 border-radius:11px;padding:12px 14px;margin-bottom:14px}
@@ -1989,7 +2000,7 @@
            documentos — e porque é aqui que nasce a segunda pessoa, sem a
            qual as abas da tela principal nem aparecem. -->
       <div class="conta-cartao" id="conta-pessoas-cartao">
-        <h3>Quem está nesta conta</h3>
+        <h3>👤 Quem está nesta conta</h3>
         <p>Você pode guardar os documentos de mais de uma pessoa aqui — os
           seus e os de um filho, por exemplo. Cada um tem o seu acervo, e o
           médico vê só o que você liberar.</p>
@@ -2048,7 +2059,7 @@
 
       <!-- Guardar o e-mail (conta anônima) -->
       <div class="conta-cartao" id="conta-proteger">
-        <h3>Guarde seu acesso</h3>
+        <h3>🔐 Guarde seu acesso</h3>
         <p>Informe um e-mail para conseguir abrir seus documentos em outro
           celular — ou neste mesmo, se um dia ele for limpo ou trocado.</p>
 
@@ -2077,7 +2088,7 @@
 
       <!-- Conta já protegida -->
       <div class="conta-cartao escondido" id="conta-pronta">
-        <h3>Acesso guardado</h3>
+        <h3>🔐 Acesso guardado</h3>
         <p>Seus documentos estão ligados a <b id="conta-email-atual"></b>.
           Em outro celular, toque em “Já usei antes” e informe esse e-mail.</p>
         <button class="btn-linha" id="conta-sair" style="width:100%">Sair desta conta</button>
@@ -2088,6 +2099,10 @@
            esquecia como o app funciona, ou queria mostrar para outra
            pessoa, não tinha para onde voltar (ver abrirBoasVindas em
            app.js, chamado aqui com revisao=true). -->
+      <!-- 30/10/2026: os botões de ajuda e o encerrar viraram uma seção, como
+           os outros cartões (conta_secoes.js) — a Conta cabe sem rolar. -->
+      <div class="conta-cartao" id="conta-ajuda" style="margin-top:12px">
+      <h3>❓ Ajuda e privacidade</h3>
       <button class="btn-linha" id="conta-como-funciona"
               style="width:100%;margin-top:4px">Como o indiDoc funciona</button>
 
@@ -2104,6 +2119,7 @@
            parecem e as consequências não. -->
       <button class="btn-texto perigo-txt" id="conta-encerrar"
               style="width:100%;margin-top:22px">Encerrar conta e apagar tudo</button>
+      </div>
 
       <div style="color:#cfe2ef;font-size:12.5px;line-height:1.6;margin-top:18px;
                   text-align:center">
@@ -2439,6 +2455,7 @@
 <script src="guia.js"></script>
 <script src="cuidar.js"></script>
 <script src="plano.js"></script>
+<script src="conta_secoes.js"></script>
 <script src="abas.js"></script>
 </body>
 </html>

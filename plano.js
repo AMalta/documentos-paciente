@@ -77,6 +77,7 @@
     caixa.querySelectorAll(".plano-op").forEach((b) => { b.onclick = () => escolher(b.dataset.produto); });
     const g = q("plano-gerar"); if (g) g.onclick = gerar;
     const x = q("plano-cancelar"); if (x) x.onclick = cancelar;
+    if (window.ContaSecoes) ContaSecoes.organizar();   // o cartão foi redesenhado
   }
 
   function escolher(produto) {
@@ -152,6 +153,7 @@
 
   function verPlanos() {
     abrirConta(false);
+    if (window.ContaSecoes) ContaSecoes.abrir("conta-plano");
     setTimeout(() => caixa.scrollIntoView({ block: "start", behavior: "smooth" }), 80);
   }
 
