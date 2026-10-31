@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-31.2";
+const VERSAO_APP = "2026-10-31.3";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -2067,6 +2067,12 @@ async function abrirDocumento(doc) {
   visuCaminhos = paginas.map((p) => p.storage_path);
   visuDoc = doc;
   visuEntrada = null;
+  // Documento que veio da clínica: a primeira abertura avisa que foi visto
+  // (sql/030). Só da conta dona; sem a função, nada muda.
+  if (doc.origem === "clinica" && !doc.visto_em && usuario && doc.paciente_id === usuario.id) {
+    doc.visto_em = new Date().toISOString();
+    sb.rpc("marcar_documento_visto", { p_documento: doc.id }).then(() => {}, () => {});
+  }
   visuOriginal.clear();
   // Documento de outra conta (pessoa cuidada, sql/024): só a dona edita,
   // gira ou apaga — o banco recusa, e o botão que não faz nada confunde.
