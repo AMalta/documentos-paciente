@@ -1366,6 +1366,9 @@
 
   // ── dados do servidor ─────────────────────────────────────────────────
   function receber(d) {
+    if (S.esperaTimer) { clearTimeout(S.esperaTimer); S.esperaTimer = null; }
+    var espera = document.getElementById("coracao_espera");
+    if (espera) espera.remove();
     if (!montar()) return;
     var trocou = d.paciente_id !== S.pid || (d.modelo || "coracao") !== S.modelo;
     S.modelo = d.modelo || "coracao"; S.modelos = d.modelos || [];
@@ -1418,6 +1421,51 @@
     Shiny.addCustomMessageHandler("coracao_dados", function (d) { receber(d); });
     Shiny.addCustomMessageHandler("coracao_salvo", function (d) { S.salvoId = d && d.id; S.dirty = false; });
     Shiny.addCustomMessageHandler("coracao_sugestao", function (d) { sugestao(d); });
+    // 30/10/2026: o servidor explica por que não há mapa (ex.: administrador sem médico)
+    Shiny.addCustomMessageHandler("coracao_aviso", function (d) {
+      if (S.esperaTimer) { clearTimeout(S.esperaTimer); S.esperaTimer = null; }
+      if (d && d.fechar) {   // o motivo vem num popup (servidor): fecha a tela cheia vazia
+        var ovf = document.getElementById("coracao_overlay");
+        if (ovf) ovf.style.display = "none";
+        document.body.style.overflow = "";
+        return;
+      }
+      var app = document.getElementById("coracao_app");
+      if (!app) return;
+      var v = document.getElementById("coracao_espera");
+      if (!v) { v = document.createElement("div"); v.id = "coracao_espera"; app.prepend(v); }
+      v.style.cssText = "padding:32px 24px;text-align:center;color:#334155;font-size:15px";
+      v.textContent = (d && d.texto) || "O mapa não pôde ser aberto.";
+    });
+    // 30/10/2026: os achados do mapa salvo no exame da consulta aberta — o
+    // campo que está na tela (O do SOAP, Exame físico ou o texto livre); a
+    // linha do mesmo mapa é trocada, não repetida.
+    Shiny.addCustomMessageHandler("pront_achados", function (d) {
+      if (!d || !d.texto) return;
+      var box = document.getElementById("pront_campos_dinamicos") || document;
+      var ids = ["pront_soap_o", "pront_exame", "pront_texto_livre"], alvo = null;
+      for (var i = 0; i < ids.length && !alvo; i++) alvo = box.querySelector("#" + ids[i]);
+      if (!alvo) return;
+      var marc = d.texto.split(": ")[0] + ": ", ls = (alvo.value || "").split("\n"), achou = false;
+      for (var j = 0; j < ls.length; j++) if (ls[j].indexOf(marc) === 0) { ls[j] = d.texto; achou = true; break; }
+      if (achou) alvo.value = ls.join("\n");
+      else { var base = (alvo.value || "").replace(/\n+$/, ""); alvo.value = (base ? base + "\n" : "") + d.texto; }
+      alvo.dispatchEvent(new Event("input", { bubbles: true }));
+      alvo.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    // 30/10/2026: a conduta aceita (🩺 plano de cuidado) escrita no campo da
+    // conduta que está na tela (Conduta, P do SOAP ou o texto livre).
+    Shiny.addCustomMessageHandler("pront_conduta", function (d) {
+      if (!d || !d.texto) return;
+      var box = document.getElementById("pront_campos_dinamicos") || document;
+      var ids = ["pront_conduta", "pront_soap_p", "pront_texto_livre"], alvo = null;
+      for (var i = 0; i < ids.length && !alvo; i++) alvo = box.querySelector("#" + ids[i]);
+      if (!alvo || (alvo.value || "").indexOf(d.texto) >= 0) return;
+      var base = (alvo.value || "").replace(/\n+$/, "");
+      alvo.value = (base ? base + "\n" : "") + d.texto;
+      alvo.dispatchEvent(new Event("input", { bubbles: true }));
+      alvo.dispatchEvent(new Event("change", { bubbles: true }));
+    });
     Shiny.addCustomMessageHandler("coracao_plano", function (d) { if (d && d.mapa_id) { S.plano[d.mapa_id] = d.plano || {}; painel(); } });
   }
 
@@ -1441,6 +1489,18 @@
     document.body.style.overflow = "hidden";
     if (window.Shiny && Shiny.setInputValue) Shiny.setInputValue("coracao_abrir", { t: Date.now(), modelo: S.modelo || "" }, { priority: "event" });
     setTimeout(redimensionar, 50);
+    // 30/10/2026: sem resposta do servidor, a tela cheia ficava em branco.
+    if (S.esperaTimer) clearTimeout(S.esperaTimer);
+    S.esperaTimer = setTimeout(function () {
+      var app = document.getElementById("coracao_app");
+      if (!app || document.getElementById("coracao_espera")) return;
+      var d = document.createElement("div");
+      d.id = "coracao_espera";
+      d.style.cssText = "padding:24px;text-align:center;color:#64748b";
+      d.textContent = "O mapa não carregou. Feche e abra de novo; se continuar, veja o Log de Erros "
+        + "(o médico precisa ter uma especialidade com mapa no cadastro).";
+      app.prepend(d);
+    }, 8000);
   };
   window.coracaoFechar = function () {
     var ov = document.getElementById("coracao_overlay");

@@ -365,6 +365,19 @@ if (senhaAcesso) {
          + "de 6 dígitos.");
     }
   });
+} else {
+  // Código já digitado na linha 📱 do prontuário do Indiclin (31/10/2026):
+  // vem no #codigo= (o fragmento não vai ao servidor da página), sai do
+  // endereço na hora e abre sozinho, como se o médico tivesse digitado aqui.
+  try {
+    const cod = new URLSearchParams(location.hash.slice(1)).get("codigo") || "";
+    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+    if (/^\d{6}$/.test(cod)) {
+      el.codigo.value = cod;
+      el.abrir.disabled = false;
+      el.abrir.onclick();
+    }
+  } catch (e) { /* sem o código, o médico digita aqui */ }
 }
 
 el.sair.onclick = async () => {
