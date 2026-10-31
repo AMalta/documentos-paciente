@@ -1392,13 +1392,25 @@
       if (s) { S.atual = JSON.parse(JSON.stringify(s)); S.atual.regioes = S.atual.regioes || {}; S.atual.marcas = S.atual.marcas || []; S.dirty = false; }
       S.salvoId = null;
     }
+    if (S.abrirId) {   // pedido pelo Histórico: esse mapa, se não há nada por salvar
+      var pe = S.mapas.filter(function (x) { return x.id === S.abrirId; })[0];
+      if (pe && !S.dirty) { S.atual = JSON.parse(JSON.stringify(pe)); S.atual.regioes = S.atual.regioes || {}; S.atual.marcas = S.atual.marcas || []; S.sel = null; }
+      S.abrirId = null;
+    }
     if (!S.atual && S.mapas.length) {
       var ativo = S.mapas.filter(function (x) { return !x.inativo_em; })[0];
       if (ativo) { S.atual = JSON.parse(JSON.stringify(ativo)); S.atual.regioes = S.atual.regioes || {}; S.atual.marcas = S.atual.marcas || []; }
     }
+    // 31/10/2026: rascunho da IA lido de um documento do indiDoc — entra
+    // como a sugestão do ✨ (o médico revisa e salva, ou descarta)
+    var rasc = null;
+    if (S.rascunho && S.rascunho.modelo === S.modelo && !S.consulta) { rasc = S.rascunho; S.rascunho = null; }
     preencherPincel();
     painel();
-    carregarThree(d.three, function () { cena(); montarModelo(S.modelo); redimensionar(); colorir(); desenharMarcas(); });
+    carregarThree(d.three, function () {
+      cena(); montarModelo(S.modelo); redimensionar(); colorir(); desenharMarcas();
+      if (rasc) sugestao(rasc);
+    });
   }
 
   // Modo paciente: quem chama é o app do indiDoc, com os dados do mapa
@@ -1421,6 +1433,11 @@
     Shiny.addCustomMessageHandler("coracao_dados", function (d) { receber(d); });
     Shiny.addCustomMessageHandler("coracao_salvo", function (d) { S.salvoId = d && d.id; S.dirty = false; });
     Shiny.addCustomMessageHandler("coracao_sugestao", function (d) { sugestao(d); });
+    Shiny.addCustomMessageHandler("coracao_rascunho", function (d) {
+      if (!d || !d.mapa) return;
+      S.rascunho = d;
+      window.coracaoAbrir(d.modelo || "");
+    });
     // 30/10/2026: o servidor explica por que não há mapa (ex.: administrador sem médico)
     Shiny.addCustomMessageHandler("coracao_aviso", function (d) {
       if (S.esperaTimer) { clearTimeout(S.esperaTimer); S.esperaTimer = null; }
@@ -1482,12 +1499,15 @@
   }
 
   // ── tela cheia: o botão ❤️ Coração do Resumo abre; ✕ ou Esc fecha ─────
-  window.coracaoAbrir = function () {
+  // 31/10/2026: o Histórico abre um mapa certo — coracaoAbrir(modelo, id).
+  window.coracaoAbrir = function (modelo, mapaId) {
     var ov = document.getElementById("coracao_overlay");
     if (!ov) return;
     ov.style.display = "block";
     document.body.style.overflow = "hidden";
-    if (window.Shiny && Shiny.setInputValue) Shiny.setInputValue("coracao_abrir", { t: Date.now(), modelo: S.modelo || "" }, { priority: "event" });
+    S.abrirId = typeof mapaId === "string" ? mapaId : null;
+    var pedido = typeof modelo === "string" && modelo ? modelo : (S.modelo || "");
+    if (window.Shiny && Shiny.setInputValue) Shiny.setInputValue("coracao_abrir", { t: Date.now(), modelo: pedido }, { priority: "event" });
     setTimeout(redimensionar, 50);
     // 30/10/2026: sem resposta do servidor, a tela cheia ficava em branco.
     if (S.esperaTimer) clearTimeout(S.esperaTimer);

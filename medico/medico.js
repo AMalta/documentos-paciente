@@ -950,7 +950,9 @@ el.visuImprimir.onclick = imprimirDocumento;
    estão o catálogo de exames, o prontuário e o gráfico de evolução. Aqui
    basta contar qual documento está aberto (e quando fecha), só para a
    origem que o Indiclin declarou. Fora do Indiclin, nada é enviado. */
+let docAberto = null;   // o documento na tela (para o Indiclin pedir as páginas)
 function avisarDocumento(doc) {
+  docAberto = doc || null;
   if (!origemIndiclin || !origemIndiclin.po || !pessoaId || window.parent === window) return;
   try {
     window.parent.postMessage(doc ? {
@@ -960,6 +962,19 @@ function avisarDocumento(doc) {
     } : { tipo: "indidoc-documento-fechado" }, origemIndiclin.po);
   } catch (e) { /* sem o aviso, o painel do Indiclin só não se preenche */ }
 }
+
+/* 31/10/2026: "🧍 Marcar no mapa com IA" no Indiclin pede as páginas do
+   documento aberto; vão os links assinados (1 h) que esta tela já usa, só
+   para a origem que o Indiclin declarou. Quem lê é o servidor do Indiclin. */
+window.addEventListener("message", (e) => {
+  if (!origemIndiclin || !origemIndiclin.po || e.origin !== origemIndiclin.po) return;
+  const d = e.data || {};
+  if (d.tipo !== "indiclin-paginas" || !docAberto || !visuPaginas.length) return;
+  try {
+    window.parent.postMessage({ tipo: "indidoc-paginas", documento_id: docAberto.id,
+                                urls: visuPaginas.slice(0, 3) }, origemIndiclin.po);
+  } catch (err) { /* sem as páginas, o Indiclin avisa */ }
+});
 
 el.visuFechar.onclick = () => {
   avisarDocumento(null);
