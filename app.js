@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-10-31.3";
+const VERSAO_APP = "2026-10-31.4";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -3740,16 +3740,23 @@ function desenharContaPessoas() {
     data.onchange = () => mudarNascimento(p, data);
     nasc.appendChild(data);
 
+    // 31/10/2026: no alto do cartão, quem é (você, filho…), quantos
+    // documentos e a lixeira; embaixo, o nome e o nascimento.
+    const topo = document.createElement("div");
+    topo.className = "pessoa-topo";
+    const rot = document.createElement("span");
+    rot.className = "pessoa-rot";
+    rot.textContent = ROTULO_PARENTESCO[p.parentesco] || "pessoa";
+    const par = document.createElement("span");
+    par.className = "par";
+    par.textContent = n + (n === 1 ? " documento" : " documentos");
+    topo.append(rot, par);
+    linha.appendChild(topo);
+
     const campos = document.createElement("div");
     campos.className = "pessoa-campos";
     campos.append(campo, nasc);
     linha.appendChild(campos);
-
-    const par = document.createElement("span");
-    par.className = "par";
-    par.textContent = n + (n === 1 ? " doc" : " docs");
-    par.title = ROTULO_PARENTESCO[p.parentesco] || "";
-    linha.appendChild(par);
 
     // A pessoa "eu" não se apaga: é quem abriu a conta, e sem ela o acervo
     // ficaria sem dono. Para sair de vez existe "Encerrar conta", que diz
@@ -3761,7 +3768,7 @@ function desenharContaPessoas() {
       x.setAttribute("aria-label", "Remover " + nomeDaPessoa(p));
       x.textContent = "🗑️";
       x.onclick = () => removerPessoa(p, n);
-      linha.appendChild(x);
+      topo.appendChild(x);
     }
     ct.pessoasLista.appendChild(linha);
   }

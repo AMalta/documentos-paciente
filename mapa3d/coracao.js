@@ -539,10 +539,22 @@
     return cv.toDataURL("image/jpeg", 0.85);
   }
 
+  // 31/10/2026: miniatura do desenho (240 px de largura) para o Resumo
+  function miniatura() {
+    var src = G.renderer && G.renderer.domElement;
+    if (!src || !src.width) return "";
+    var w = 240, h = Math.max(1, Math.round(src.height * w / src.width));
+    var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    var ctx = cv.getContext("2d"); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(src, 0, 0, w, h);
+    try { return cv.toDataURL("image/jpeg", 0.7); } catch (e) { return ""; }
+  }
+
   function salvar() {
     if (!S.atual) return;
     Shiny.setInputValue("coracao_salvar", {
       paciente_id: S.pid, id: S.atual.id || "", t: Date.now(), modelo: S.modelo,
+      miniatura: S.atual.inativo_em ? "" : miniatura(),
       // 📱 envio ao salvar ligado: a imagem vai junto (o servidor confere a opção)
       imagem: (S.indidocAuto && S.indidocAtivo && !S.atual.inativo_em) ? capturar() : "",
       mapa: { exame_tipo: S.atual.exame_tipo, exame_data: S.atual.exame_data, regioes: S.atual.regioes,

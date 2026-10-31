@@ -51,7 +51,8 @@
                        data-nome="${escaparHTML(c.convidado_nome || "esta pessoa")}" data-p="${escaparHTML(nomeDaPessoa(p))}">Tirar</button></div>`;
       }
       for (const c of abertos) {
-        h += `<div class="cuidar-item cuidar-aberto">✉️ Convite <b>${escaparHTML(c.codigo || "")}</b> · vale até ${quando(c.convite_expira)}
+        h += `<div class="cuidar-item cuidar-aberto"><span class="ca-txt"><span>✉️ Convite <b>${escaparHTML(c.codigo || "")}</b></span>
+               <small>vale até ${quando(c.convite_expira)}</small></span>
                <span><button type="button" class="btn-texto" data-cuidar="reenviar" data-id="${c.id}">Enviar</button>
                <button type="button" class="btn-texto perigo-txt" data-cuidar="cancelar" data-id="${c.id}">Cancelar</button></span></div>`;
       }
