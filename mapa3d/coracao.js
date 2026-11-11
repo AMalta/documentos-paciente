@@ -570,7 +570,7 @@
     if (!e || !S.atual) return null;
     if (e.tipo === "retinopatia") return retinopatia(e);
     if (e.tipo === "cpod") return cpod(e);
-    if (e.tipo === "birads") return birads(e);
+    if (e.tipo === "birads" || e.tipo === "orads") return birads(e);
     var lados = {}, total = 0, sem = 0;
     Object.keys(e.lados).forEach(function (l) {
       var soma = 0;
@@ -633,11 +633,12 @@
     return { texto: partes.length ? partes.join(" · ") : "CPO-D: marque os dentes para contar" };
   }
 
-  // BI-RADS por mama: a mesma conta de classificar_birads (mapas_anatomicos.py)
+  // BI-RADS por mama (e O-RADS por ovário): a mesma conta de classificar_birads
+  // (mapas_anatomicos.py)
   function birads(e) {
-    var R = e.regra, partes = [];
-    Object.keys(e.mamas).forEach(function (m) {
-      var cats = e.mamas[m].map(function (rid) { var v = S.atual.regioes[rid]; return v && R.categorias[v.achado]; })
+    var R = e.regra, partes = [], L = e.mamas || e.ovarios || {};
+    Object.keys(L).forEach(function (m) {
+      var cats = L[m].map(function (rid) { var v = S.atual.regioes[rid]; return v && R.categorias[v.achado]; })
         .filter(function (c) { return c && R.ordem.indexOf(c) >= 0; });
       if (!cats.length) return;
       partes.push(m + " " + cats.reduce(function (a, b) { return R.ordem.indexOf(b) > R.ordem.indexOf(a) ? b : a; }));
@@ -1054,6 +1055,130 @@
     });
   }
 
+  // ── 🌸 Pelve feminina e 🤰 Gestação em 2D (11/11/2026) ─────────────────
+  // O lado DIREITO da paciente à esquerda da tela, como nas Mamas. A pelve
+  // tem dois painéis: de frente (fundo e paredes laterais do útero,
+  // endométrio, colo, tubas, ovários, uterossacros, vagina e vulva) e um
+  // corte sagital pequeno à direita (paredes anterior e posterior, fundo de
+  // saco e septo retovaginal), porque de frente não se vê a frente e o fundo
+  // do útero. "◐ Nomes" mostra/esconde os rótulos.
+  function forma(T, id, grupo, pts, z) {
+    var sh = new T.Shape();
+    sh.moveTo(pts[0][0], pts[0][1]);
+    for (var i = 1; i < pts.length; i++) sh.lineTo(pts[i][0], pts[i][1]);
+    sh.closePath();
+    var m = add(T, new T.ShapeGeometry(sh, 24), id, grupo);
+    m.position.z = z || 0;
+    return m;
+  }
+  function elipse(T, id, grupo, cx, cy, rx, ry, z, a0, a1, rot) {
+    var g = new T.CircleGeometry(1, 48, a0 || 0, (a1 === undefined ? 2 * Math.PI : a1 - (a0 || 0)));
+    var m = add(T, g, id, grupo);
+    m.scale.set(rx, ry, 1); m.position.set(cx, cy, z || 0);
+    if (rot) m.rotation.z = rot;
+    return m;
+  }
+  function arco(cx, cy, rx, ry, a0, a1, n) {
+    var p = [];
+    for (var i = 0; i <= n; i++) { var a = a0 + (a1 - a0) * i / n; p.push([cx + rx * Math.cos(a), cy + ry * Math.sin(a)]); }
+    return p;
+  }
+  function rotulo(T, txt, x, y, tam) { G.camaras.push(textoSprite(T, txt, x, y, tam || 0.16, "#64748b")); }
+  function linhaRef(T, pts, cor) {
+    var c = new T.CatmullRomCurve3(pts.map(function (v) { return new T.Vector3(v[0], v[1], v[2] || -0.02); }));
+    var m = new T.Mesh(new T.TubeGeometry(c, 40, 0.035, 8, false),
+      new T.MeshStandardMaterial({ color: cor || 0xcbd5e1, transparent: true, opacity: 0.8 }));
+    G.corpo.add(m);
+    return m;
+  }
+
+  function construirPelve(T) {
+    G.camaras = [];
+    var cx = -1.45;
+    // útero de frente: fundo (cúpula), paredes laterais e o endométrio no meio
+    forma(T, "fundo_ut", "miometrio", arco(cx, 0.86, 0.86, 0.52, 0, Math.PI, 24), 0);
+    [[-1, "corpo_d"], [1, "corpo_e"]].forEach(function (p) {
+      var k = p[0];
+      forma(T, p[1], "miometrio", [[cx + k * 0.86, 0.82], [cx + k * 0.47, 0.82], [cx + k * 0.04, -0.2],
+                                   [cx + k * 0.4, -0.26]], 0);
+    });
+    forma(T, "endometrio", "endometrio", [[cx - 0.42, 0.82], [cx + 0.42, 0.82], [cx, -0.16]], 0.01);
+    // colo: o corpo do colo (ectocérvice) e o canal (endocérvice) por cima
+    forma(T, "ectocervice", "colo", [[cx - 0.38, -0.32], [cx + 0.38, -0.32], [cx + 0.42, -1.12],
+                                     [cx - 0.42, -1.12]], 0);
+    forma(T, "endocervice", "colo", [[cx - 0.08, -0.36], [cx + 0.08, -0.36], [cx + 0.08, -1.06],
+                                     [cx - 0.08, -1.06]], 0.01);
+    // vagina e vulva
+    forma(T, "vagina", "vagina", [[cx - 0.46, -1.2], [cx + 0.46, -1.2], [cx + 0.34, -2.0], [cx - 0.34, -2.0]], 0);
+    elipse(T, "vulva", "vagina", cx, -2.3, 0.55, 0.2, 0);
+    // tubas (do canto do fundo para fora), ovários e uterossacros
+    [[-1, "d", "Direito"], [1, "e", "Esquerdo"]].forEach(function (p) {
+      var k = p[0], l = p[1];
+      tubo(T, [[cx + k * 0.84, 0.74, 0.02], [cx + k * 1.35, 0.92, 0.02], [cx + k * 1.95, 0.72, 0.02],
+               [cx + k * 2.08, 0.32, 0.02]], 0.075, "tuba_" + l, "tuba");
+      elipse(T, "ovario_" + l, "ovario", cx + k * 1.72, -0.12, 0.36, 0.25, 0.01);
+      tubo(T, [[cx + k * 0.36, -0.82, 0.02], [cx + k * 0.8, -1.1, 0.02], [cx + k * 1.25, -1.45, 0.02]], 0.055,
+           "uterossacro_" + l, "compartimento");
+      rotulo(T, "Ovário " + p[2].toLowerCase(), cx + k * 1.72, -0.55);
+    });
+    rotulo(T, "Útero (de frente)", cx, 1.62, 0.18);
+    rotulo(T, "Colo", cx + 0.7, -0.7);
+    rotulo(T, "Vagina", cx + 0.75, -1.6);
+    rotulo(T, "Vulva", cx + 0.95, -2.3);
+
+    // corte sagital (menor), anterior à esquerda do painel
+    var sx = 2.3, sy = 0.25, rot = -0.45;
+    elipse(T, "corpo_ant", "miometrio", sx, sy, 0.42, 0.66, 0, Math.PI / 2, 3 * Math.PI / 2, rot);
+    elipse(T, "corpo_post", "miometrio", sx, sy, 0.42, 0.66, 0, -Math.PI / 2, Math.PI / 2, rot);
+    elipse(T, "douglas", "compartimento", sx + 0.62, sy - 0.9, 0.24, 0.17, 0.01);
+    forma(T, "septo_rv", "compartimento", [[sx + 0.3, sy - 1.15], [sx + 0.44, sy - 1.15], [sx + 0.38, sy - 1.95],
+                                           [sx + 0.24, sy - 1.95]], 0.01);
+    // referências: bexiga, vagina e reto (cinza, sem marcação)
+    G.camaras.push(linhaRef(T, [[sx - 0.5, sy - 1.95], [sx + 0.05, sy - 0.85], [sx + 0.12, sy - 0.62]]));
+    G.camaras.push(linhaRef(T, [[sx + 0.6, sy - 1.95], [sx + 0.58, sy - 1.2], [sx + 0.95, sy - 0.6],
+                                [sx + 1.0, sy + 0.2]], 0xd6c3b5));
+    rotulo(T, "Corte sagital", sx, sy + 1.35, 0.18);
+    rotulo(T, "ant.", sx - 0.8, sy + 0.35, 0.14);
+    rotulo(T, "post.", sx + 0.85, sy + 0.55, 0.14);
+    rotulo(T, "Douglas", sx + 1.1, sy - 0.95, 0.13);
+    rotulo(T, "Reto", sx + 1.25, sy - 0.1, 0.13);
+  }
+
+  function construirGestacao(T) {
+    G.camaras = [];
+    var cy = 0.25, RX = 1.55, RY = 1.85;
+    // útero: a parede (anel) e o líquido dentro; placenta no alto à direita da tela
+    var par = add(T, new T.RingGeometry(0.92, 1, 64), "miometrio_gest", "utero_gest");
+    par.scale.set(RX, RY, 1); par.position.set(0, cy, 0);
+    elipse(T, "liquido", "liquido", 0, cy, RX * 0.92, RY * 0.92, 0);
+    var pla = add(T, new T.RingGeometry(0.68, 0.9, 40, 1, 0.15 * Math.PI, 0.5 * Math.PI), "placenta", "placenta");
+    pla.scale.set(RX, RY, 1); pla.position.set(0, cy, 0.01);
+    // feto de cabeça para baixo: cabeça (apresentação), tronco (crescimento),
+    // coração (vitalidade) e membros (morfologia)
+    elipse(T, "apresentacao", "apresentacao", -0.15, cy - 1.0, 0.45, 0.42, 0.02);
+    elipse(T, "crescimento", "crescimento", 0.05, cy + 0.12, 0.55, 0.78, 0.02, 0, 2 * Math.PI, -0.15);
+    elipse(T, "vitalidade", "vitalidade", -0.05, cy - 0.15, 0.13, 0.12, 0.05);
+    tubo(T, [[0.45, cy + 0.75, 0.04], [0.8, cy + 0.4, 0.04], [0.7, cy - 0.15, 0.04], [0.35, cy - 0.45, 0.04]],
+         0.09, "morfologia", "morfologia");
+    tubo(T, [[0.62, cy + 1.25, 0.06], [0.95, cy + 0.85, 0.06], [0.55, cy + 0.25, 0.06], [0.2, cy - 0.05, 0.06]],
+         0.045, "cordao", "cordao");
+    // colo embaixo e os anexos dos lados
+    forma(T, "colo_gest", "colo_gest", [[-0.28, cy - RY - 0.05], [0.28, cy - RY - 0.05], [0.24, cy - RY - 0.6],
+                                        [-0.24, cy - RY - 0.6]], 0);
+    elipse(T, "anexo_d", "anexo", -2.15, cy - 0.7, 0.3, 0.22, 0);
+    elipse(T, "anexo_e", "anexo", 2.15, cy - 0.7, 0.3, 0.22, 0);
+    rotulo(T, "Placenta", 1.85, cy + 1.75);
+    rotulo(T, "Cordão", 1.45, cy + 0.95);
+    rotulo(T, "Líquido", -1.15, cy + 1.25);
+    rotulo(T, "Apresentação", -1.05, cy - 1.45);
+    rotulo(T, "Crescimento", -1.25, cy + 0.35);
+    rotulo(T, "Coração / Doppler", -1.35, cy - 0.15);
+    rotulo(T, "Morfologia", 1.45, cy - 0.05);
+    rotulo(T, "Colo", 0.75, cy - RY - 0.35);
+    rotulo(T, "Anexo direito", -2.15, cy - 1.1);
+    rotulo(T, "Anexo esquerdo", 2.15, cy - 1.1);
+  }
+
   // ── 🦷 Odontograma (FDI) em 2D ────────────────────────────────────────
   // Lado direito do paciente à esquerda da tela; superiores em cima (a
   // vestibular para fora), decíduos nas fileiras de dentro. Cada dente: as
@@ -1181,7 +1306,13 @@
       alternar: ["◐ Decíduos", "Dentes decíduos (fileiras de dentro): mostrar/esconder"] },
     mama: { construir: construirMama, incl: 0, y: -0.2, dist: 8.4,
       vistas: [["frente", "De frente", [0, 0, 0]]],
-      alternar: ["◐ Relógio", "As horas (12, 3, 6, 9) em volta de cada mama: mostrar/esconder"] }
+      alternar: ["◐ Relógio", "As horas (12, 3, 6, 9) em volta de cada mama: mostrar/esconder"] },
+    pelve: { construir: construirPelve, incl: 0, y: 0, dist: 10.6,
+      vistas: [["frente", "De frente e sagital", [0, 0, 0]]],
+      alternar: ["◐ Nomes", "Nomes e referências (bexiga, reto): mostrar/esconder"] },
+    gestacao: { construir: construirGestacao, incl: 0, y: 0.15, dist: 9.4,
+      vistas: [["frente", "De frente", [0, 0, 0]]],
+      alternar: ["◐ Nomes", "Nomes das partes: mostrar/esconder"] }
   };
 
   function montarModelo(nome) {

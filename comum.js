@@ -370,7 +370,10 @@ const REGIOES = [
              "utero", "uterin", "endometri", "ovario", "anexos uterinos",
              "transvaginal", "papanicolau", "preventivo", "colpocitolog",
              "ginecolog", "testiculo", "escrotal", "bolsa testicular",
-             "vesicula seminal", "uretra", "colo do utero"],
+             "vesicula seminal", "uretra", "colo do utero",
+             // mapas do Indiclin (11/11/2026): pelve feminina e gestação
+             "obstetric", "gestacao", "gestante", "pre-natal", "morfologic",
+             "pelve feminina"],
     sub: [
       { id: "prostata", rotulo: "Próstata",
         chaves: ["prostata", "=psa", "antigeno prostatico", "prostatic",
@@ -378,7 +381,9 @@ const REGIOES = [
       { id: "utero", rotulo: "Útero e ovários",
         chaves: ["utero", "uterin", "endometri", "ovario", "anexos uterinos",
                  "transvaginal", "papanicolau", "preventivo", "colpocitolog",
-                 "ginecolog", "colo do utero", "histeross", "mioma"] },
+                 "ginecolog", "colo do utero", "histeross", "mioma",
+                 "obstetric", "gestacao", "gestante", "pre-natal", "morfologic",
+                 "pelve feminina", "colposcop", "o-rads"] },
       { id: "bexiga", rotulo: "Bexiga",
         chaves: ["bexiga", "vesical", "uretra", "urodinamic", "cistoscop"] },
       { id: "testiculos", rotulo: "Testículos",
