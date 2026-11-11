@@ -1522,17 +1522,25 @@
     if (window.Shiny && Shiny.setInputValue) Shiny.setInputValue("coracao_abrir", { t: Date.now(), modelo: pedido }, { priority: "event" });
     setTimeout(redimensionar, 50);
     // 30/10/2026: sem resposta do servidor, a tela cheia ficava em branco.
+    // 06/11/2026: aos 8 s dizia "não carregou" com o servidor só ocupado (logo
+    // depois de abrir o prontuário) — agora "abrindo" e o erro só aos 30 s;
+    // a resposta que chegar depois apaga o aviso (receber).
     if (S.esperaTimer) clearTimeout(S.esperaTimer);
-    S.esperaTimer = setTimeout(function () {
+    function _aviso(txt) {
       var app = document.getElementById("coracao_app");
-      if (!app || document.getElementById("coracao_espera")) return;
-      var d = document.createElement("div");
-      d.id = "coracao_espera";
+      if (!app) return;
+      var d = document.getElementById("coracao_espera");
+      if (!d) { d = document.createElement("div"); d.id = "coracao_espera"; app.prepend(d); }
       d.style.cssText = "padding:24px;text-align:center;color:#64748b";
-      d.textContent = "O mapa não carregou. Feche e abra de novo; se continuar, veja o Log de Erros "
-        + "(o médico precisa ter uma especialidade com mapa no cadastro).";
-      app.prepend(d);
-    }, 8000);
+      d.textContent = txt;
+    }
+    S.esperaTimer = setTimeout(function () {
+      _aviso("⏳ Abrindo o mapa… o sistema ainda está terminando de abrir o prontuário.");
+      S.esperaTimer = setTimeout(function () {
+        _aviso("O mapa não carregou. Feche e abra de novo; se continuar, veja o Log de Erros "
+          + "(o médico precisa ter uma especialidade com mapa no cadastro).");
+      }, 27000);
+    }, 3000);
   };
   window.coracaoFechar = function () {
     var ov = document.getElementById("coracao_overlay");

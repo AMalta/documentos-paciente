@@ -38,7 +38,7 @@ const RESPONSAVEL = {
   // deste aplicativo tem 70 anos, e quem tem dificuldade com o aplicativo
   // tem mais ainda com e-mail. Trocar isto depois NÃO sobe a `versao`:
   // muda o contato, não o que a pessoa está permitindo.
-  contato: "(73) 99105-1624",
+  contato: "(27) 99619-6921",
 };
 
 window.TERMO = {

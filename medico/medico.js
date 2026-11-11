@@ -238,7 +238,7 @@ $("quero-enviar").onclick = async () => {
     b.disabled = false;
     const txt = encodeURIComponent("Olá! Quero uma demonstração do Indiclin. Conheci pelo IndiDoc.");
     $("quero-erro").innerHTML = "Não consegui enviar agora. Chame direto: "
-      + `<a href="https://wa.me/5573991051624?text=${txt}" target="_blank" rel="noopener">WhatsApp (73) 99105-1624</a>`;
+      + `<a href="https://wa.me/5527996196921?text=${txt}" target="_blank" rel="noopener">WhatsApp (27) 99619-6921</a>`;
   }
 };
 
