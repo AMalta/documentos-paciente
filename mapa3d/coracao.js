@@ -1179,6 +1179,84 @@
     rotulo(T, "Anexo esquerdo", 2.15, cy - 1.1);
   }
 
+  // ── 🧒 Criança em 2D (12/11/2026) ──────────────────────────────────────
+  // De frente (o lado DIREITO da criança à esquerda da tela) e de costas; à
+  // direita, o painel das triagens neonatais, dos marcos do desenvolvimento e
+  // da pele da frente, em quadros com o nome sempre à vista.
+  function quadro(T, id, grupo, x, y, w, h, txt) {
+    var m = forma(T, id, grupo, [[x, y], [x + w, y], [x + w, y - h], [x, y - h]], 0);
+    textoSprite(T, txt, x + w / 2, y - h / 2, 0.15, "#334155");
+    return m;
+  }
+  function membro(T, id, grupo, a, b, larg) {
+    var dx = b[0] - a[0], dy = b[1] - a[1], n = Math.sqrt(dx * dx + dy * dy), px = -dy / n * larg, py = dx / n * larg;
+    return forma(T, id, grupo, [[a[0] + px, a[1] + py], [b[0] + px, b[1] + py], [b[0] - px, b[1] - py],
+                                [a[0] - px, a[1] - py]], 0);
+  }
+  function construirCrianca(T) {
+    G.camaras = [];
+    var cx = -2.25;
+    // cabeça
+    elipse(T, "cranio", "cranio", cx, 1.75, 0.55, 0.6, 0);
+    elipse(T, "fontanela", "fontanela", cx, 2.2, 0.14, 0.09, 0.02);
+    forma(T, "olhos", "olhos", [[cx - 0.32, 1.84], [cx + 0.32, 1.84], [cx + 0.32, 1.72], [cx - 0.32, 1.72]], 0.02);
+    elipse(T, "nariz", "nariz", cx, 1.6, 0.07, 0.07, 0.02);
+    elipse(T, "orofaringe", "orofaringe", cx, 1.42, 0.17, 0.07, 0.02);
+    [[-1, "d"], [1, "e"]].forEach(function (p) {
+      var k = p[0], l = p[1];
+      elipse(T, "ouvido_" + l, "ouvido", cx + k * 0.6, 1.72, 0.09, 0.15, 0);
+      forma(T, "torax_" + l, "pulmao", [[cx + k * 0.6, 1.02], [cx + k * 0.02, 1.02], [cx + k * 0.02, 0.36],
+                                        [cx + k * 0.6, 0.36]], 0);
+      forma(T, "inguinal_" + l, "inguinal", [[cx + k * 0.5, -0.43], [cx + k * 0.17, -0.43], [cx + k * 0.2, -0.66]], 0.01);
+      elipse(T, "quadril_" + l, "quadril", cx + k * 0.58, -0.55, 0.11, 0.13, 0.01);
+      membro(T, "mmss_" + l, "membros", [cx + k * 0.72, 0.98], [cx + k * 1.0, -0.05], 0.13);
+      membro(T, "mmii_" + l, "membros", [cx + k * 0.3, -0.72], [cx + k * 0.36, -1.9], 0.17);
+      elipse(T, "pe_" + l, "pes", cx + k * 0.42, -2.03, 0.18, 0.09, 0);
+    });
+    forma(T, "pescoco", "pescoco", [[cx - 0.17, 1.17], [cx + 0.17, 1.17], [cx + 0.17, 1.05], [cx - 0.17, 1.05]], 0);
+    elipse(T, "coracao_p", "coracao_p", cx + 0.15, 0.64, 0.13, 0.12, 0.02);
+    forma(T, "abdome", "abdome", [[cx - 0.56, 0.31], [cx + 0.56, 0.31], [cx + 0.5, -0.4], [cx - 0.5, -0.4]], 0);
+    elipse(T, "umbigo", "umbigo", cx, -0.07, 0.06, 0.06, 0.02);
+    elipse(T, "genitalia", "genitalia", cx, -0.6, 0.15, 0.13, 0.01);
+    rotulo(T, "De frente", cx, 2.62, 0.18);
+    rotulo(T, "Direito", cx - 1.1, -1.0, 0.13);
+    rotulo(T, "Esquerdo", cx + 1.1, -1.0, 0.13);
+    // de costas: a pele das costas, a coluna e a região sacral por cima
+    var bx = 0.05, cinza = 0xe2e8f0;
+    var cab = new T.Mesh(new T.CircleGeometry(1, 40), new T.MeshStandardMaterial({ color: cinza }));
+    cab.scale.set(0.55, 0.6, 1); cab.position.set(bx, 1.75, 0); G.corpo.add(cab);
+    forma(T, "pele_costas", "pele", [[bx - 0.6, 1.05], [bx + 0.6, 1.05], [bx + 0.52, -0.62], [bx - 0.52, -0.62]], 0);
+    forma(T, "coluna", "coluna", [[bx - 0.06, 1.0], [bx + 0.06, 1.0], [bx + 0.06, -0.3], [bx - 0.06, -0.3]], 0.02);
+    elipse(T, "sacral", "coluna", bx, -0.45, 0.1, 0.09, 0.02);
+    [[-1, 1], [1, 1]].forEach(function (p) {
+      var k = p[0];
+      [[[bx + k * 0.72, 0.98], [bx + k * 1.0, -0.05], 0.13], [[bx + k * 0.3, -0.7], [bx + k * 0.36, -1.9], 0.17]]
+        .forEach(function (m) {
+          var a = m[0], b = m[1], dx = b[0] - a[0], dy = b[1] - a[1], n = Math.sqrt(dx * dx + dy * dy);
+          var px = -dy / n * m[2], py = dx / n * m[2], sh = new T.Shape();
+          sh.moveTo(a[0] + px, a[1] + py); sh.lineTo(b[0] + px, b[1] + py); sh.lineTo(b[0] - px, b[1] - py);
+          sh.lineTo(a[0] - px, a[1] - py); sh.closePath();
+          G.corpo.add(new T.Mesh(new T.ShapeGeometry(sh), new T.MeshStandardMaterial({ color: cinza })));
+        });
+    });
+    rotulo(T, "De costas", bx, 2.62, 0.18);
+    // painel: triagens, marcos e pele da frente
+    var px0 = 1.55, w = 2.05, h = 0.32, y = 2.55;
+    textoSprite(T, "Triagens neonatais", px0 + w / 2, y + 0.05, 0.16, "#475569");
+    [["t_pezinho", "Pezinho"], ["t_olhinho", "Olhinho"], ["t_orelhinha", "Orelhinha"],
+     ["t_coracaozinho", "Coraçãozinho"], ["t_linguinha", "Linguinha"]].forEach(function (t, i) {
+      quadro(T, t[0], "triagem", px0, y - 0.18 - i * 0.38, w, h, t[1]);
+    });
+    y = y - 0.18 - 5 * 0.38 - 0.2;
+    textoSprite(T, "Desenvolvimento", px0 + w / 2, y + 0.05, 0.16, "#475569");
+    [["m_motor", "Motor"], ["m_linguagem", "Linguagem"], ["m_social", "Social e afetivo"],
+     ["m_cognitivo", "Cognitivo"]].forEach(function (t, i) {
+      quadro(T, t[0], "marco", px0, y - 0.18 - i * 0.38, w, h, t[1]);
+    });
+    y = y - 0.18 - 4 * 0.38 - 0.2;
+    quadro(T, "pele_frente", "pele", px0, y, w, h, "Pele (frente)");
+  }
+
   // ── 🦷 Odontograma (FDI) em 2D ────────────────────────────────────────
   // Lado direito do paciente à esquerda da tela; superiores em cima (a
   // vestibular para fora), decíduos nas fileiras de dentro. Cada dente: as
@@ -1312,7 +1390,10 @@
       alternar: ["◐ Nomes", "Nomes e referências (bexiga, reto): mostrar/esconder"] },
     gestacao: { construir: construirGestacao, incl: 0, y: 0.15, dist: 9.4,
       vistas: [["frente", "De frente", [0, 0, 0]]],
-      alternar: ["◐ Nomes", "Nomes das partes: mostrar/esconder"] }
+      alternar: ["◐ Nomes", "Nomes das partes: mostrar/esconder"] },
+    crianca: { construir: construirCrianca, incl: 0, y: -0.2, dist: 10.4,
+      vistas: [["frente", "Frente, costas e triagens", [0, 0, 0]]],
+      alternar: ["◐ Nomes", "Títulos e lados: mostrar/esconder"] }
   };
 
   function montarModelo(nome) {
