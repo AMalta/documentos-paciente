@@ -1262,6 +1262,60 @@
   .dc-tx small{display:block;color:var(--cinza-txt);font-size:13.5px}
   .dc-prog{flex:none;font-size:12.5px;font-weight:700;color:var(--marca-escura);background:var(--marca-clara);
            border-radius:12px;padding:4px 10px;margin-top:2px}
+  /* 🎮 Enquanto espera (jogos.js) */
+  body.sem-rolar{overflow:hidden}
+  #tela-jogos{z-index:70;flex-direction:column;color:#14272e}
+  .ini-jogos{display:flex;align-items:center;gap:12px;width:100%;margin:4px 0 10px;border:0;border-radius:20px;
+             background:#fff;box-shadow:var(--sombra-cartao);padding:14px 16px;font:inherit;text-align:left;color:#14272e}
+  .ini-jogos .ini-ico{margin:0}
+  .ini-jogos b{display:block;font-size:16px}.ini-jogos small{display:block;font-size:13px;color:var(--cinza-txt)}
+  .ini-jogos.destaque{background:var(--grad-marca);color:#fff}.ini-jogos.destaque small{color:#e9fbf6}
+  .jg-estrelas{font-weight:800;font-size:15px;color:var(--marca-escura);background:var(--marca-clara);border-radius:14px;padding:4px 10px}
+  .jg-palco{flex:1;overflow:auto;padding:16px 16px 40px;max-width:640px;width:100%;margin:0 auto}
+  .jg-ola{font-size:17px;line-height:1.45;margin-bottom:14px}
+  .jg-grade{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .jg-grade button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:0;border-radius:20px;background:#fff;
+       box-shadow:var(--sombra-cartao);padding:16px;font:inherit;text-align:left;color:#14272e;min-height:120px}
+  .jg-grade span{font-size:30px;line-height:1;margin-bottom:8px}.jg-grade b{font-size:16px}
+  .jg-grade small{font-size:13px;color:var(--cinza-txt);line-height:1.3}
+  .jg-t{font-size:12.5px;font-weight:700;color:var(--cinza-txt);text-transform:uppercase;letter-spacing:.04em;margin:20px 0 8px}
+  .jg-medalhas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .jg-med{background:#fff;border-radius:16px;padding:12px;opacity:.55;box-shadow:var(--sombra-cartao)}
+  .jg-med.ganha{opacity:1;background:#fff8e1}
+  .jg-med span{font-size:26px;display:block}.jg-med b{display:block;font-size:14.5px}.jg-med small{color:var(--cinza-txt);font-size:12.5px}
+  .jg-aviso{font-size:12.5px;color:var(--cinza-txt);text-align:center;margin-top:18px}
+  .jg-passo{font-size:13.5px;color:var(--cinza-txt);margin-bottom:8px}
+  .jg-perg{font-size:19px;font-weight:700;line-height:1.35;margin-bottom:14px;color:var(--petroleo)}
+  .jg-ops{display:grid;gap:10px}
+  .jg-ops button,.jg-vm button{border:2px solid transparent;border-radius:16px;background:#fff;box-shadow:var(--sombra-cartao);
+       padding:14px 16px;font:inherit;font-size:16px;text-align:left;color:#14272e;min-height:52px}
+  .jg-vm{display:grid;grid-template-columns:1fr 1fr;gap:12px}.jg-vm button{text-align:center;font-weight:700;font-size:17px}
+  .jg-ops .certa,.jg-vm .certa{border-color:#16a34a;background:#ecfdf3}
+  .jg-ops .errada,.jg-vm .errada{border-color:#dc2626;background:#fef2f2}
+  .jg-expl{margin-top:14px;background:#fff7ed;border-radius:16px;padding:12px 14px;font-size:15.5px;line-height:1.5}
+  .jg-expl.ok{background:#ecfdf3}.jg-expl small{display:block;margin-top:6px;color:var(--cinza-txt);font-size:12.5px}
+  .jg-seguir,.jg-menu{margin-top:14px;border:0;border-radius:24px;height:50px;padding:0 22px;font:inherit;font-weight:700;font-size:16px;
+       background:var(--grad-marca);color:#fff}
+  .jg-menu{background:var(--marca-clara);color:var(--marca-escura)}
+  .jg-mem{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .jg-mem button{min-height:84px;border:0;border-radius:16px;background:var(--grad-marca);color:transparent;font:inherit;font-size:15px;
+       font-weight:700;padding:10px;box-shadow:var(--sombra-cartao)}
+  .jg-mem button.aberta{background:#fff;color:#14272e}.jg-mem button.parte.aberta{background:#eef6ff}
+  .jg-mem button.achada{background:#ecfdf3;color:#166534}
+  .jg-barra{height:10px;border-radius:6px;background:#e2e8e8;overflow:hidden;margin:6px 0 14px}
+  .jg-barra i{display:block;height:100%;background:var(--grad-marca)}
+  .jg-missao{display:flex;align-items:center;gap:10px;background:#fff;border-radius:16px;padding:12px 14px;margin-bottom:10px;
+       box-shadow:var(--sombra-cartao)}
+  .jg-missao b{flex:1;font-size:15.5px}.jg-missao.feita b{color:var(--cinza-txt);text-decoration:line-through}
+  .jg-missao button{border:0;border-radius:18px;height:40px;padding:0 16px;font:inherit;font-weight:700;background:var(--marca-clara);
+       color:var(--marca-escura)}
+  .jg-fim{text-align:center;padding-top:30px}.jg-est{font-size:38px;margin-bottom:10px}.jg-fim b{font-size:19px}
+  .jg-nova{margin:16px auto 0;background:#fff8e1;border-radius:16px;padding:12px;font-size:16px;max-width:360px}
+  .jg-fim-bts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .dc-barra{height:8px;border-radius:6px;background:#edf1f1;margin:10px 0 2px;overflow:hidden}
+  .dc-barra i{display:block;height:100%;border-radius:6px;background:var(--grad-marca);transition:width .4s}
+  .dc-feito{background:linear-gradient(180deg,#f0faf4,#fff)}
+  .dc-parabens{font-size:15px;color:#0b5d3b;margin-top:6px;line-height:1.45}
   .dc-x{flex:none;width:44px;height:44px;border:0;border-radius:50%;background:none;color:#8a9a9e;font-size:15px;padding:0}
   .dc-sec{margin-top:10px;border-top:1px solid #edf1f1;padding-top:8px}
   .dc-t{font-size:12.5px;font-weight:700;color:var(--cinza-txt);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
@@ -1731,6 +1785,9 @@
         <span class="conv-badge escondido" id="nav-conv-badge">0</span></button>
     </div>
     <div id="ini-depois"></div>
+    <!-- 🎮 Enquanto espera (jogos.js, 16/11/2026) -->
+    <button type="button" class="ini-jogos" id="ini-jogos"><span class="ini-ico">🎮</span>
+      <span><b>Enquanto espera</b><small id="ini-jogos-sub">Quiz, memória e verdade ou mito</small></span></button>
     <button type="button" class="ini-guia" id="ini-guia">❓ Como usar o app</button>
   </section>
 
@@ -2375,6 +2432,20 @@
 
 <!-- EXAMES PARA A CONSULTA (preconsulta.js): a lista marcada; o paciente
      desmarca o que não quiser. "Ver" abre o exame por cima (z-index 50). -->
+<!-- 🎮 ENQUANTO ESPERA (jogos.js, 16/11/2026): por cima de tudo, até do termo —
+     o paciente na sala de espera joga antes de criar a conta. -->
+<div class="tela-cheia escondido" id="tela-jogos" style="background:var(--fundo)">
+  <div class="conv-barra">
+    <button type="button" id="jg-fechar" class="conv-voltar">← Voltar</button>
+    <span class="conv-cab" style="flex:1">
+      <span class="conv-titulo">🎮 Enquanto espera</span>
+      <span class="conv-sub" id="jg-sub"></span>
+    </span>
+    <span class="jg-estrelas" id="jg-estrelas">⭐ 0</span>
+  </div>
+  <div class="jg-palco" id="jg-palco"></div>
+</div>
+
 <div class="tela-cheia escondido" id="tela-pre" style="background:#fff">
   <div class="conv-barra">
     <button type="button" id="pre-fechar" class="conv-voltar">← Voltar</button>
@@ -2481,5 +2552,7 @@
 <script src="plano.js"></script>
 <script src="conta_secoes.js"></script>
 <script src="abas.js"></script>
+<script src="jogos_conteudo.js"></script>
+<script src="jogos.js"></script>
 </body>
 </html>

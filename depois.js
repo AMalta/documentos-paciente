@@ -14,8 +14,9 @@
    dia — não pela agenda: consulta marcada e não feita não tem o que
    acompanhar. A agenda só empresta o nome do médico.
 
-   Some quando tudo está feito (exames guardados e retorno marcado), depois
-   de 45 dias, ou no ✕. Só lê e mostra; não cria dado novo nenhum.
+   Tudo feito (exames guardados e retorno marcado): vira "🎉 Tudo feito"
+   por 3 dias e some (16/11/2026, a barra de progresso também). Some ainda
+   depois de 45 dias, ou no ✕. Só lê e mostra; não cria dado novo nenhum.
 
    Carregado depois de conversa.js e antes de abas.js. Usa `sb`,
    `documentos`, `compromissos`, `pessoas`, `diasAte`, `hojeISO`, `dataBR`,
@@ -101,13 +102,43 @@
       const feitos = v.pedidos.filter(feito).length;
       v.total = v.pedidos.length + 1;
       v.feitos = feitos + (v.retorno ? 1 : 0);
-      if (v.feitos >= v.total || dispensado(v)) continue;
+      if (dispensado(v)) continue;
+      // ⭐ 16/11/2026: tudo feito vira comemoração por 3 dias, depois some.
+      if (v.feitos >= v.total) {
+        v.completo = true;
+        if (diasDesdeCompleto(v) > 3) continue;
+      }
       out.push(v);
     }
     return out.sort((a, b) => b.dia.localeCompare(a.dia));
   }
 
   const feito = (p) => !!(p.trazido_em || p.marcado_manual);
+
+  // Primeiro dia em que a consulta apareceu completa (no próprio celular).
+  function diasDesdeCompleto(v) {
+    const k = "dc-okem-" + v.chave;
+    let em = "";
+    try { em = localStorage.getItem(k) || ""; if (!em) localStorage.setItem(k, (em = hojeISO())); } catch (e) { return 0; }
+    return Math.round((new Date(hojeISO() + "T12:00:00") - new Date(em + "T12:00:00")) / 86400000);
+  }
+
+  function barra(v) {
+    const pct = v.total ? Math.round(100 * v.feitos / v.total) : 0;
+    return `<div class="dc-barra" role="progressbar" aria-valuemin="0" aria-valuemax="${v.total}" aria-valuenow="${v.feitos}">`
+      + `<i style="width:${pct}%"></i></div>`;
+  }
+
+  function htmlCompleto(v, noFio) {
+    const sub = [v.medico, dataBR(v.dia).slice(0, 5), noFio ? "" : v.clinica_nome].filter(Boolean).map(escaparHTML).join(" · ");
+    return `<div class="dc dc-feito${noFio ? " no-fio" : ""}"><div class="dc-cab"><div class="dc-tx">
+        <b>🎉 Tudo feito para o retorno!</b><small>${sub}</small></div>
+        <button type="button" class="dc-x" data-dc="fora" data-v="${escaparHTML(v.chave)}" aria-label="Dispensar">✕</button></div>
+      ${barra(v)}
+      <div class="dc-parabens">${v.pedidos.length ? "Exames guardados" : "Receita em mãos"}${v.retorno
+        ? " e retorno marcado para " + escaparHTML(dataBR(v.retorno.quando).slice(0, 5)) : ""}. Seu médico vai
+        ver tudo na consulta. 💚</div></div>`;
+  }
 
   // O exame do pedido que já está na agenda (mesma chave no título).
   function agendado(v, p) {
@@ -123,6 +154,7 @@
   }
 
   function html(v, noFio) {
+    if (v.completo) return htmlCompleto(v, noFio);
     const quem = pessoas.length > 1 && typeof nomeDaPessoa === "function"
       ? " · " + escaparHTML(nomeDaPessoa(pessoaDe(v.pessoa_id))) : "";
     const sub = [v.medico, dataBR(v.dia).slice(0, 5), noFio ? "" : v.clinica_nome].filter(Boolean).map(escaparHTML).join(" · ");
@@ -132,6 +164,7 @@
         <span class="dc-prog">${v.feitos} de ${v.total} feito${v.feitos === 1 ? "" : "s"}</span>
         ${noFio ? "" : `<span class="dc-seta" aria-hidden="true">${fechado ? "▸" : "▾"}</span>`}
         <button type="button" class="dc-x" data-dc="fora" data-v="${escaparHTML(v.chave)}" aria-label="Dispensar">✕</button></div>`;
+    h += barra(v);
     if (v.pedidos.length) {
       h += `<div class="dc-sec"><div class="dc-t">🧪 Exames pedidos</div>`;
       for (const p of v.pedidos) {

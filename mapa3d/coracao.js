@@ -1663,6 +1663,16 @@
       window.coracaoAbrir(d.modelo || "");
     });
     // 30/10/2026: o servidor explica por que não há mapa (ex.: administrador sem médico)
+    // 12/11/2026: mapa de um sexo só em paciente do outro sexo — confirma
+    Shiny.addCustomMessageHandler("coracao_confirmar", function (d) {
+      if (S.esperaTimer) { clearTimeout(S.esperaTimer); S.esperaTimer = null; }
+      if (d && window.confirm(d.texto)) {
+        Shiny.setInputValue("coracao_abrir", { t: Date.now(), modelo: d.modelo, confirmado: true }, { priority: "event" });
+        return;
+      }
+      var ovf = document.getElementById("coracao_overlay");
+      if (ovf && !S.cat) { ovf.style.display = "none"; document.body.style.overflow = ""; }
+    });
     Shiny.addCustomMessageHandler("coracao_aviso", function (d) {
       if (S.esperaTimer) { clearTimeout(S.esperaTimer); S.esperaTimer = null; }
       if (d && d.fechar) {   // o motivo vem num popup (servidor): fecha a tela cheia vazia
