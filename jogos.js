@@ -147,15 +147,41 @@
     indidoc: { icone: "🗺️", nome: "Explorador do indiDoc", como: "Complete as 5 missões" },
   };
 
+  // Clínicas do paciente para o quiz (17/11/2026, "se o usuário tiver o
+  // indiDoc de mais de uma clínica"): a da consulta de hoje, depois a da
+  // próxima consulta, depois a da mais recente, depois a dos documentos (do
+  // mais novo). Antes valia o primeiro compromisso da lista, que podia ser
+  // uma consulta antiga de outra clínica.
+  function clinicasDoPaciente(comps, docs, hoje) {
+    const vistas = new Map();
+    const pôr = (x) => {
+      const id = x.origem_clinica_id, nome = x.origem_clinica_nome || "";
+      if (!id) return;
+      if (!vistas.has(id)) vistas.set(id, { id, nome });
+      else if (nome && !vistas.get(id).nome) vistas.get(id).nome = nome;
+    };
+    const dia = (c) => String(c.quando || "").slice(0, 10);
+    const cs = (comps || []).filter((c) => c.origem_clinica_id && !c.apagado && !c.cancelado);
+    const asc = (a, b) => (dia(a) < dia(b) ? -1 : dia(a) > dia(b) ? 1 : 0);
+    cs.filter((c) => dia(c) === hoje).forEach(pôr);
+    cs.filter((c) => dia(c) > hoje).sort(asc).forEach(pôr);
+    cs.filter((c) => dia(c) < hoje).sort((a, b) => asc(b, a)).forEach(pôr);
+    const quandoDoc = (d) => String(d.data_documento || d.criado_em || "");
+    (docs || []).filter((d) => d.origem_clinica_id && !d.apagado)
+      .sort((a, b) => (quandoDoc(a) < quandoDoc(b) ? 1 : quandoDoc(a) > quandoDoc(b) ? -1 : 0)).forEach(pôr);
+    return [...vistas.values()];
+  }
+
   window.JogosNucleo = { norm, casarProcedimento, areasDoPerfil, perguntasDaClinica, perguntasDeSaude,
-                         rodadaQuiz, rodadaMitos, paresMemoria, MEDALHAS, embaralhar };
+                         rodadaQuiz, rodadaMitos, paresMemoria, MEDALHAS, embaralhar, clinicasDoPaciente };
 
   // ── Daqui para baixo: a tela (só no navegador) ────────────────────────
   if (typeof document === "undefined" || !document.getElementById("tela-jogos")) return;
   const q = (id) => document.getElementById(id);
   const tela = q("tela-jogos"), palco = q("jg-palco");
   const esc = (t) => (typeof escaparHTML === "function" ? escaparHTML(t) : String(t || ""));
-  const CHAVE = "jogos-v1", CHAVE_PERFIL = "jogos-perfil";
+  const CHAVE = "jogos-v1", CHAVE_PERFIL = "jogos-perfil", CHAVE_PERFIS = "jogos-perfis";
+  let clinicaEscolhida = "";
   // As listas do app.js. Em try: com o app.js parado no meio (variável
   // declarada e não iniciada), até o `typeof` estoura, e os jogos não podem
   // depender do resto do app para abrir.
@@ -193,20 +219,36 @@
   }
 
   // ── Perfil da clínica: ?j=código, ou a clínica dos compromissos/documentos
+  // Um perfil guardado por clínica (sem internet, cada clínica tem o seu);
+  // CHAVE_PERFIL segue com o último usado (quem abriu só pelo QR).
+  function perfisGuardados() {
+    let m = {}, ultimo = null;
+    try { m = JSON.parse(localStorage.getItem(CHAVE_PERFIS) || "{}") || {}; } catch (e) {}
+    try { ultimo = JSON.parse(localStorage.getItem(CHAVE_PERFIL) || "null"); } catch (e) {}
+    if (ultimo && ultimo.clinica_id && !m[ultimo.clinica_id]) m[ultimo.clinica_id] = ultimo;
+    return { m, ultimo };
+  }
+  function guardarPerfil(p) {
+    const { m } = perfisGuardados();
+    m[p.clinica_id] = p;
+    try { localStorage.setItem(CHAVE_PERFIS, JSON.stringify(m)); localStorage.setItem(CHAVE_PERFIL, JSON.stringify(p)); } catch (e) {}
+  }
+  function clinicas() {
+    let hoje = "";
+    try { hoje = hojeISO(); } catch (e) {}
+    return window.JogosNucleo.clinicasDoPaciente(lista("compromissos"), lista("documentos"), hoje);
+  }
+  // A clínica do quiz sem QR: a escolhida na troca ou a 1ª da ordem acima
+  function idAtual() {
+    const cs = clinicas();
+    return ((clinicaEscolhida && cs.find((c) => c.id === clinicaEscolhida)) || cs[0] || {}).id || "";
+  }
+
   async function carregarPerfil() {
-    let guardado = null;
-    try { guardado = JSON.parse(localStorage.getItem(CHAVE_PERFIL) || "null"); } catch (e) {}
-    let idClinica = "";
-    if (!codigo) {
-      const comps = lista("compromissos").filter((c) => c.origem_clinica_id && !c.apagado);
-      const docs = lista("documentos").filter((d) => d.origem_clinica_id && !d.apagado);
-      const hoje = typeof hojeISO === "function" ? hojeISO() : "";
-      const deHoje = comps.find((c) => c.quando === hoje);
-      idClinica = (deHoje || comps[0] || docs[0] || {}).origem_clinica_id || "";
-    }
-    if (guardado && ((codigo && guardado.codigo === codigo) || (!codigo && (!idClinica || guardado.clinica_id === idClinica)))) {
-      perfil = guardado;
-    }
+    const { m, ultimo } = perfisGuardados();
+    const idClinica = codigo ? "" : idAtual();
+    if (codigo) perfil = Object.values(m).find((p) => p && p.codigo === codigo) || null;
+    else perfil = idClinica ? (m[idClinica] || null) : ultimo;
     if ((!codigo && !idClinica) || !cliente() || !navigator.onLine) return;
     try {
       let consulta = cliente().from("clinicas_perfil").select("clinica_id, codigo, nome, cidade, especialidades, medicos, procedimentos");
@@ -214,7 +256,7 @@
       const { data } = await consulta.limit(1);
       if (data && data[0]) {
         perfil = data[0];
-        try { localStorage.setItem(CHAVE_PERFIL, JSON.stringify(perfil)); } catch (e) {}
+        guardarPerfil(perfil);
       }
     } catch (e) { /* sem o sql/031 ou sem rede: joga sem as perguntas da clínica */ }
   }
@@ -223,7 +265,11 @@
   function menu() {
     const d = ler(), med = d.medalhas || {};
     const feitas = missoes().filter((m) => m.feito).length;
-    palco.innerHTML = `
+    // Paciente de mais de uma clínica, sem QR: troca rápida da clínica do quiz
+    const cs = codigo ? [] : clinicas(), atual = cs.length > 1 ? idAtual() : "";
+    const troca = cs.length > 1 ? `<label class="jg-troca">Jogando sobre: <select id="jg-clinica">${cs.map((c) =>
+      `<option value="${esc(c.id)}"${c.id === atual ? " selected" : ""}>${esc(c.nome || "Clínica")}</option>`).join("")}</select></label>` : "";
+    palco.innerHTML = `${troca}
       <div class="jg-ola">${perfil && perfil.nome ? `Conheça a <b>${esc(perfil.nome)}</b> e` : "Teste"} o que você sabe de saúde. 😊</div>
       <div class="jg-grade">
         <button type="button" data-jg="quiz"><span>❓</span><b>Quiz</b><small>${perfil ? "A clínica, os exames e a saúde" : "Exames e saúde"}</small></button>
@@ -235,6 +281,12 @@
       <div class="jg-medalhas">${Object.entries(MEDALHAS).map(([k, m]) =>
         `<div class="jg-med${med[k] ? " ganha" : ""}"><span>${m.icone}</span><b>${esc(m.nome)}</b><small>${med[k] ? "Conquistada!" : esc(m.como)}</small></div>`).join("")}</div>
       <p class="jg-aviso">Conteúdo educativo, com fontes oficiais. Não substitui a orientação do seu médico.</p>`;
+    const sel = q("jg-clinica");
+    if (sel) sel.onchange = async () => {
+      clinicaEscolhida = sel.value;
+      await carregarPerfil();
+      pintarTopo(); menu();
+    };
   }
 
   // ── Quiz ──────────────────────────────────────────────────────────────
