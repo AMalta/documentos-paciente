@@ -224,6 +224,8 @@
     { jogo: "memoria", icone: "🧠", nome: "Jogo da memória", fonte: "niveis", un: "", metas: [1, 2, 3] },
     { jogo: "corpo", icone: "🧍", nome: "Monte o corpo", fonte: "recorde", un: "", metas: [1, 2, 3] },
     { jogo: "respire", icone: "🌬️", nome: "Respire comigo", fonte: "total", un: " vezes", metas: [1, 5, 15] },
+    // 18/11/2026 (indique.js): amigos que abriram o indiDoc pelo convite
+    { jogo: "indique", icone: "🤝", nome: "Indique o indiDoc", fonte: "total", un: " amigos", metas: [1, 3, 10] },
   ];
   const NIVEL_TROFEU = ["", "🥉", "🥈", "🥇"], NOME_NIVEL = ["", "bronze", "prata", "ouro"];
   function valorTrofeu(t, d) {
@@ -380,6 +382,7 @@
       <div class="jg-desafio${feitoDes ? " feito" : ""}"><b>🎯 Desafio do dia</b> ${esc(des.texto)}
         <small>${feitoDes ? "Cumprido! +3 ⭐ — volte amanhã para outro." : "Vale +3 ⭐"}</small></div>
       ${TELAS.ranking ? `<button type="button" class="jg-ranking-bt" data-jg="ranking">🏆 <b>Ranking dos jogos</b><small>Veja quem está na frente — e passe à frente!</small></button>` : ""}
+      ${TELAS.indique ? `<button type="button" class="jg-ranking-bt jg-indique-bt" data-jg="indique">🤝 <b>Indique o indiDoc</b><small>+5 ⭐ por amigo que abrir pelo seu convite</small></button>` : ""}
       <div class="jg-ola">${perfil && perfil.nome ? `Conheça a <b>${esc(perfil.nome)}</b> e` : "Teste"} o que você sabe de saúde. 😊</div>
       <div class="jg-grade">
         <button type="button" data-jg="quiz"><span>❓</span><b>Quiz</b><small>${perfil ? "A clínica, os exames e a saúde" : "Exames e saúde"}</small></button>
@@ -718,6 +721,8 @@
     document.body.classList.add("sem-rolar");
     pintarTopo(); menu();
     contar("abriu", null);
+    // 🤝 estrelas de indicações novas (indique.js) — em silêncio, no topo
+    if (window.Indique) window.Indique.conferir().then((r) => { if (r && r.est) pintarTopo(); }).catch(() => {});
     await carregarPerfil();
     pintarTopo(); menu();
   }

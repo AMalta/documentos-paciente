@@ -1357,6 +1357,8 @@
   .jg-conq .ic{font-size:20px;grid-row:span 2}.jg-conq b{font-size:13.5px;line-height:1.2}.jg-conq .nv{font-size:20px;grid-row:span 2}
   .jg-conq small{grid-column:2;color:var(--cinza-txt);font-size:12px}.jg-conq.n0{opacity:.85}.jg-conq.n3{background:#fffbeb}
   .jg-meta{margin-top:10px;font-size:14.5px;color:var(--cinza-txt)}
+  .jg-indique-bt{background:linear-gradient(135deg,#7c3aed,#c026d3)}
+  .jg-zap-forte{display:inline-flex;align-items:center;text-decoration:none}
   .jg-abas{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px}.jg-abas.pq{margin-bottom:12px}
   .jg-aba{border:1px solid #d5e3e6;background:#fff;border-radius:999px;padding:7px 12px;font:inherit;font-size:14px;color:#14272e}
   .jg-abas.pq .jg-aba{font-size:13px;padding:5px 10px}
@@ -1371,6 +1373,34 @@
   .jg-nome-linha button{border:0;background:var(--marca-clara);border-radius:12px;padding:0 12px;font-size:18px}
   .jg-nome small{display:block;margin-top:4px}.jg-erro{color:#b91c1c;font-weight:700}
   .jg-auto{display:flex;align-items:center;gap:8px;font-size:14.5px;margin:8px 0 4px}.jg-auto input{width:20px;height:20px}
+  /* 📈 Meu diário de saúde (diario.js, 18/11/2026) */
+  .ini-diario{margin-bottom:8px}
+  .dr-quem{font-size:15px;color:var(--cinza-txt);margin-bottom:8px}
+  .dr-abas{display:flex;gap:6px;margin-bottom:12px}
+  .dr-abas button{flex:1;border:1px solid #d5e3e6;background:#fff;border-radius:14px;padding:10px 6px;font:inherit;font-size:15px;font-weight:700;color:#14272e}
+  .dr-abas button.sel{background:var(--marca-escura);color:#fff;border-color:transparent}
+  .dr-novo{background:#fff;border-radius:18px;padding:14px;box-shadow:var(--sombra-cartao);margin-bottom:14px}
+  .dr-t{font-weight:800;font-size:16px;margin:14px 0 8px}.dr-novo .dr-t{margin-top:0}
+  .dr-campos{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+  .dr-campos label{display:flex;flex-direction:column;font-size:13.5px;color:var(--cinza-txt);gap:4px;flex:1;min-width:84px}
+  .dr-campos input,.dr-campos select{font:inherit;font-size:22px;font-weight:700;border:1px solid #d5e3e6;border-radius:12px;padding:8px 10px;width:100%;box-sizing:border-box;color:#14272e}
+  .dr-campos select{font-size:16px;padding:12px 8px}
+  .dr-x{font-size:26px;font-weight:700;padding-bottom:10px;color:var(--cinza-txt)}
+  .dr-salvar{margin-top:12px;width:100%;border:0;border-radius:14px;padding:13px;font:inherit;font-size:17px;font-weight:800;color:#fff;background:var(--marca-escura)}
+  .dr-erro{display:block;color:#b91c1c;font-weight:700;margin-top:8px}
+  .dr-graf{width:100%;height:90px;background:#fff;border-radius:14px;box-shadow:var(--sombra-cartao)}
+  .dr-graf-leg{font-size:12.5px;color:var(--cinza-txt);margin:4px 2px 0}
+  .dr-item{display:flex;gap:8px;align-items:flex-start;background:#fff;border-radius:14px;padding:10px 12px;margin-bottom:8px;border-left:5px solid #cbd5e1;box-shadow:var(--sombra-cartao)}
+  .dr-item-l{flex:1;display:flex;flex-direction:column;gap:2px}.dr-item-l b{font-size:16.5px}.dr-item-l small{color:var(--cinza-txt)}
+  .dr-item-l span{font-size:14px;line-height:1.35}
+  .dr-item.ok{border-left-color:#16a34a}.dr-item.atencao{border-left-color:#f59e0b}.dr-item.alerta{border-left-color:#ea580c}
+  .dr-item.urgente{border-left-color:#dc2626;background:#fef2f2}.dr-item.info{border-left-color:#0ea5e9}
+  #dr-msg .dr-item{margin:10px 0 0}
+  .dr-apagar{border:0;background:transparent;color:#94a3b8;font-size:16px;padding:4px}
+  .dr-fonte,.dr-aviso,.dr-aviso-p{font-size:13px;color:var(--cinza-txt);line-height:1.4}.dr-aviso{margin-top:14px}
+  .dr-comp{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:6px;font-size:15.5px}
+  .dr-comp input{width:22px;height:22px}
+  .dr-vazio{color:var(--cinza-txt);text-align:center;padding:16px 0}
   /* ⚡ Mais agitados (jogos_arcade.js, 17/11/2026) */
   .jg-rl-num{display:flex;justify-content:space-between;align-items:center;font-size:15px;margin:2px 0 10px}
   .jg-rl-num b{font-size:18px;color:var(--marca-escura)}
@@ -1879,6 +1909,9 @@
         <span class="conv-badge escondido" id="nav-conv-badge">0</span></button>
     </div>
     <div id="ini-depois"></div>
+    <!-- 📈 Meu diário de saúde (diario.js, 18/11/2026) -->
+    <button type="button" class="ini-jogos ini-diario" id="ini-diario"><span class="ini-ico">📈</span>
+      <span><b>Meu diário de saúde</b><small>Pressão, glicemia e peso</small></span></button>
     <!-- 🎮 Enquanto espera (jogos.js, 16/11/2026) -->
     <button type="button" class="ini-jogos" id="ini-jogos"><span class="ini-ico">🎮</span>
       <span><b>Enquanto espera</b><small id="ini-jogos-sub">Quiz, labirinto, ranking e mais</small></span></button>
@@ -2540,6 +2573,16 @@
   <div class="jg-palco" id="jg-palco"></div>
 </div>
 
+<!-- 📈 Meu diário de saúde (diario.js) -->
+<div class="tela-cheia escondido" id="tela-diario" style="background:var(--fundo)">
+  <div class="conv-barra">
+    <button type="button" id="dr-fechar" class="conv-voltar">← Voltar</button>
+    <span class="conv-cab" style="flex:1"><span class="conv-titulo">📈 Meu diário de saúde</span>
+      <span class="conv-sub">Pressão, glicemia e peso</span></span>
+  </div>
+  <div class="jg-palco" id="dr-palco"></div>
+</div>
+
 <div class="tela-cheia escondido" id="tela-pre" style="background:#fff">
   <div class="conv-barra">
     <button type="button" id="pre-fechar" class="conv-voltar">← Voltar</button>
@@ -2649,5 +2692,7 @@
 <script src="jogos_conteudo.js"></script>
 <script src="jogos.js"></script>
 <script src="jogos_arcade.js"></script>
+<script src="diario.js"></script>
+<script src="indique.js"></script>
 </body>
 </html>
