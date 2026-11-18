@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-11-18.3";
+const VERSAO_APP = "2026-11-18.4";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -4443,6 +4443,10 @@ function fecharTelaAtual() {
 let ultimoAvisoSair = 0;
 history.pushState({ app: true }, "");
 window.addEventListener("popstate", () => {
+  // Os jogos cuidam do próprio voltar com degraus feitos no toque, SEM
+  // recriar degrau aqui (18/11/2026: o Chrome do Android pula o degrau
+  // recriado sem toque e o 2º voltar seguido saía do app) — jogos.js
+  if (window.Jogos && Jogos.aoVoltar && Jogos.aoVoltar()) return;
   if (fecharTelaAtual()) { history.pushState({ app: true }, ""); return; }
 
   const agora = Date.now();

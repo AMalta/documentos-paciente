@@ -462,13 +462,22 @@
       respondida = true;
       const f = frases[i], certo = disse === f.verdade;
       const carta = q("jg-carta");
-      if (carta) { carta.classList.add(disse ? "foi-v" : "foi-m"); }
+      // 18/11/2026 ("a carta não sai completamente"): o arrasto deixava o
+      // transform no style e a classe não vencia; agora a carta sai inteira
+      // da tela e some, e a frase vai para a explicação
+      if (carta) {
+        carta.style.transition = ""; carta.style.transform = "";
+        carta.classList.remove("quase-v", "quase-m");
+        carta.classList.add(disse ? "foi-v" : "foi-m");
+        setTimeout(() => { carta.style.display = "none"; }, 380);
+      }
       if (certo) acertos++;
       palco.querySelectorAll("[data-vm]").forEach((b) => {
         b.disabled = true;
         if ((b.dataset.vm === "1") === f.verdade) b.classList.add("certa"); else b.classList.add("errada");
       });
-      q("jg-resp").innerHTML = `<div class="jg-expl ${certo ? "ok" : ""}"><b>${f.verdade ? "Verdade." : "Mito."}</b> ${esc(f.explica)}
+      q("jg-resp").innerHTML = `<div class="jg-expl ${certo ? "ok" : ""}"><div class="jg-expl-frase">“${esc(f.frase)}”</div>
+        <b>${certo ? "Você acertou! " : "Não foi dessa vez. "}${f.verdade ? "É verdade." : "É mito."}</b> ${esc(f.explica)}
         <small>Fonte: ${esc(f.fonte)}</small></div>
         <div class="jg-fim-bts"><button type="button" class="jg-seguir" id="jg-mito-seg">${i + 1 < frases.length ? "Próxima →" : "Ver resultado"}</button>
         <a class="jg-menu jg-zap" target="_blank" rel="noopener" href="${esc(linkZap(`${f.verdade ? "✅ Verdade" : "❌ Mito"}: “${f.frase}” — ${f.explica} (Fonte: ${f.fonte})`))}">📲 Enviar a dica</a></div>`;
@@ -658,20 +667,48 @@
     const acao = { quiz, memoria, mitos, missoes: telaMissoes, menu }[b.dataset.jg] || (EXTRAS[b.dataset.jg] || {}).abrir
       || TELAS[b.dataset.jg];
     if (acao) {
-      // entrar num jogo (do menu) cria o seu degrau no histórico — ver degrau()
-      if (b.dataset.jg !== "menu" && palco.querySelector(".jg-grade")) degrau();
+      if (b.dataset.jg === "menu") desce(1);                       // "Outros jogos"
+      else if (palco.querySelector(".jg-grade")) degrau();         // do menu para um jogo
       pararJogo(); acao();
     }
   });
 
-  // Degrau no histórico, criado NO TOQUE da pessoa (18/11/2026, "ao dar outro
-  // clique na seta está saindo do indiDoc"). O Chrome do Android PULA, no
-  // voltar, os degraus que a página criou sem toque da pessoa — e o app.js
-  // recria o seu dentro do popstate, sem toque. Dois voltares seguidos (jogo
-  // → menu → fechar) caíam nesse degrau "pulável" e saíam do app. Com um
-  // degrau feito no toque ao abrir os jogos e outro ao entrar num jogo, cada
-  // voltar tem um degrau de verdade para consumir.
-  function degrau() { try { history.pushState({ app: true, jogos: true }, ""); } catch (e) {} }
+  // ── Voltar do celular (18/11/2026, 3ª versão) ─────────────────────────
+  // "Abro um jogo, a seta volta ao menu, mas o 2º toque sai do indiDoc."
+  // O Chrome do Android marca como "pulável" o degrau em que a página cai
+  // no voltar e logo cria outro SEM toque da pessoa — é o que o app.js faz
+  // no popstate. Por isso os jogos cuidam do próprio voltar:
+  // • criam um degrau NO TOQUE ao abrir os jogos e ao entrar num jogo
+  //   (`pilha` conta quantos são nossos);
+  // • no popstate (app.js chama Jogos.aoVoltar primeiro), consomem o degrau
+  //   sem criar outro: no jogo → menu; no menu → fecha os jogos;
+  // • saindo pelos botões da tela, desfazem os seus degraus (`desce`), para
+  //   a seta não precisar de toques "vazios" depois.
+  // Sem degrau nosso (abertos pelo QR, sem toque), o app.js segue cuidando.
+  let pilha = 0, ignorar = 0;
+  function degrau() {
+    // aberto sem toque (link/QR na carga da página): não cria — seria pulável
+    const ua = navigator.userActivation;
+    if (ua && !ua.isActive) return;
+    try { history.pushState({ app: true, jogos: true }, ""); pilha++; } catch (e) {}
+  }
+  // Desfaz `n` degraus nossos (sem passar do que existe), ignorando o popstate
+  function desce(n) {
+    const k = Math.min(n, pilha);
+    if (k <= 0) return;
+    pilha -= k; ignorar++;
+    history.go(-k);
+  }
+  // Chamado pelo popstate do app.js ANTES de tudo (um listener nosso
+  // rodaria depois do dele — ordem de registro). true = os jogos cuidaram.
+  function aoVoltar() {
+    if (ignorar > 0) { ignorar--; return true; }
+    if (tela.classList.contains("escondido") || pilha <= 0) return false;   // o app.js cuida
+    pilha--;
+    if (palco.querySelector(".jg-grade")) { fechar(); if (pilha > 0) desce(pilha); }
+    else menu();
+    return true;
+  }
 
   // ── Abrir e fechar ────────────────────────────────────────────────────
   async function abrir(deOnde) {
@@ -685,7 +722,11 @@
     pintarTopo(); menu();
   }
   function fechar() { pararJogo(); tela.classList.add("escondido"); document.body.classList.remove("sem-rolar"); }
-  q("jg-fechar").onclick = () => (palco.querySelector(".jg-grade") ? fechar() : menu());
+  // "← Voltar" da tela: mesmo caminho da seta, desfazendo o degrau
+  q("jg-fechar").onclick = () => {
+    if (palco.querySelector(".jg-grade")) { desce(pilha); fechar(); }
+    else { if (pilha > 1) desce(1); menu(); }
+  };
 
   // Voltar do Android (18/11/2026, "clica uma vez na seta e não acontece
   // nada, no segundo sai do indiDoc"): a tela dos jogos não estava na lista
@@ -737,5 +778,5 @@
   const kit = { palco, q, esc, ler, gravar, marcar, contar, ganharEstrelas, ganharMedalha, resultado, cliente,
                 recorde, recordeDe, linkZap,
                 perfil: () => perfil, aoParar: (f) => { pararJogo(); parar = f; } };
-  window.Jogos = { abrir, fechar, registrar, registrarTela, kit };
+  window.Jogos = { abrir, fechar, registrar, registrarTela, kit, aoVoltar };
 })();
