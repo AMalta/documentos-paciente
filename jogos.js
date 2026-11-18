@@ -607,6 +607,18 @@
   function fechar() { pararJogo(); tela.classList.add("escondido"); document.body.classList.remove("sem-rolar"); }
   q("jg-fechar").onclick = () => (palco.querySelector(".jg-grade") ? fechar() : menu());
 
+  // Voltar do Android (18/11/2026, "clica uma vez na seta e não acontece
+  // nada, no segundo sai do indiDoc"): a tela dos jogos não estava na lista
+  // do app.js — o 1º toque só mostrava o aviso de sair (escondido por baixo
+  // dos jogos) e o 2º saía. Agora faz o mesmo que o "← Voltar": dentro de um
+  // jogo volta ao menu; no menu fecha os jogos. Vem PRIMEIRO na lista: os
+  // jogos abrem por cima de tudo.
+  if (typeof FECHAR_TELA_CHEIA === "object") {
+    const resto = { ...FECHAR_TELA_CHEIA };
+    for (const k of Object.keys(FECHAR_TELA_CHEIA)) delete FECHAR_TELA_CHEIA[k];
+    Object.assign(FECHAR_TELA_CHEIA, { "tela-jogos": "jg-fechar" }, resto);
+  }
+
   // Botão do Início: "dia" quando há consulta hoje (o destaque)
   function consultaHoje() {
     let hoje = "";
