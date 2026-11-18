@@ -1374,7 +1374,6 @@
   .jg-nome small{display:block;margin-top:4px}.jg-erro{color:#b91c1c;font-weight:700}
   .jg-auto{display:flex;align-items:center;gap:8px;font-size:14.5px;margin:8px 0 4px}.jg-auto input{width:20px;height:20px}
   /* 📈 Meu diário de saúde (diario.js, 18/11/2026) */
-  .ini-diario{margin-bottom:8px}
   .dr-quem{font-size:15px;color:var(--cinza-txt);margin-bottom:8px}
   .dr-abas{display:flex;gap:6px;margin-bottom:12px}
   .dr-abas button{flex:1;border:1px solid #d5e3e6;background:#fff;border-radius:14px;padding:10px 6px;font:inherit;font-size:15px;font-weight:700;color:#14272e}
@@ -1708,6 +1707,7 @@
   .ini-grade b{font-size:16px;line-height:1.2}
   .ini-grade small{font-size:13px;color:var(--cinza-txt);line-height:1.3}
   .ini-grade .conv-badge{top:12px;right:12px;left:auto}
+  .ini-grade button.destaque{background:var(--grad-marca);color:#fff}.ini-grade button.destaque small{color:#e9fbf6}
   .ini-guia{display:block;margin:6px auto 0;background:none;border:0;font:inherit;font-size:14.5px;
        font-weight:600;color:var(--marca-escura);padding:10px}
   /* ── NOVA CONVERSA (07/10, conversa.js): escolher a clínica e a tela de
@@ -1909,12 +1909,13 @@
         <span class="conv-badge escondido" id="nav-conv-badge">0</span></button>
     </div>
     <div id="ini-depois"></div>
-    <!-- 📈 Meu diário de saúde (diario.js, 18/11/2026) -->
-    <button type="button" class="ini-jogos ini-diario" id="ini-diario"><span class="ini-ico">📈</span>
-      <span><b>Meu diário de saúde</b><small>Pressão, glicemia e peso</small></span></button>
-    <!-- 🎮 Enquanto espera (jogos.js, 16/11/2026) -->
-    <button type="button" class="ini-jogos" id="ini-jogos"><span class="ini-ico">🎮</span>
-      <span><b>Enquanto espera</b><small id="ini-jogos-sub">Quiz, labirinto, ranking e mais</small></span></button>
+    <!-- 📈 Meu diário de saúde (diario.js) e 🎮 Enquanto espera (jogos.js), lado a lado -->
+    <div class="ini-grade">
+      <button type="button" id="ini-diario"><span class="ini-ico">📈</span>
+        <b>Meu diário de saúde</b><small>Pressão, glicemia e peso</small></button>
+      <button type="button" id="ini-jogos"><span class="ini-ico">🎮</span>
+        <b>Enquanto espera</b><small id="ini-jogos-sub">Quiz, labirinto, ranking e mais</small></button>
+    </div>
     <button type="button" class="ini-guia" id="ini-guia">❓ Como usar o app</button>
   </section>
 
