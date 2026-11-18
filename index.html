@@ -1314,6 +1314,41 @@
   .jg-fim{text-align:center;padding-top:30px}.jg-est{font-size:38px;margin-bottom:10px}.jg-fim b{font-size:19px}
   .jg-nova{margin:16px auto 0;background:#fff8e1;border-radius:16px;padding:12px;font-size:16px;max-width:360px}
   .jg-fim-bts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  /* ⚡ Mais agitados (jogos_arcade.js, 17/11/2026) */
+  .jg-rl-num{display:flex;justify-content:space-between;align-items:center;font-size:15px;margin:2px 0 10px}
+  .jg-rl-num b{font-size:18px;color:var(--marca-escura)}
+  .jg-rl-tempo{margin:0 0 6px}.jg-rl-tempo i{transition:width .1s linear}
+  .jg-rl-rev{text-align:left;margin-top:18px}
+  .jg-canvas{display:block;margin:0 auto;border-radius:18px;background:#f4fbfb;box-shadow:var(--sombra-cartao);touch-action:none;user-select:none;-webkit-user-select:none}
+  .jg-lb{background:#0b2530}
+  .jg-pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,52px);gap:8px;justify-content:center;margin:14px auto 4px}
+  .jg-pad button{border:0;border-radius:16px;background:#fff;box-shadow:var(--sombra-cartao);font-size:22px;color:var(--marca-escura);touch-action:none}
+  .jg-pad [data-d=cima]{grid-column:2;grid-row:1}.jg-pad [data-d=esq]{grid-column:1;grid-row:2}
+  .jg-pad [data-d=baixo]{grid-column:2;grid-row:2}.jg-pad [data-d=dir]{grid-column:3;grid-row:2}
+  .jg-pad button:active{background:var(--marca-clara)}
+  .jg-corpo{display:flex;justify-content:center}.jg-silhueta{width:100%;max-width:250px;height:auto}
+  .jg-zona circle{fill:#fff;stroke:#0e7490;stroke-width:2;stroke-dasharray:4 3}
+  .jg-zona text{font-size:15px}
+  .jg-corpo.alvo .jg-zona circle{stroke:#f59e0b;stroke-width:3;animation:jgPulsa 1s infinite}
+  .jg-zona.certa circle{fill:#dcfce7;stroke:#16a34a;stroke-dasharray:none}
+  .jg-zona.errada circle{fill:#fee2e2;stroke:#dc2626}
+  @keyframes jgPulsa{50%{stroke-opacity:.35}}
+  .jg-fichas{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
+  .jg-ficha{border:2px solid transparent;border-radius:14px;background:#fff;box-shadow:var(--sombra-cartao);padding:10px 12px;
+    font:inherit;font-size:14.5px;font-weight:700;color:#14272e;touch-action:none;user-select:none;-webkit-user-select:none}
+  .jg-ficha.sel{border-color:#f59e0b;background:#fffbeb}
+  .jg-fantasma{position:fixed;z-index:9999;pointer-events:none;transform:translate(-50%,-60%) scale(1.05);opacity:.92}
+  .jg-resp-caixa{text-align:center;padding-top:16px}
+  .jg-resp-bola{width:220px;height:220px;margin:10px auto 22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a7f3d0,#14b8a6);
+    display:flex;align-items:center;justify-content:center;transform:scale(.55);box-shadow:0 10px 40px rgba(20,184,166,.35)}
+  .jg-resp-bola span{font-size:44px;font-weight:800;color:#fff}
+  .jg-resp-txt{font-size:20px;font-weight:700;color:var(--petroleo);min-height:56px}
+  .jg-placar{margin:18px auto 0;max-width:380px;background:#fff;border-radius:18px;padding:14px;box-shadow:var(--sombra-cartao)}
+  .jg-placar small{display:block;color:var(--cinza-txt);font-size:12.5px;margin-top:6px}
+  .jg-placar-t{font-weight:800;font-size:16px;margin-bottom:8px}
+  .jg-placar-ap{font-size:15.5px}.jg-placar-ap button{border:0;background:var(--marca-clara);border-radius:12px;padding:4px 8px;margin-left:6px;font-size:15px}
+  .jg-top{text-align:left;margin:4px 0 0;padding-left:24px}.jg-top li{padding:4px 0;font-size:15.5px}
+  .jg-top li b{font-size:16px}.jg-top li span{float:right;font-weight:800}.jg-top li.eu{color:var(--marca-escura)}
   .dc-barra{height:8px;border-radius:6px;background:#edf1f1;margin:10px 0 2px;overflow:hidden}
   .dc-barra i{display:block;height:100%;border-radius:6px;background:var(--grad-marca);transition:width .4s}
   .dc-feito{background:linear-gradient(180deg,#f0faf4,#fff)}
@@ -2556,5 +2591,6 @@
 <script src="abas.js"></script>
 <script src="jogos_conteudo.js"></script>
 <script src="jogos.js"></script>
+<script src="jogos_arcade.js"></script>
 </body>
 </html>

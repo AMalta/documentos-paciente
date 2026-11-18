@@ -173,7 +173,7 @@
   }
 
   window.JogosNucleo = { norm, casarProcedimento, areasDoPerfil, perguntasDaClinica, perguntasDeSaude,
-                         rodadaQuiz, rodadaMitos, paresMemoria, MEDALHAS, embaralhar, clinicasDoPaciente };
+                         rodadaQuiz, rodadaMitos, paresMemoria, MEDALHAS, embaralhar, montar, clinicasDoPaciente };
 
   // ── Daqui para baixo: a tela (só no navegador) ────────────────────────
   if (typeof document === "undefined" || !document.getElementById("tela-jogos")) return;
@@ -187,6 +187,12 @@
   // depender do resto do app para abrir.
   const lista = (nome) => { try { const v = { compromissos, documentos }[nome]; return Array.isArray(v) ? v : []; } catch (e) { return []; } };
   let origem = "app", perfil = null, codigo = "";
+  // Jogos de jogos_arcade.js (17/11/2026): registram-se aqui. O que roda
+  // com relógio (requestAnimationFrame, setInterval) entrega a função de
+  // parar em aoParar — chamada ao sair do jogo (menu, voltar, jogar de novo).
+  const EXTRAS = {};
+  let parar = null;
+  function pararJogo() { const f = parar; parar = null; if (f) { try { f(); } catch (e) {} } }
 
   const cliente = () => { try { return typeof sb !== "undefined" ? sb : null; } catch (e) { return null; } };
 
@@ -263,6 +269,7 @@
 
   // ── Menu ──────────────────────────────────────────────────────────────
   function menu() {
+    pararJogo();
     const d = ler(), med = d.medalhas || {};
     const feitas = missoes().filter((m) => m.feito).length;
     // Paciente de mais de uma clínica, sem QR: troca rápida da clínica do quiz
@@ -277,6 +284,8 @@
         <button type="button" data-jg="mitos"><span>✅</span><b>Verdade ou mito</b><small>Dicas de saúde com fonte</small></button>
         <button type="button" data-jg="missoes"><span>🗺️</span><b>Missões do indiDoc</b><small>${feitas} de 5 feitas</small></button>
       </div>
+      ${Object.keys(EXTRAS).length ? `<div class="jg-t">⚡ Mais agitados</div><div class="jg-grade">${Object.entries(EXTRAS).map(([k, x]) =>
+        `<button type="button" data-jg="${k}"><span>${x.icone}</span><b>${esc(x.nome)}</b><small>${esc(x.sub)}</small></button>`).join("")}</div>` : ""}
       <div class="jg-t">🏅 Suas medalhas</div>
       <div class="jg-medalhas">${Object.entries(MEDALHAS).map(([k, m]) =>
         `<div class="jg-med${med[k] ? " ganha" : ""}"><span>${m.icone}</span><b>${esc(m.nome)}</b><small>${med[k] ? "Conquistada!" : esc(m.como)}</small></div>`).join("")}</div>
@@ -446,8 +455,8 @@
   palco.addEventListener("click", (e) => {
     const b = e.target.closest("[data-jg]");
     if (!b) return;
-    const acao = { quiz, memoria, mitos, missoes: telaMissoes, menu }[b.dataset.jg];
-    if (acao) acao();
+    const acao = { quiz, memoria, mitos, missoes: telaMissoes, menu }[b.dataset.jg] || (EXTRAS[b.dataset.jg] || {}).abrir;
+    if (acao) { pararJogo(); acao(); }
   });
 
   // ── Abrir e fechar ────────────────────────────────────────────────────
@@ -460,7 +469,7 @@
     await carregarPerfil();
     pintarTopo(); menu();
   }
-  function fechar() { tela.classList.add("escondido"); document.body.classList.remove("sem-rolar"); }
+  function fechar() { pararJogo(); tela.classList.add("escondido"); document.body.classList.remove("sem-rolar"); }
   q("jg-fechar").onclick = () => (palco.querySelector(".jg-grade") ? fechar() : menu());
 
   // Botão do Início: "dia" quando há consulta hoje (o destaque)
@@ -494,5 +503,10 @@
     setTimeout(() => abrir(["whatsapp", "balcao", "tv", "totem"].includes(o) ? o : "app"), 300);
   }
 
-  window.Jogos = { abrir, fechar };
+  // Para jogos_arcade.js: registrar(id, {icone, nome, sub, abrir}) e o kit
+  // comum (palco, estrelas, medalhas, contagem, resultado, perfil).
+  function registrar(id, jogo) { EXTRAS[id] = jogo; if (!tela.classList.contains("escondido") && palco.querySelector(".jg-grade")) menu(); }
+  const kit = { palco, q, esc, ler, gravar, marcar, contar, ganharEstrelas, ganharMedalha, resultado, cliente,
+                perfil: () => perfil, aoParar: (f) => { pararJogo(); parar = f; } };
+  window.Jogos = { abrir, fechar, registrar, kit };
 })();
