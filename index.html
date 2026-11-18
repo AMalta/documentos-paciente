@@ -1346,6 +1346,29 @@
   .jg-grande .jg-missao b{font-size:18px}.jg-grande .jg-ficha{font-size:17px}
   .jg-grande .jg-mem button{font-size:17px}.jg-grande .jg-mem.n6 button,.jg-grande .jg-mem.n8 button{font-size:14.5px}
   .jg-grande .jg-desafio{font-size:18px}.jg-grande .jg-fim b{font-size:22px}
+  /* 🏆 Ranking e 🏅 conquistas (18/11/2026) */
+  .jg-ranking-bt{display:flex;flex-direction:column;align-items:flex-start;width:100%;border:0;border-radius:18px;margin-bottom:14px;
+    padding:12px 16px;background:linear-gradient(135deg,#0e7490,#14b8a6);color:#fff;font:inherit;font-size:17px;text-align:left;box-shadow:var(--sombra-cartao)}
+  .jg-ranking-bt small{color:#e0f2fe;font-size:13.5px;margin-top:2px}
+  .jg-conqs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .jg-conq{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:2px 8px;background:#fff;border-radius:14px;padding:9px 10px;box-shadow:var(--sombra-cartao)}
+  .jg-conq .ic{font-size:20px;grid-row:span 2}.jg-conq b{font-size:13.5px;line-height:1.2}.jg-conq .nv{font-size:20px;grid-row:span 2}
+  .jg-conq small{grid-column:2;color:var(--cinza-txt);font-size:12px}.jg-conq.n0{opacity:.85}.jg-conq.n3{background:#fffbeb}
+  .jg-meta{margin-top:10px;font-size:14.5px;color:var(--cinza-txt)}
+  .jg-abas{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px}.jg-abas.pq{margin-bottom:12px}
+  .jg-aba{border:1px solid #d5e3e6;background:#fff;border-radius:999px;padding:7px 12px;font:inherit;font-size:14px;color:#14272e}
+  .jg-abas.pq .jg-aba{font-size:13px;padding:5px 10px}
+  .jg-aba.sel{background:var(--marca-escura);border-color:transparent;color:#fff;font-weight:700}
+  .jg-rank{list-style:none;padding-left:0;background:#fff;border-radius:16px;padding:6px 12px;box-shadow:var(--sombra-cartao)}
+  .jg-rank li{display:flex;align-items:center;gap:10px;border-bottom:1px solid #eef3f4}.jg-rank li:last-child{border-bottom:0}
+  .jg-rank li i{font-style:normal;width:30px;text-align:center;font-weight:800}.jg-rank li b{flex:1}
+  .jg-rank li.eu{background:#ecfeff;border-radius:10px}
+  .jg-pos{font-size:16px;margin:2px 0 6px}
+  .jg-nome{text-align:left;margin:6px 0 10px}.jg-nome label{font-weight:700;font-size:14.5px;display:block;margin-bottom:4px}
+  .jg-nome-linha{display:flex;gap:6px}.jg-nome-linha input{flex:1;min-width:0;font:inherit;font-size:16px;border:1px solid #d5e3e6;border-radius:12px;padding:9px 12px}
+  .jg-nome-linha button{border:0;background:var(--marca-clara);border-radius:12px;padding:0 12px;font-size:18px}
+  .jg-nome small{display:block;margin-top:4px}.jg-erro{color:#b91c1c;font-weight:700}
+  .jg-auto{display:flex;align-items:center;gap:8px;font-size:14.5px;margin:8px 0 4px}.jg-auto input{width:20px;height:20px}
   /* ⚡ Mais agitados (jogos_arcade.js, 17/11/2026) */
   .jg-rl-num{display:flex;justify-content:space-between;align-items:center;font-size:15px;margin:2px 0 10px}
   .jg-rl-num b{font-size:18px;color:var(--marca-escura)}
@@ -1856,7 +1879,7 @@
     <div id="ini-depois"></div>
     <!-- 🎮 Enquanto espera (jogos.js, 16/11/2026) -->
     <button type="button" class="ini-jogos" id="ini-jogos"><span class="ini-ico">🎮</span>
-      <span><b>Enquanto espera</b><small id="ini-jogos-sub">Quiz, memória e verdade ou mito</small></span></button>
+      <span><b>Enquanto espera</b><small id="ini-jogos-sub">Quiz, labirinto, ranking e mais</small></span></button>
     <button type="button" class="ini-guia" id="ini-guia">❓ Como usar o app</button>
   </section>
 

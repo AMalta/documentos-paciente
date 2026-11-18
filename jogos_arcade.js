@@ -54,6 +54,42 @@
     return !resto.length && ANIMAIS.includes(a) && JEITOS.includes(j);
   }
 
+  // 18/11/2026 ("permita que o usuário escolha o nome que quer usar"): nome
+  // livre no ranking, com as MESMAS regras do banco (sql/033 —
+  // registrar_placar): 2 a 20 letras/números/espaços, começa com letra, sem
+  // 5+ dígitos seguidos (telefone) e sem palavrão (lista BLOQUEADAS, palavra
+  // a palavra e o nome todo junto). No fim vai um número curto (#27) para
+  // duas "Ana" não somarem juntas. O apelido sorteado continua de sugestão.
+  const BLOQUEADAS = ["porra", "caralho", "carai", "merda", "bosta", "puta", "puto", "putaria", "foda", "foder",
+    "fodase", "fdp", "vsf", "vtnc", "pqp", "buceta", "boceta", "cu", "cuzao", "rola", "piroca", "pica", "xoxota",
+    "xereca", "viado", "veado", "bicha", "sapatao", "traveco", "cacete", "arrombado", "arrombada", "corno",
+    "otario", "otaria", "idiota", "imbecil", "babaca", "retardado", "retardada", "nazista", "hitler", "macaco",
+    "vagabunda", "vagabundo", "piranha", "vadia", "safada", "safado", "punheta", "siririca", "porno", "sexo",
+    "estupro", "tesao", "prostituta", "rapariga", "quenga", "chupa", "mamada", "pênis", "penis", "vagina"];
+  const normNome = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const BLOQ = new Set(BLOQUEADAS.map(normNome));
+  const RE_NOME = /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 ]{1,19}( #[1-9][0-9]?)?$/;
+  // Limpa o que a pessoa digitou (espaços) — o número #NN é posto depois
+  const limparNome = (t) => String(t || "").replace(/\s+/g, " ").trim().replace(/ #\d+$/, "");
+  // "" quando pode; senão o motivo, para mostrar na tela
+  function motivoNome(t) {
+    const n = String(t || "").trim();
+    const base = limparNome(n);
+    if (base.length < 2) return "Use pelo menos 2 letras.";
+    if (base.length > 20) return "Use até 20 letras.";
+    if (!RE_NOME.test(n)) return "Use só letras, números e espaços, começando com uma letra.";
+    if (/\d{5,}/.test(n)) return "Sem números de telefone ou documento.";
+    const b = normNome(base);
+    if (b.split(" ").some((w) => BLOQ.has(w)) || BLOQ.has(b.replace(/ /g, ""))) return "Escolha outro nome, por favor.";
+    return "";
+  }
+  const nomeValido = (t) => !motivoNome(t);
+  // Põe o número curto: mantém o que já tinha (mesma pessoa) ou sorteia
+  function comNumero(base, anterior, rnd) {
+    const m = /#([1-9][0-9]?)$/.exec(anterior || "");
+    return `${limparNome(base)} #${m ? m[1] : 1 + Math.floor((rnd || Math.random)() * 99)}`;
+  }
+
   const multiplicador = (combo) => Math.min(3, 1 + Math.floor(combo / 3));
 
   // Relâmpago: todas as perguntas do quiz (clínica, saúde, indiDoc) + os
@@ -245,7 +281,8 @@
   };
   Object.assign(J.MEDALHAS, MEDALHAS_NOVAS);
 
-  window.JogosArcade = { ANIMAIS, JEITOS, FEMININOS, apelido, apelidoValido, multiplicador, poolRelampago,
+  window.JogosArcade = { ANIMAIS, JEITOS, FEMININOS, apelido, apelidoValido, BLOQUEADAS, motivoNome, nomeValido,
+    comNumero, limparNome, multiplicador, poolRelampago,
     MINIMO_RELAMPAGO, estrelasRelampago, SAUDAVEIS, EVITAR, ESPECIAIS, velocidadeQueda, intervaloNovo,
     estrelasSaudavel, ZONAS, CORPO_NIVEL, rodadaCorpo, MAPA, MAPA2, mapaDaFase, DIFICULDADES, JEITOS_GERME,
     DIRS, lerMapa, livre, andar, distancias, passoGerme, alvoDoGerme, acasoDoGerme, estrelasLabirinto,
@@ -268,45 +305,153 @@
   }
   const recTxt = (k, un) => (K.recordeDe(k) != null ? `Recorde: ${K.recordeDe(k)}${un || ""}` : "");
 
-  // ── 🏆 Placar da sala de espera ────────────────────────────────────────
-  const CHAVE_APELIDO = "jogos-apelido";
+  // ── 🏆 Placar e ranking ────────────────────────────────────────────────
+  // 18/11/2026 ("ter um ranking de cada jogo no próprio indiDoc"): quem
+  // entra uma vez fica no ranking — os próximos resultados sobem sozinhos
+  // (CHAVE_AUTO), e o fim do jogo mostra a posição. Apelido com número
+  // (sql/033) para dois "Capivara Veloz" não somarem juntos.
+  const CHAVE_APELIDO = "jogos-apelido", CHAVE_AUTO = "jogos-ranking-auto";
+  const RANQUEADOS = { relampago: "⚡ Relâmpago", saudavel: "🍎 Saudável", labirinto: "💧 Labirinto" };
+  // O nome do ranking deste celular: o escolhido pela pessoa ou um
+  // sorteado ("Capivara Veloz #27"). `novo`: sorteia outro.
   function meuApelido(novo) {
     let a = "";
     try { a = localStorage.getItem(CHAVE_APELIDO) || ""; } catch (e) {}
-    if (novo || !apelidoValido(a)) {
-      a = apelido(Math.random);
+    if (novo || !nomeValido(a) || !/ #\d+$/.test(a)) {
+      // de antes (sem #): o sorteado "Capivara Veloz 27" vira "Capivara Veloz #27"
+      const antigo = /^(\S+ \S+) ([1-9]\d?)$/.exec(a);
+      a = !novo && antigo && apelidoValido(antigo[1]) ? `${antigo[1]} #${antigo[2]}`
+        : !novo && nomeValido(a) ? comNumero(a, "") : comNumero(apelido(Math.random), novo ? "" : a);
       try { localStorage.setItem(CHAVE_APELIDO, a); } catch (e) {}
     }
     return a;
   }
+  function definirNome(nome) {
+    const motivo = motivoNome(limparNome(nome));
+    if (motivo) return motivo;
+    let atual = "";
+    try { atual = localStorage.getItem(CHAVE_APELIDO) || ""; } catch (e) {}
+    try { localStorage.setItem(CHAVE_APELIDO, comNumero(nome, atual)); } catch (e) {}
+    return "";
+  }
+  // Campo "Seu nome no ranking" (fim do jogo e tela do ranking)
+  function campoNome(aoSalvar) {
+    const ap = meuApelido();
+    return {
+      html: `<div class="jg-nome"><label for="jg-nome-in">Seu nome no ranking</label>
+        <div class="jg-nome-linha"><input id="jg-nome-in" maxlength="20" autocomplete="off" value="${esc(limparNome(ap))}">
+          <button type="button" id="jg-nome-sorteia" aria-label="Sortear um apelido">🎲</button></div>
+        <small id="jg-nome-msg">Aparece como <b>${esc(ap)}</b>. Pode ser um apelido — evite o nome completo.</small></div>`,
+      ligar() {
+        const inp = K.q("jg-nome-in"), msg = K.q("jg-nome-msg");
+        K.q("jg-nome-sorteia").onclick = () => { const a = meuApelido(true); inp.value = limparNome(a); msg.innerHTML = `Aparece como <b>${esc(a)}</b>.`; if (aoSalvar) aoSalvar(a); };
+        inp.onchange = () => {
+          const erro = definirNome(inp.value);
+          if (erro) { msg.innerHTML = `<span class="jg-erro">${esc(erro)}</span>`; return; }
+          const a = meuApelido(); msg.innerHTML = `Aparece como <b>${esc(a)}</b>. ✔️`;
+          if (aoSalvar) aoSalvar(a);
+        };
+      },
+      // lê o que está digitado (sem precisar sair do campo)
+      salvarAgora() { const inp = K.q("jg-nome-in"); return inp ? definirNome(inp.value) : ""; },
+    };
+  }
+  const noRanking = () => { try { return localStorage.getItem(CHAVE_AUTO) === "1"; } catch (e) { return false; } };
+  const ficarNoRanking = (sim) => { try { localStorage.setItem(CHAVE_AUTO, sim ? "1" : "0"); } catch (e) {} };
+  // Grava; sem o sql/033 o banco recusa o número — tenta o apelido sem ele
+  async function enviarPontos(p, ap, jogo, pontos) {
+    const cli = K.cliente(), args = { p_codigo: p.codigo, p_apelido: ap, p_jogo: jogo, p_pontos: Math.round(pontos) };
+    let r = await cli.rpc("registrar_placar", args);
+    if (r.error) throw r.error;
+    if (r.data === false) {
+      // banco sem o sql/033: só aceita o sorteado sem número
+      const velho = ap.replace(/ #\d+$/, "");
+      if (velho === ap || !apelidoValido(velho)) return null;
+      r = await cli.rpc("registrar_placar", { ...args, p_apelido: velho });
+      if (r.error) throw r.error;
+      return r.data === false ? null : velho;
+    }
+    return r.data === false ? null : ap;
+  }
+  async function buscarRanking(codigo, jogo, periodo, ap) {
+    const { data, error } = await K.cliente().rpc("ranking_jogo",
+      { p_codigo: codigo || "", p_jogo: jogo, p_periodo: periodo, p_apelido: ap || null });
+    if (error) throw error;
+    return data || [];
+  }
+  const medalhaPos = (n) => (n === 1 ? "🥇" : n === 2 ? "🥈" : n === 3 ? "🥉" : n + "º");
+  function listaRanking(linhas, ap) {
+    if (!linhas.length) return `<p class="jg-passo">Ninguém jogou ainda. Seja o primeiro! 🚀</p>`;
+    return `<ol class="jg-top jg-rank">${linhas.map((l) => `<li class="${l.apelido === ap ? "eu" : ""}">
+      <i>${medalhaPos(l.posicao)}</i><b>${esc(l.apelido)}${l.apelido === ap ? " (você)" : ""}</b><span>${l.pontos}</span></li>`).join("")}</ol>`;
+  }
+
+  // Fim do jogo: entra (1ª vez, com o toque) ou sobe sozinho (já entrou)
   function placar(jogo, pontos) {
     const p = K.perfil(), fim = palco.querySelector(".jg-fim");
     if (!fim || !p || !p.codigo || !K.cliente() || !pontos) return;
-    fim.insertAdjacentHTML("beforeend", `<div class="jg-placar" id="jg-placar">
-      <div class="jg-placar-t">🏆 Placar de hoje da sala de espera</div>
-      <div class="jg-placar-ap">Entrar como <b id="jg-apel">${esc(meuApelido())}</b>
-        <button type="button" id="jg-apel-troca" aria-label="Sortear outro apelido">🔄</button></div>
-      <button type="button" class="jg-seguir" id="jg-placar-entra">Entrar no placar</button>
-      <small>Só o apelido e os pontos aparecem na TV da clínica.</small></div>`);
+    fim.insertAdjacentHTML("beforeend", `<div class="jg-placar" id="jg-placar"></div>`);
     const caixa = K.q("jg-placar");
-    K.q("jg-apel-troca").onclick = () => { K.q("jg-apel").textContent = meuApelido(true); };
-    K.q("jg-placar-entra").onclick = async () => {
-      const ap = meuApelido();
-      caixa.innerHTML = `<div class="jg-placar-t">🏆 Entrando no placar…</div>`;
+    const mostrarPosicao = async (ap) => {
+      caixa.innerHTML = `<div class="jg-placar-t">🏆 Atualizando o ranking…</div>`;
       try {
-        const r = await K.cliente().rpc("registrar_placar", { p_codigo: p.codigo, p_apelido: ap, p_jogo: jogo, p_pontos: Math.round(pontos) });
-        if (r.error) throw r.error;
-        const { data, error } = await K.cliente().rpc("placar_do_dia", { p_codigo: p.codigo });
-        if (error) throw error;
-        caixa.innerHTML = `<div class="jg-placar-t">🏆 Placar de hoje${p.nome ? " · " + esc(p.nome) : ""}</div>
-          <ol class="jg-top">${(data || []).map((l) => `<li class="${l.apelido === ap ? "eu" : ""}"><b>${esc(l.apelido)}</b><span>${l.pontos}</span></li>`).join("")}</ol>
-          ${(data || []).some((l) => l.apelido === ap) ? "<small>Você está no placar! Olhe a TV da sala de espera 📺</small>"
-            : "<small>Seus pontos entraram. Jogue de novo para subir! 💪</small>"}`;
+        const usado = await enviarPontos(p, ap, jogo, pontos);
+        if (!usado) throw new Error("recusado");
+        const linhas = await buscarRanking(p.codigo, jogo, "hoje", usado);
+        const eu = linhas.find((l) => l.apelido === usado);
+        caixa.innerHTML = `<div class="jg-placar-t">🏆 Ranking de hoje · ${RANQUEADOS[jogo]}</div>
+          ${eu ? `<div class="jg-pos">Você está em <b>${eu.posicao}º lugar</b>${eu.posicao === 1 ? " — na frente de todos! 🎉" : eu.posicao <= 3 ? " — no pódio! 🎉" : "."}</div>` : ""}
+          ${listaRanking(linhas.filter((l) => l.posicao <= 5 || l.apelido === usado), usado)}
+          <div class="jg-fim-bts"><button type="button" class="jg-menu" data-jg="ranking">Ver o ranking completo</button></div>
+          <small>Só o nome do ranking e os pontos aparecem (também na TV da clínica).</small>`;
         K.contar("placar", null);
       } catch (e) {
-        caixa.innerHTML = `<small>O placar não está disponível agora. Tente mais tarde.</small>`;
+        caixa.innerHTML = `<small>O ranking não está disponível agora. Tente mais tarde.</small>`;
       }
     };
+    if (noRanking()) { mostrarPosicao(meuApelido()); return; }
+    const campo = campoNome();
+    caixa.innerHTML = `<div class="jg-placar-t">🏆 Entre no ranking da sala de espera</div>
+      ${campo.html}
+      <button type="button" class="jg-seguir" id="jg-placar-entra">Entrar no ranking</button>
+      <small>Depois disso, seus próximos resultados entram sozinhos. Só o nome do ranking e os pontos aparecem (também na TV).</small>`;
+    campo.ligar();
+    K.q("jg-placar-entra").onclick = () => {
+      const erro = campo.salvarAgora();
+      if (erro) { K.q("jg-nome-msg").innerHTML = `<span class="jg-erro">${esc(erro)}</span>`; return; }
+      ficarNoRanking(true); mostrarPosicao(meuApelido());
+    };
+  }
+
+  // Tela do ranking: um jogo por vez; hoje ou 7 dias; a clínica ou todo o indiDoc
+  function ranking(estado) {
+    const p = K.perfil();
+    const st = Object.assign({ jogo: "relampago", periodo: "hoje", onde: p && p.codigo ? "clinica" : "todos" }, estado || {});
+    const ap = meuApelido(), dentro = noRanking();
+    const campo = campoNome(() => ranking(st));     // trocou o nome: recarrega a lista
+    const aba = (grupo, valor, rot) => `<button type="button" class="jg-aba${st[grupo] === valor ? " sel" : ""}" data-rk="${grupo}:${valor}">${rot}</button>`;
+    palco.innerHTML = `<div class="jg-perg">🏆 Ranking dos jogos</div>
+      <div class="jg-abas">${Object.entries(RANQUEADOS).map(([k, r]) => aba("jogo", k, r)).join("")}</div>
+      <div class="jg-abas pq">${aba("periodo", "hoje", "Hoje")}${aba("periodo", "semana", "7 dias")}
+        ${p && p.codigo ? aba("onde", "clinica", esc(p.nome || "Esta clínica")) : ""}${aba("onde", "todos", "Todo o indiDoc")}</div>
+      <div id="jg-rk-lista"><p class="jg-passo">Carregando…</p></div>
+      <div class="jg-placar">
+        ${campo.html}
+        <label class="jg-auto"><input type="checkbox" id="jg-rk-auto"${dentro ? " checked" : ""}> Meus resultados entram no ranking</label>
+        <div class="jg-fim-bts"><button type="button" class="jg-seguir" data-jg="${st.jogo}">Jogar ${RANQUEADOS[st.jogo]}</button></div>
+      </div>
+      <p class="jg-aviso">O ranking de hoje recomeça à meia-noite; o de 7 dias vale o melhor resultado da semana. Só o nome do ranking e os pontos.</p>`;
+    for (const b of palco.querySelectorAll("[data-rk]")) b.onclick = () => {
+      const [g, v] = b.dataset.rk.split(":");
+      ranking({ ...st, [g]: v });
+    };
+    K.q("jg-rk-auto").onchange = (e) => ficarNoRanking(e.target.checked);
+    campo.ligar();
+    const lista = K.q("jg-rk-lista");
+    if (!K.cliente() || !navigator.onLine) { lista.innerHTML = `<p class="jg-passo">Sem internet agora — o ranking aparece quando a conexão voltar.</p>`; return; }
+    buscarRanking(st.onde === "clinica" && p ? p.codigo : "", st.jogo, st.periodo, ap)
+      .then((linhas) => { if (lista.isConnected) lista.innerHTML = listaRanking(linhas, ap); })
+      .catch(() => { if (lista.isConnected) lista.innerHTML = `<p class="jg-passo">O ranking não está disponível agora. Tente mais tarde.</p>`; });
   }
 
   // ── ⚡ Relâmpago ────────────────────────────────────────────────────────
@@ -834,6 +979,7 @@
     }
   }
 
+  if (window.Jogos.registrarTela) window.Jogos.registrarTela("ranking", () => ranking());
   const R = window.Jogos.registrar;
   const sub = (padrao, k, un) => () => (K.recordeDe(k) != null ? `${padrao} · recorde ${K.recordeDe(k)}${un}` : padrao);
   R("relampago", { icone: "⚡", nome: "Relâmpago", sub: sub("60 s, acerte o máximo!", "relampago", " pts"), abrir: relampago });

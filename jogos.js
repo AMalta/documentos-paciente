@@ -210,9 +210,40 @@
     return DESAFIOS[((n % DESAFIOS.length) + DESAFIOS.length) % DESAFIOS.length];
   }
 
+  // 🏅 Conquistas (18/11/2026, "suas medalhas faz parecer que uma vez
+  // conquistada não tem por que continuar"): cada jogo tem bronze, prata e
+  // ouro, pelo recorde (arcade), pelo total de acertos (quiz, mitos), pelos
+  // níveis vencidos (memória, corpo) ou pelas vezes (respire). Sempre há
+  // uma próxima meta à vista.
+  const TROFEUS = [
+    { jogo: "relampago", icone: "⚡", nome: "Relâmpago", fonte: "recorde", un: " pts", metas: [100, 250, 400] },
+    { jogo: "saudavel", icone: "🍎", nome: "Pegue o saudável", fonte: "recorde", un: " pts", metas: [300, 600, 900] },
+    { jogo: "labirinto", icone: "💧", nome: "Labirinto", fonte: "recorde", un: " pts", metas: [800, 2000, 4000] },
+    { jogo: "quiz", icone: "❓", nome: "Quiz", fonte: "total", un: " acertos", metas: [10, 40, 100] },
+    { jogo: "mitos", icone: "✅", nome: "Verdade ou mito", fonte: "total", un: " acertos", metas: [10, 40, 100] },
+    { jogo: "memoria", icone: "🧠", nome: "Jogo da memória", fonte: "niveis", un: "", metas: [1, 2, 3] },
+    { jogo: "corpo", icone: "🧍", nome: "Monte o corpo", fonte: "recorde", un: "", metas: [1, 2, 3] },
+    { jogo: "respire", icone: "🌬️", nome: "Respire comigo", fonte: "total", un: " vezes", metas: [1, 5, 15] },
+  ];
+  const NIVEL_TROFEU = ["", "🥉", "🥈", "🥇"], NOME_NIVEL = ["", "bronze", "prata", "ouro"];
+  function valorTrofeu(t, d) {
+    d = d || {};
+    if (t.fonte === "total") return (d.totais || {})[t.jogo] || 0;
+    if (t.fonte === "niveis") return [1, 2, 3].filter((n) => (d.recordes || {})["memoria" + n] != null).length;
+    return (d.recordes || {})[t.jogo] || 0;
+  }
+  function nivelTrofeu(t, d) {
+    const valor = valorTrofeu(t, d), nivel = t.metas.filter((m) => valor >= m).length;
+    return { nivel, valor, proxima: nivel < t.metas.length ? t.metas[nivel] : null };
+  }
+  const trofeuDe = (jogo) => TROFEUS.find((t) => t.jogo === jogo);
+  // Texto da meta: "250 pts" / "nível 2"
+  const textoMeta = (t, v) => (t.fonte === "niveis" || t.jogo === "corpo" ? `nível ${v}` : `${v}${v === 1 ? t.un.replace(/es$/, "").replace(/s$/, "") : t.un}`);
+
   window.JogosNucleo = { norm, casarProcedimento, areasDoPerfil, perguntasDaClinica, perguntasDeSaude,
                          rodadaQuiz, rodadaMitos, paresMemoria, PARES_NIVEL, MEDALHAS, embaralhar, montar,
-                         clinicasDoPaciente, chaveDe, desafioDoDia, DESAFIOS };
+                         clinicasDoPaciente, chaveDe, desafioDoDia, DESAFIOS,
+                         TROFEUS, NIVEL_TROFEU, NOME_NIVEL, valorTrofeu, nivelTrofeu, trofeuDe, textoMeta };
 
   // ── Daqui para baixo: a tela (só no navegador) ────────────────────────
   if (typeof document === "undefined" || !document.getElementById("tela-jogos")) return;
@@ -230,6 +261,7 @@
   // com relógio (requestAnimationFrame, setInterval) entrega a função de
   // parar em aoParar — chamada ao sair do jogo (menu, voltar, jogar de novo).
   const EXTRAS = {};
+  const TELAS = {};      // telas sem botão na grade (ex.: 🏆 ranking, jogos_arcade.js)
   let parar = null;
   function pararJogo() { const f = parar; parar = null; if (f) { try { f(); } catch (e) {} } }
 
@@ -334,7 +366,7 @@
   // ── Menu ──────────────────────────────────────────────────────────────
   function menu() {
     pararJogo();
-    const d = ler(), med = d.medalhas || {};
+    const d = ler();
     const feitas = missoes().filter((m) => m.feito).length;
     // Paciente de mais de uma clínica, sem QR: troca rápida da clínica do quiz
     const cs = codigo ? [] : clinicas(), atual = cs.length > 1 ? idAtual() : "";
@@ -347,6 +379,7 @@
       <div class="jg-topo-menu"><button type="button" id="jg-grande" class="jg-grande-bt${d.grande ? " ligado" : ""}">🔠 Letra grande</button></div>
       <div class="jg-desafio${feitoDes ? " feito" : ""}"><b>🎯 Desafio do dia</b> ${esc(des.texto)}
         <small>${feitoDes ? "Cumprido! +3 ⭐ — volte amanhã para outro." : "Vale +3 ⭐"}</small></div>
+      ${TELAS.ranking ? `<button type="button" class="jg-ranking-bt" data-jg="ranking">🏆 <b>Ranking dos jogos</b><small>Veja quem está na frente — e passe à frente!</small></button>` : ""}
       <div class="jg-ola">${perfil && perfil.nome ? `Conheça a <b>${esc(perfil.nome)}</b> e` : "Teste"} o que você sabe de saúde. 😊</div>
       <div class="jg-grade">
         <button type="button" data-jg="quiz"><span>❓</span><b>Quiz</b><small>${perfil ? "A clínica, os exames e a saúde" : "Exames e saúde"}</small></button>
@@ -356,9 +389,13 @@
       </div>
       ${Object.keys(EXTRAS).length ? `<div class="jg-t">⚡ Mais agitados</div><div class="jg-grade">${Object.entries(EXTRAS).map(([k, x]) =>
         `<button type="button" data-jg="${k}"><span>${x.icone}</span><b>${esc(x.nome)}</b><small>${esc(typeof x.sub === "function" ? x.sub() : x.sub)}</small></button>`).join("")}</div>` : ""}
-      <div class="jg-t">🏅 Suas medalhas</div>
-      <div class="jg-medalhas">${Object.entries(MEDALHAS).map(([k, m]) =>
-        `<div class="jg-med${med[k] ? " ganha" : ""}"><span>${m.icone}</span><b>${esc(m.nome)}</b><small>${med[k] ? "Conquistada!" : esc(m.como)}</small></div>`).join("")}</div>
+      <div class="jg-t">🏅 Suas conquistas</div>
+      <div class="jg-conqs">${window.JogosNucleo.TROFEUS.map((t) => {
+        const N = window.JogosNucleo, n = N.nivelTrofeu(t, d);
+        return `<div class="jg-conq n${n.nivel}"><span class="ic">${t.icone}</span><b>${esc(t.nome)}</b>
+          <span class="nv">${n.nivel ? N.NIVEL_TROFEU[n.nivel] : "⚪"}</span>
+          <small>${n.proxima == null ? "Ouro! 🏆" : `Próxima: ${N.NIVEL_TROFEU[n.nivel + 1]} ${esc(N.textoMeta(t, n.proxima))}`}</small></div>`;
+      }).join("")}</div>
       <p class="jg-aviso">Conteúdo educativo, com fontes oficiais. Não substitui a orientação do seu médico.</p>`;
     q("jg-grande").onclick = () => { const g = ler(); g.grande = !g.grande; gravar(g); aplicarLetra(); menu(); };
     const sel = q("jg-clinica");
@@ -550,15 +587,43 @@
   function resultado(titulo, estrelas, medalha, deNovo, valor) {
     const m = medalha ? MEDALHAS[medalha] : null;
     const des = conferirDesafio(deNovo, valor);
+    const conq = subirConquista(deNovo, valor);
     const nome = NOMES[deNovo] || (EXTRAS[deNovo] || {}).nome || "jogo";
     const onde = perfil && perfil.nome ? ` na sala de espera da ${perfil.nome}` : "";
     palco.innerHTML = `<div class="jg-fim"><div class="jg-est">${"⭐".repeat(estrelas)}${"☆".repeat(5 - estrelas)}</div>
       <b>${esc(titulo)}</b>
       ${m ? `<div class="jg-nova">${m.icone} Medalha nova: <b>${esc(m.nome)}</b>!</div>` : ""}
       ${des ? `<div class="jg-nova">🎯 Desafio do dia cumprido! <b>+3 ⭐</b></div>` : ""}
+      ${conq ? `<div class="jg-nova">${conq.marca} Nova conquista: <b>${esc(conq.nome)} ${conq.nivelNome}</b>! +${conq.estrelas} ⭐</div>` : ""}
+      ${conq === null ? "" : proximaMeta(deNovo)}
       <div class="jg-fim-bts"><button type="button" class="jg-seguir" data-jg="${deNovo}">Jogar de novo</button>
       <button type="button" class="jg-menu" data-jg="menu">Outros jogos</button>
       <a class="jg-menu jg-zap" target="_blank" rel="noopener" href="${esc(linkZap(`Fiz ${titulo} no ${nome} do indiDoc${onde} 😄`))}">📲 Compartilhar</a></div></div>`;
+  }
+
+  // Soma o total do jogo (quiz/mitos: acertos; respire: vezes) e confere se
+  // subiu de bronze/prata/ouro. Devolve a conquista nova, false, ou null
+  // (jogo sem conquista).
+  function subirConquista(jogo, valor) {
+    const N = window.JogosNucleo, t = N.trofeuDe(jogo);
+    if (!t) return null;
+    const d = ler();
+    if (t.fonte === "total") { d.totais = d.totais || {}; d.totais[jogo] = (d.totais[jogo] || 0) + (valor == null ? 1 : valor); }
+    d.trofeus = d.trofeus || {};
+    const antes = d.trofeus[jogo] || 0, agora = N.nivelTrofeu(t, d).nivel;
+    if (agora <= antes) { gravar(d); return false; }
+    d.trofeus[jogo] = agora; gravar(d);
+    const est = 2 * (agora - antes);
+    ganharEstrelas(est); contar("medalha", null);
+    return { marca: N.NIVEL_TROFEU[agora], nome: t.nome, nivelNome: N.NOME_NIVEL[agora], estrelas: est };
+  }
+  function proximaMeta(jogo) {
+    const N = window.JogosNucleo, t = N.trofeuDe(jogo);
+    if (!t) return "";
+    const n = N.nivelTrofeu(t, ler());
+    return n.proxima == null ? `<div class="jg-meta">🥇 Ouro no ${esc(t.nome)}! Agora é subir no 🏆 ranking.</div>`
+      : `<div class="jg-meta">Próxima conquista: ${N.NIVEL_TROFEU[n.nivel + 1]} ${esc(N.textoMeta(t, n.proxima))}${
+          t.fonte === "recorde" || t.fonte === "total" ? ` · você tem ${esc(N.textoMeta(t, n.valor))}` : ""}</div>`;
   }
 
   // Letra grande (pacientes idosos): classe na tela, guardada neste celular
@@ -590,7 +655,8 @@
   palco.addEventListener("click", (e) => {
     const b = e.target.closest("[data-jg]");
     if (!b) return;
-    const acao = { quiz, memoria, mitos, missoes: telaMissoes, menu }[b.dataset.jg] || (EXTRAS[b.dataset.jg] || {}).abrir;
+    const acao = { quiz, memoria, mitos, missoes: telaMissoes, menu }[b.dataset.jg] || (EXTRAS[b.dataset.jg] || {}).abrir
+      || TELAS[b.dataset.jg];
     if (acao) {
       // entrar num jogo (do menu) cria o seu degrau no histórico — ver degrau()
       if (b.dataset.jg !== "menu" && palco.querySelector(".jg-grade")) degrau();
@@ -646,7 +712,7 @@
     const dia = consultaHoje();
     b.classList.toggle("destaque", dia);
     q("ini-jogos-sub").textContent = dia ? "Consulta hoje? Conheça a clínica enquanto espera"
-                                         : "Quiz, memória e verdade ou mito";
+                                         : "Quiz, labirinto, ranking e mais";
   }
   if (q("ini-jogos")) {
     q("ini-jogos").onclick = () => abrir(consultaHoje() ? "dia" : "app");
@@ -666,9 +732,10 @@
 
   // Para jogos_arcade.js: registrar(id, {icone, nome, sub, abrir}) e o kit
   // comum (palco, estrelas, medalhas, contagem, resultado, perfil).
+  function registrarTela(id, fn) { TELAS[id] = fn; }
   function registrar(id, jogo) { EXTRAS[id] = jogo; if (!tela.classList.contains("escondido") && palco.querySelector(".jg-grade")) menu(); }
   const kit = { palco, q, esc, ler, gravar, marcar, contar, ganharEstrelas, ganharMedalha, resultado, cliente,
                 recorde, recordeDe, linkZap,
                 perfil: () => perfil, aoParar: (f) => { pararJogo(); parar = f; } };
-  window.Jogos = { abrir, fechar, registrar, kit };
+  window.Jogos = { abrir, fechar, registrar, registrarTela, kit };
 })();
