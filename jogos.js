@@ -591,12 +591,26 @@
     const b = e.target.closest("[data-jg]");
     if (!b) return;
     const acao = { quiz, memoria, mitos, missoes: telaMissoes, menu }[b.dataset.jg] || (EXTRAS[b.dataset.jg] || {}).abrir;
-    if (acao) { pararJogo(); acao(); }
+    if (acao) {
+      // entrar num jogo (do menu) cria o seu degrau no histórico — ver degrau()
+      if (b.dataset.jg !== "menu" && palco.querySelector(".jg-grade")) degrau();
+      pararJogo(); acao();
+    }
   });
+
+  // Degrau no histórico, criado NO TOQUE da pessoa (18/11/2026, "ao dar outro
+  // clique na seta está saindo do indiDoc"). O Chrome do Android PULA, no
+  // voltar, os degraus que a página criou sem toque da pessoa — e o app.js
+  // recria o seu dentro do popstate, sem toque. Dois voltares seguidos (jogo
+  // → menu → fechar) caíam nesse degrau "pulável" e saíam do app. Com um
+  // degrau feito no toque ao abrir os jogos e outro ao entrar num jogo, cada
+  // voltar tem um degrau de verdade para consumir.
+  function degrau() { try { history.pushState({ app: true, jogos: true }, ""); } catch (e) {} }
 
   // ── Abrir e fechar ────────────────────────────────────────────────────
   async function abrir(deOnde) {
     origem = deOnde || "app";
+    if (tela.classList.contains("escondido")) degrau();
     tela.classList.remove("escondido");
     document.body.classList.add("sem-rolar");
     pintarTopo(); menu();
