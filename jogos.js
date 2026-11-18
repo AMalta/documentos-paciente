@@ -87,6 +87,17 @@
       out.push({ tipo: "clinica", pergunta: `Em qual especialidade ${m.nome} atende na ${nome}?`,
         opcoes: [m.especialidade, ...outras], explica: `${m.nome} atende em ${m.especialidade}.` });
     }
+    // e) quem atende tal especialidade (17/11/2026) — só com outros médicos
+    //    de OUTRA especialidade para as opções erradas
+    if (meds.length >= 2) {
+      const m = embaralhar(meds, rnd)[0];
+      const outros = embaralhar(meds.filter((x) => norm(x.especialidade) !== norm(m.especialidade)), rnd)
+        .map((x) => x.nome).filter((n, i, a) => n !== m.nome && a.indexOf(n) === i).slice(0, 3);
+      if (outros.length >= 1) {
+        out.push({ tipo: "clinica", pergunta: `Quem atende ${m.especialidade} na ${nome}?`,
+          opcoes: [m.nome, ...outros], explica: `${m.nome} atende em ${m.especialidade}.` });
+      }
+    }
     // d) especialidades da clínica
     const esps = (perfil.especialidades || []).filter(Boolean);
     if (esps.length) {
@@ -110,30 +121,41 @@
     return embaralhar(out, rnd);
   }
 
-  function rodadaQuiz(perfil, rnd) {
+  // 17/11/2026: as perguntas já vistas neste celular vão para o fim da fila
+  const chaveDe = (q) => String(q.pergunta || q.frase || "").slice(0, 90);
+  function novasPrimeiro(lista, vistas) {
+    if (!vistas || !vistas.size) return lista;
+    return lista.map((q, i) => ({ q, i, v: vistas.has(chaveDe(q)) ? 1 : 0 }))
+      .sort((a, b) => a.v - b.v || a.i - b.i).map((x) => x.q);
+  }
+
+  function rodadaQuiz(perfil, rnd, vistas) {
     const areas = areasDoPerfil(perfil);
-    const cli = perguntasDaClinica(perfil, rnd).slice(0, 2);
-    const sau = perguntasDeSaude(areas, rnd);
-    const ind = embaralhar(C.INDIDOC, rnd).slice(0, 1).map((q) => ({ ...q, tipo: "indidoc" }));
+    const cli = novasPrimeiro(perguntasDaClinica(perfil, rnd), vistas).slice(0, 2);
+    const sau = novasPrimeiro(perguntasDeSaude(areas, rnd), vistas);
+    const ind = novasPrimeiro(embaralhar(C.INDIDOC, rnd), vistas).slice(0, 1).map((q) => ({ ...q, tipo: "indidoc" }));
     const lista = [...cli, ...sau.slice(0, 5 - cli.length - ind.length), ...ind];
     return lista.map((q) => montar(q, rnd));
   }
 
-  function rodadaMitos(perfil, rnd) {
+  function rodadaMitos(perfil, rnd, vistas) {
     const areas = areasDoPerfil(perfil);
-    const daArea = embaralhar(C.MITOS.filter((m) => areas.has(m.area) && m.area !== "geral"), rnd).slice(0, 2);
-    const gerais = embaralhar(C.MITOS.filter((m) => m.area === "geral"), rnd);
+    const daArea = novasPrimeiro(embaralhar(C.MITOS.filter((m) => areas.has(m.area) && m.area !== "geral"), rnd), vistas).slice(0, 2);
+    const gerais = novasPrimeiro(embaralhar(C.MITOS.filter((m) => m.area === "geral"), rnd), vistas);
     return [...daArea, ...gerais].slice(0, 5);
   }
 
   const ROTULO_AREA = { cardio: "❤️ Coração", oftalmo: "👁️ Olhos", otorrino: "👂 Ouvido e garganta",
-    gineco: "🌸 Saúde da mulher", pediatria: "🧒 Bebês e crianças", odonto: "🦷 Dentes" };
+    gineco: "🌸 Saúde da mulher", pediatria: "🧒 Bebês e crianças", odonto: "🦷 Dentes",
+    pneumo: "🌬️ Pulmões", nefro: "💧 Rins e bexiga", orto: "🦴 Ossos", neuro: "🧠 Cérebro" };
+  // Memória por nível (17/11/2026): 4, 6 e 8 pares
+  const PARES_NIVEL = [4, 6, 8];
 
-  function paresMemoria(perfil, rnd) {
+  function paresMemoria(perfil, rnd, n) {
     const areas = areasDoPerfil(perfil);
     const ordemAreas = embaralhar(Object.keys(ROTULO_AREA), rnd).sort((a, b) => (areas.has(b) ? 1 : 0) - (areas.has(a) ? 1 : 0));
     const pares = [];
-    for (const a of ordemAreas.slice(0, 4)) {
+    for (const a of ordemAreas.slice(0, n || 4)) {
       const p = embaralhar(C.PROCEDIMENTOS.filter((x) => x.area === a), rnd)[0];
       if (p) pares.push({ id: a, exame: p.nome, parte: ROTULO_AREA[a], oque: p.oque });
     }
@@ -144,7 +166,7 @@
     clinica: { icone: "🏥", nome: "Conhece a clínica", como: "Acerte 4 de 5 no quiz" },
     mitos:   { icone: "🕵️", nome: "Caçador de mitos", como: "Acerte as 5 de verdade ou mito" },
     memoria: { icone: "🧠", nome: "Memória boa", como: "Complete o jogo da memória" },
-    indidoc: { icone: "🗺️", nome: "Explorador do indiDoc", como: "Complete as 5 missões" },
+    indidoc: { icone: "🗺️", nome: "Explorador do indiDoc", como: "Complete todas as missões" },
   };
 
   // Clínicas do paciente para o quiz (17/11/2026, "se o usuário tiver o
@@ -172,8 +194,25 @@
     return [...vistas.values()];
   }
 
+  // 🎯 Desafio do dia (17/11/2026): o mesmo para todos no dia, +3 estrelas
+  const DESAFIOS = [
+    { jogo: "relampago", meta: 100, texto: "Faça 100 pontos no ⚡ Relâmpago" },
+    { jogo: "saudavel", meta: 200, texto: "Faça 200 pontos no 🍎 Pegue o saudável" },
+    { jogo: "labirinto", meta: 800, texto: "Faça 800 pontos no 💧 Labirinto" },
+    { jogo: "quiz", meta: 4, texto: "Acerte 4 no ❓ Quiz" },
+    { jogo: "mitos", meta: 4, texto: "Acerte 4 no ✅ Verdade ou mito" },
+    { jogo: "memoria", meta: 1, texto: "Complete o 🧠 Jogo da memória" },
+    { jogo: "corpo", meta: 1, texto: "Monte o 🧍 corpo inteiro" },
+  ];
+  function desafioDoDia(iso) {
+    const [a, m, d] = String(iso || "").split("-").map(Number);
+    const n = Math.floor(Date.UTC(a || 2026, (m || 1) - 1, d || 1) / 86400000);
+    return DESAFIOS[((n % DESAFIOS.length) + DESAFIOS.length) % DESAFIOS.length];
+  }
+
   window.JogosNucleo = { norm, casarProcedimento, areasDoPerfil, perguntasDaClinica, perguntasDeSaude,
-                         rodadaQuiz, rodadaMitos, paresMemoria, MEDALHAS, embaralhar, montar, clinicasDoPaciente };
+                         rodadaQuiz, rodadaMitos, paresMemoria, PARES_NIVEL, MEDALHAS, embaralhar, montar,
+                         clinicasDoPaciente, chaveDe, desafioDoDia, DESAFIOS };
 
   // ── Daqui para baixo: a tela (só no navegador) ────────────────────────
   if (typeof document === "undefined" || !document.getElementById("tela-jogos")) return;
@@ -209,6 +248,31 @@
   }
 
   function ganharEstrelas(n) { const d = ler(); d.estrelas = (d.estrelas || 0) + n; gravar(d); pintarTopo(); }
+
+  // ── Recordes, perguntas vistas e desafio do dia (17/11/2026) ──────────
+  function hoje() { try { return hojeISO(); } catch (e) { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); } }
+  // Guarda o recorde; `menor`: quanto menos, melhor (jogadas). True se bateu.
+  function recorde(chave, valor, menor) {
+    if (valor == null) return false;
+    const d = ler(); d.recordes = d.recordes || {};
+    const antes = d.recordes[chave];
+    if (antes != null && (menor ? valor >= antes : valor <= antes)) return false;
+    d.recordes[chave] = valor; gravar(d);
+    return antes != null;
+  }
+  const recordeDe = (chave) => (ler().recordes || {})[chave];
+  function marcarVistas(lista) {
+    const d = ler(); const v = new Set(d.vistas || []);
+    for (const x of lista) v.add(window.JogosNucleo.chaveDe(x));
+    d.vistas = [...v].slice(-300); gravar(d);
+  }
+  const vistas = () => new Set(ler().vistas || []);
+  function conferirDesafio(jogo, valor) {
+    const dia = hoje(), des = window.JogosNucleo.desafioDoDia(dia), d = ler();
+    if (des.jogo !== jogo || valor == null || valor < des.meta || d.desafio === dia) return false;
+    d.desafio = dia; gravar(d); ganharEstrelas(3); contar("desafio", 3);
+    return true;
+  }
 
   function ganharMedalha(id) {
     const d = ler(); d.medalhas = d.medalhas || {};
@@ -276,20 +340,27 @@
     const cs = codigo ? [] : clinicas(), atual = cs.length > 1 ? idAtual() : "";
     const troca = cs.length > 1 ? `<label class="jg-troca">Jogando sobre: <select id="jg-clinica">${cs.map((c) =>
       `<option value="${esc(c.id)}"${c.id === atual ? " selected" : ""}>${esc(c.nome || "Clínica")}</option>`).join("")}</select></label>` : "";
+    const des = window.JogosNucleo.desafioDoDia(hoje()), feitoDes = d.desafio === hoje();
+    const memNivel = Math.min(3, Math.max(1, d.memNivel || 1));
+    const rec = (k, un) => (recordeDe(k) != null ? ` · recorde ${recordeDe(k)}${un}` : "");
     palco.innerHTML = `${troca}
+      <div class="jg-topo-menu"><button type="button" id="jg-grande" class="jg-grande-bt${d.grande ? " ligado" : ""}">🔠 Letra grande</button></div>
+      <div class="jg-desafio${feitoDes ? " feito" : ""}"><b>🎯 Desafio do dia</b> ${esc(des.texto)}
+        <small>${feitoDes ? "Cumprido! +3 ⭐ — volte amanhã para outro." : "Vale +3 ⭐"}</small></div>
       <div class="jg-ola">${perfil && perfil.nome ? `Conheça a <b>${esc(perfil.nome)}</b> e` : "Teste"} o que você sabe de saúde. 😊</div>
       <div class="jg-grade">
         <button type="button" data-jg="quiz"><span>❓</span><b>Quiz</b><small>${perfil ? "A clínica, os exames e a saúde" : "Exames e saúde"}</small></button>
-        <button type="button" data-jg="memoria"><span>🧠</span><b>Jogo da memória</b><small>Cada exame com a sua parte do corpo</small></button>
+        <button type="button" data-jg="memoria"><span>🧠</span><b>Jogo da memória</b><small>Nível ${memNivel} · ${window.JogosNucleo.PARES_NIVEL[memNivel - 1]} pares</small></button>
         <button type="button" data-jg="mitos"><span>✅</span><b>Verdade ou mito</b><small>Dicas de saúde com fonte</small></button>
-        <button type="button" data-jg="missoes"><span>🗺️</span><b>Missões do indiDoc</b><small>${feitas} de 5 feitas</small></button>
+        <button type="button" data-jg="missoes"><span>🗺️</span><b>Missões do indiDoc</b><small>${feitas} de ${missoes().length} feitas</small></button>
       </div>
       ${Object.keys(EXTRAS).length ? `<div class="jg-t">⚡ Mais agitados</div><div class="jg-grade">${Object.entries(EXTRAS).map(([k, x]) =>
-        `<button type="button" data-jg="${k}"><span>${x.icone}</span><b>${esc(x.nome)}</b><small>${esc(x.sub)}</small></button>`).join("")}</div>` : ""}
+        `<button type="button" data-jg="${k}"><span>${x.icone}</span><b>${esc(x.nome)}</b><small>${esc(typeof x.sub === "function" ? x.sub() : x.sub)}</small></button>`).join("")}</div>` : ""}
       <div class="jg-t">🏅 Suas medalhas</div>
       <div class="jg-medalhas">${Object.entries(MEDALHAS).map(([k, m]) =>
         `<div class="jg-med${med[k] ? " ganha" : ""}"><span>${m.icone}</span><b>${esc(m.nome)}</b><small>${med[k] ? "Conquistada!" : esc(m.como)}</small></div>`).join("")}</div>
       <p class="jg-aviso">Conteúdo educativo, com fontes oficiais. Não substitui a orientação do seu médico.</p>`;
+    q("jg-grande").onclick = () => { const g = ler(); g.grande = !g.grande; gravar(g); aplicarLetra(); menu(); };
     const sel = q("jg-clinica");
     if (sel) sel.onchange = async () => {
       clinicaEscolhida = sel.value;
@@ -300,7 +371,8 @@
 
   // ── Quiz ──────────────────────────────────────────────────────────────
   function quiz() {
-    const perguntas = rodadaQuiz(perfil, Math.random);
+    const perguntas = rodadaQuiz(perfil, Math.random, vistas());
+    marcarVistas(perguntas);
     let i = 0, acertos = 0;
     const mostrar = () => {
       const p = perguntas[i];
@@ -327,25 +399,33 @@
       const est = Math.round(5 * acertos / perguntas.length);
       ganharEstrelas(est); marcar("quiz"); contar("quiz", est);
       const nova = acertos >= 4 && ganharMedalha("clinica");
-      resultado(`${acertos} de ${perguntas.length} certas`, est, nova ? "clinica" : "", "quiz");
+      resultado(`${acertos} de ${perguntas.length} certas`, est, nova ? "clinica" : "", "quiz", acertos);
     };
     mostrar();
   }
 
   // ── Verdade ou mito ───────────────────────────────────────────────────
   function mitos() {
-    const frases = rodadaMitos(perfil, Math.random);
-    let i = 0, acertos = 0;
+    const frases = rodadaMitos(perfil, Math.random, vistas());
+    marcarVistas(frases);
+    let i = 0, acertos = 0, respondida = false;
     const mostrar = () => {
       const f = frases[i];
-      palco.innerHTML = `<div class="jg-passo">Frase ${i + 1} de ${frases.length}</div>
-        <div class="jg-perg">“${esc(f.frase)}”</div>
-        <div class="jg-vm"><button type="button" data-vm="1">✅ Verdade</button><button type="button" data-vm="0">❌ Mito</button></div>
+      respondida = false;
+      palco.innerHTML = `<div class="jg-passo">Frase ${i + 1} de ${frases.length} · arraste a carta: → verdade, ← mito</div>
+        <div class="jg-carta" id="jg-carta"><span class="jg-carta-sel v">VERDADE</span><span class="jg-carta-sel m">MITO</span>
+          <div class="jg-perg">“${esc(f.frase)}”</div></div>
+        <div class="jg-vm"><button type="button" data-vm="0">❌ Mito</button><button type="button" data-vm="1">✅ Verdade</button></div>
         <div id="jg-resp"></div>`;
       for (const b of palco.querySelectorAll("[data-vm]")) b.onclick = () => responder(b.dataset.vm === "1");
+      arrastarCarta(q("jg-carta"), (verdade) => responder(verdade));
     };
     const responder = (disse) => {
+      if (respondida) return;
+      respondida = true;
       const f = frases[i], certo = disse === f.verdade;
+      const carta = q("jg-carta");
+      if (carta) { carta.classList.add(disse ? "foi-v" : "foi-m"); }
       if (certo) acertos++;
       palco.querySelectorAll("[data-vm]").forEach((b) => {
         b.disabled = true;
@@ -353,25 +433,28 @@
       });
       q("jg-resp").innerHTML = `<div class="jg-expl ${certo ? "ok" : ""}"><b>${f.verdade ? "Verdade." : "Mito."}</b> ${esc(f.explica)}
         <small>Fonte: ${esc(f.fonte)}</small></div>
-        <button type="button" class="jg-seguir">${i + 1 < frases.length ? "Próxima →" : "Ver resultado"}</button>`;
-      palco.querySelector(".jg-seguir").onclick = () => { i++; if (i < frases.length) mostrar(); else fim(); };
+        <div class="jg-fim-bts"><button type="button" class="jg-seguir" id="jg-mito-seg">${i + 1 < frases.length ? "Próxima →" : "Ver resultado"}</button>
+        <a class="jg-menu jg-zap" target="_blank" rel="noopener" href="${esc(linkZap(`${f.verdade ? "✅ Verdade" : "❌ Mito"}: “${f.frase}” — ${f.explica} (Fonte: ${f.fonte})`))}">📲 Enviar a dica</a></div>`;
+      q("jg-mito-seg").onclick = () => { i++; if (i < frases.length) mostrar(); else fim(); };
     };
     const fim = () => {
       ganharEstrelas(acertos); marcar("mitos"); contar("mito", acertos);
       const nova = acertos === frases.length && ganharMedalha("mitos");
-      resultado(`${acertos} de ${frases.length} certas`, acertos, nova ? "mitos" : "", "mitos");
+      resultado(`${acertos} de ${frases.length} certas`, acertos, nova ? "mitos" : "", "mitos", acertos);
     };
     mostrar();
   }
 
   // ── Memória ───────────────────────────────────────────────────────────
   function memoria() {
-    const pares = paresMemoria(perfil, Math.random);
+    const nivel = Math.min(3, Math.max(1, ler().memNivel || 1)), npares = window.JogosNucleo.PARES_NIVEL[nivel - 1];
+    const pares = paresMemoria(perfil, Math.random, npares);
     const cartas = window.JogosNucleo.embaralhar(pares.flatMap((p) => [
       { par: p.id, texto: p.exame, tipo: "exame" }, { par: p.id, texto: p.parte, tipo: "parte" }]), Math.random);
     let abertas = [], achados = 0, jogadas = 0, travado = false;
-    palco.innerHTML = `<div class="jg-passo">Ache os pares: cada exame com a parte do corpo que ele avalia.</div>
-      <div class="jg-mem">${cartas.map((c, k) => `<button type="button" data-c="${k}" class="${c.tipo}"><span>${esc(c.texto)}</span></button>`).join("")}</div>
+    const rec = recordeDe("memoria" + nivel);
+    palco.innerHTML = `<div class="jg-passo"><b>Nível ${nivel}</b> · ${pares.length} pares${rec ? ` · recorde ${rec} jogadas` : ""}. Ache cada exame com a parte do corpo que ele avalia.</div>
+      <div class="jg-mem n${pares.length}">${cartas.map((c, k) => `<button type="button" data-c="${k}" class="${c.tipo}"><span>${esc(c.texto)}</span></button>`).join("")}</div>
       <div id="jg-resp"></div>`;
     for (const b of palco.querySelectorAll("[data-c]")) b.onclick = () => virar(b);
     function virar(b) {
@@ -393,8 +476,12 @@
     function fim() {
       const est = jogadas <= pares.length + 2 ? 5 : jogadas <= pares.length + 5 ? 4 : 3;
       ganharEstrelas(est); marcar("memoria"); contar("memoria", est);
+      const bateu = recorde("memoria" + nivel, jogadas, true);
+      const sobe = est >= 4 && nivel < 3;
+      if (sobe) { const d = ler(); d.memNivel = nivel + 1; gravar(d); }
       const nova = ganharMedalha("memoria");
-      resultado(`${jogadas} jogadas`, est, nova ? "memoria" : "", "memoria");
+      resultado(`Nível ${nivel}: ${jogadas} jogadas${bateu ? " · novo recorde! 🏆" : ""}${sobe ? ` · próximo: nível ${nivel + 1}` : ""}`,
+                est, nova ? "memoria" : "", "memoria", 1);
     }
   }
 
@@ -410,8 +497,15 @@
       { id: "mostrar", titulo: "Veja como mostrar os exames ao médico", feito: !!f.mostrar, ir: "mostrar" },
       { id: "quiz", titulo: "Jogue uma rodada do quiz", feito: !!f.quiz, ir: "quiz" },
       { id: "email", titulo: "Guarde o seu acesso com o e-mail", feito: comEmail, ir: "conta" },
+      // 17/11/2026: mais três, úteis de verdade
+      { id: "avisos", titulo: "Ative os avisos no celular", feito: avisosLigados(), ir: "avisos" },
+      { id: "familia", titulo: "Cadastre alguém da família", feito: temFamilia(), ir: "conta" },
+      { id: "conversas", titulo: "Abra as Conversas com a clínica", feito: !!f.conversas, ir: "conversas" },
     ];
   }
+
+  function avisosLigados() { try { return typeof Notification !== "undefined" && Notification.permission === "granted"; } catch (e) { return false; } }
+  function temFamilia() { try { return pessoasProprias().length > 1; } catch (e) { return false; } }
 
   function telaMissoes() {
     const lista = missoes(), feitas = lista.filter((m) => m.feito).length;
@@ -423,7 +517,7 @@
       <div class="jg-barra"><i style="width:${Math.round(100 * feitas / lista.length)}%"></i></div>
       ${lista.map((m) => `<div class="jg-missao${m.feito ? " feita" : ""}"><span>${m.feito ? "✅" : "○"}</span><b>${esc(m.titulo)}</b>
         ${m.feito ? "" : `<button type="button" data-ir="${m.ir}">Fazer</button>`}</div>`).join("")}
-      <p class="jg-aviso">Complete as 5 e ganhe a medalha 🗺️ Explorador do indiDoc.</p>`;
+      <p class="jg-aviso">Complete todas e ganhe a medalha 🗺️ Explorador do indiDoc.</p>`;
     for (const b of palco.querySelectorAll("[data-ir]")) b.onclick = () => irMissao(b.dataset.ir);
   }
 
@@ -433,23 +527,64 @@
     try {
       if (ir === "fotografar") (q("ini-fotografar") || q("btn-fotografar")).click();
       else if (ir === "conta") { if (q("btn-conta")) q("btn-conta").click(); }
+      else if (ir === "avisos") { if (typeof ativarAvisos === "function") ativarAvisos(); }
       else if (window.Abas) Abas.ir(ir);
     } catch (e) {}
   }
   // Agenda e "Mostrar ao médico" abertos de qualquer jeito contam a missão.
   document.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-ir='agenda'], [data-ir='mostrar'], #btn-mostrar");
-    if (b && !tela.contains(b)) marcar(b.dataset.ir === "agenda" ? "agenda" : "mostrar");
+    const b = e.target.closest("[data-ir='agenda'], [data-ir='mostrar'], [data-ir='conversas'], #btn-mostrar");
+    if (b && !tela.contains(b)) marcar(b.dataset.ir === "agenda" ? "agenda" : b.dataset.ir === "conversas" ? "conversas" : "mostrar");
   }, true);
 
   // ── Resultado ─────────────────────────────────────────────────────────
-  function resultado(titulo, estrelas, medalha, deNovo) {
+  // Link do WhatsApp com o texto e o convite (origem "whatsapp" — volta contada)
+  function linkZap(texto) {
+    const base = location.origin + location.pathname;
+    const link = perfil && perfil.codigo ? `${base}?j=${perfil.codigo}&o=whatsapp` : base;
+    return "https://wa.me/?text=" + encodeURIComponent(`${texto}\n\n🎮 Jogue também no indiDoc: ${link}`);
+  }
+  const NOMES = { quiz: "Quiz", mitos: "Verdade ou mito", memoria: "Jogo da memória", missoes: "Missões" };
+
+  // `valor`: o número do jogo (pontos, acertos) para o desafio do dia
+  function resultado(titulo, estrelas, medalha, deNovo, valor) {
     const m = medalha ? MEDALHAS[medalha] : null;
+    const des = conferirDesafio(deNovo, valor);
+    const nome = NOMES[deNovo] || (EXTRAS[deNovo] || {}).nome || "jogo";
+    const onde = perfil && perfil.nome ? ` na sala de espera da ${perfil.nome}` : "";
     palco.innerHTML = `<div class="jg-fim"><div class="jg-est">${"⭐".repeat(estrelas)}${"☆".repeat(5 - estrelas)}</div>
       <b>${esc(titulo)}</b>
       ${m ? `<div class="jg-nova">${m.icone} Medalha nova: <b>${esc(m.nome)}</b>!</div>` : ""}
+      ${des ? `<div class="jg-nova">🎯 Desafio do dia cumprido! <b>+3 ⭐</b></div>` : ""}
       <div class="jg-fim-bts"><button type="button" class="jg-seguir" data-jg="${deNovo}">Jogar de novo</button>
-      <button type="button" class="jg-menu" data-jg="menu">Outros jogos</button></div></div>`;
+      <button type="button" class="jg-menu" data-jg="menu">Outros jogos</button>
+      <a class="jg-menu jg-zap" target="_blank" rel="noopener" href="${esc(linkZap(`Fiz ${titulo} no ${nome} do indiDoc${onde} 😄`))}">📲 Compartilhar</a></div></div>`;
+  }
+
+  // Letra grande (pacientes idosos): classe na tela, guardada neste celular
+  function aplicarLetra() { tela.classList.toggle("jg-grande", !!ler().grande); }
+  aplicarLetra();
+
+  // Verdade ou mito: arrastar a carta (→ verdade, ← mito)
+  function arrastarCarta(el, aoSoltar) {
+    if (!el) return;
+    let x0 = null, dx = 0;
+    el.addEventListener("pointerdown", (e) => { x0 = e.clientX; dx = 0; el.style.transition = "none"; try { el.setPointerCapture(e.pointerId); } catch (er) {} });
+    el.addEventListener("pointermove", (e) => {
+      if (x0 == null) return;
+      dx = e.clientX - x0;
+      el.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`;
+      el.classList.toggle("quase-v", dx > 40); el.classList.toggle("quase-m", dx < -40);
+    });
+    const soltar = () => {
+      if (x0 == null) return;
+      x0 = null; el.style.transition = "";
+      el.classList.remove("quase-v", "quase-m");
+      if (Math.abs(dx) > 80) aoSoltar(dx > 0);
+      else el.style.transform = "";
+    };
+    el.addEventListener("pointerup", soltar);
+    el.addEventListener("pointercancel", soltar);
   }
 
   palco.addEventListener("click", (e) => {
@@ -507,6 +642,7 @@
   // comum (palco, estrelas, medalhas, contagem, resultado, perfil).
   function registrar(id, jogo) { EXTRAS[id] = jogo; if (!tela.classList.contains("escondido") && palco.querySelector(".jg-grade")) menu(); }
   const kit = { palco, q, esc, ler, gravar, marcar, contar, ganharEstrelas, ganharMedalha, resultado, cliente,
+                recorde, recordeDe, linkZap,
                 perfil: () => perfil, aoParar: (f) => { pararJogo(); parar = f; } };
   window.Jogos = { abrir, fechar, registrar, kit };
 })();

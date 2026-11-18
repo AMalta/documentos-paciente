@@ -26,6 +26,11 @@ window.JOGOS_CONTEUDO = (function () {
     pediatria: { nome: "Saúde da criança", chaves: ["pediat", "neonat"] },
     odonto:    { nome: "Saúde bucal", chaves: ["odont", "dentist", "ortodont", "endodont", "periodont", "implant"] },
     dermato:   { nome: "Pele", chaves: ["dermat"] },
+    // 17/11/2026 (Monte o corpo e memória com mais partes do corpo)
+    pneumo:    { nome: "Pulmões", chaves: ["pneumo"] },
+    nefro:     { nome: "Rins e vias urinárias", chaves: ["nefro", "urolog"] },
+    orto:      { nome: "Ossos e articulações", chaves: ["ortop", "traumat", "reumat"] },
+    neuro:     { nome: "Cérebro e nervos", chaves: ["neuro"] },
   };
 
   // ── Procedimentos: o que é / para que serve ───────────────────────────
@@ -106,6 +111,29 @@ window.JOGOS_CONTEUDO = (function () {
       oque: "Fortalece o esmalte e ajuda a prevenir a cárie." },
     { area: "odonto", nome: "Selante", chaves: ["selante"],
       oque: "Uma resina fina fecha os sulcos dos dentes do fundo e ajuda a protegê-los da cárie." },
+    // Pele
+    { area: "dermato", nome: "Dermatoscopia", chaves: ["dermatoscopia", "mapeamento corporal"],
+      oque: "Exame da pele com uma lente de aumento e luz especial, para avaliar pintas e manchas." },
+    // Pulmões
+    { area: "pneumo", nome: "Espirometria", chaves: ["espirometria", "prova de funcao pulmonar"],
+      oque: "Mede quanto ar a pessoa consegue soprar e com que força; ajuda a avaliar asma e DPOC." },
+    { area: "pneumo", nome: "Polissonografia", chaves: ["polissonografia"],
+      oque: "É o estudo do sono: registra a respiração, o oxigênio, os batimentos e as ondas do cérebro durante a noite, para investigar ronco e apneia." },
+    // Rins e vias urinárias
+    { area: "nefro", nome: "Ultrassom dos rins e vias urinárias", chaves: ["rins e vias urinarias", "ultrassonografia renal", "de rins", "aparelho urinario"],
+      oque: "Imagem dos rins e da bexiga por ultrassom, sem radiação; mostra pedras, cistos e o tamanho dos rins." },
+    { area: "nefro", nome: "Ultrassom da próstata", chaves: ["prostata"],
+      oque: "Imagem da próstata por ultrassom, para avaliar o tamanho e as alterações da glândula." },
+    // Ossos e articulações
+    { area: "orto", nome: "Densitometria óssea", chaves: ["densitometria"],
+      oque: "Mede a densidade dos ossos para diagnosticar a osteoporose, com uma dose muito baixa de raio-X." },
+    { area: "orto", nome: "Infiltração articular", chaves: ["infiltracao"],
+      oque: "Aplicação de medicamento dentro ou ao redor da articulação para aliviar a dor e a inflamação." },
+    // Cérebro e nervos
+    { area: "neuro", nome: "Eletroencefalograma (EEG)", chaves: ["eletroencefalograma", "eeg"],
+      oque: "Registra a atividade elétrica do cérebro com eletrodos colados no couro cabeludo; não dói." },
+    { area: "neuro", nome: "Eletroneuromiografia", chaves: ["eletroneuromiografia", "enmg"],
+      oque: "Avalia os nervos e os músculos com pequenos estímulos elétricos; ajuda a investigar formigamento e fraqueza." },
     // Gerais (aparecem em qualquer clínica que os realize)
     { area: "geral", nome: "Ultrassonografia", chaves: ["ultrassonografia", "ultrassom", "ecografia"],
       oque: "Faz imagens do corpo com ondas de som, sem radiação." },

@@ -21,6 +21,15 @@
    aceita apelido dessas listas (registrar_placar). A TV da clínica mostra o
    top 5 do dia (Indiclin, painel_tv).
 
+   17/11/2026 (2ª leva, "realize todas as melhorias… e um controle de
+   velocidade no labirinto"): relógio que PAUSA com o app em segundo plano;
+   Relâmpago completa com as outras áreas e começa pelo mais fácil; "+pontos"
+   subindo; itens especiais e contagem 3-2-1 no Saudável; Labirinto com
+   dificuldade (Fácil/Normal/Difícil), pausa, 2º mapa e germes de jeitos
+   diferentes; Monte o corpo por nível (ícones só no 1) com pulmões, rins,
+   ossos e cérebro; Respire com vibração e 1 ou 3 minutos; recorde de cada
+   jogo no menu.
+
    Núcleo puro em window.JogosArcade (testes/testar_jogos.js).
    ═══════════════════════════════════════════════════════════════════════ */
 (function () {
@@ -49,14 +58,28 @@
 
   // Relâmpago: todas as perguntas do quiz (clínica, saúde, indiDoc) + os
   // mitos como Verdade/Mito, já com a certa marcada.
+  // Pouca pergunta (clínica sem perfil): completa com as outras áreas, para
+  // não repetir dentro do mesmo minuto. Começa pelo mais fácil (3 de
+  // verdade ou mito, de 2 opções) e depois mistura.
+  const MINIMO_RELAMPAGO = 45;
   function poolRelampago(perfil, rnd) {
-    const areas = J.areasDoPerfil(perfil);
-    const quiz = [...J.perguntasDaClinica(perfil, rnd), ...J.perguntasDeSaude(areas, rnd),
-                  ...C.INDIDOC.map((q) => ({ ...q, tipo: "indidoc" }))].map((q) => J.montar(q, rnd));
-    const mitos = C.MITOS.filter((m) => areas.has(m.area)).map((m) => ({
-      pergunta: "“" + m.frase + "”", opcoes: ["✅ Verdade", "❌ Mito"], certa: m.verdade ? 0 : 1,
-      explica: m.explica, fonte: m.fonte, tipo: "mito" }));
-    return J.embaralhar([...quiz, ...mitos], rnd);
+    let areas = J.areasDoPerfil(perfil);
+    const montarPool = (ar) => {
+      const quiz = [...J.perguntasDaClinica(perfil, rnd), ...J.perguntasDeSaude(ar, rnd),
+                    ...C.INDIDOC.map((q) => ({ ...q, tipo: "indidoc" }))].map((q) => J.montar(q, rnd));
+      const mitos = C.MITOS.filter((m) => ar.has(m.area)).map((m) => ({
+        pergunta: "“" + m.frase + "”", opcoes: ["✅ Verdade", "❌ Mito"], certa: m.verdade ? 0 : 1,
+        explica: m.explica, fonte: m.fonte, tipo: "mito" }));
+      return J.embaralhar([...quiz, ...mitos], rnd);
+    };
+    let pool = montarPool(areas);
+    if (pool.length < MINIMO_RELAMPAGO) {
+      const vistas = new Set(pool.map((q) => q.pergunta));
+      const extra = montarPool(new Set(Object.keys(C.AREAS))).filter((q) => !vistas.has(q.pergunta) && q.tipo !== "clinica");
+      pool = [...pool, ...extra];
+    }
+    const faceis = pool.filter((q) => q.tipo === "mito").slice(0, 3);
+    return [...faceis, ...pool.filter((q) => !faceis.includes(q))];
   }
   const estrelasRelampago = (acertos) => (acertos >= 12 ? 5 : acertos >= 9 ? 4 : acertos >= 6 ? 3 : acertos >= 3 ? 2 : 1);
 
@@ -73,27 +96,37 @@
     { e: "🍔", nome: "Lanche rápido", dica: "Lanches tipo fast-food costumam ter muito sal e gordura: deixe para ocasiões especiais.", fonte: GUIA },
     { e: "🚬", nome: "Cigarro", dica: "Fumar causa câncer e doenças do coração e do pulmão. O SUS oferece tratamento gratuito para parar de fumar.", fonte: "Instituto Nacional de Câncer (INCA)" },
   ];
+  // Especiais (raros): 💖 vida extra (ou +30 com as 3 vidas), 🌟 pontos em dobro por 5 s
+  const ESPECIAIS = [{ e: "💖", esp: "vida" }, { e: "🌟", esp: "dobro" }];
+  const CHANCE_ESPECIAL = 0.06, ESPERA_INICIO = 3;
   const velocidadeQueda = (seg) => 110 + 5 * seg;                   // px/s
   const intervaloNovo = (seg) => Math.max(420, 950 - 9 * seg);      // ms
   const estrelasSaudavel = (p) => (p >= 600 ? 5 : p >= 400 ? 4 : p >= 250 ? 3 : p >= 100 ? 2 : 1);
 
   // Monte o corpo: as áreas que têm lugar no corpo (x, y no desenho 200×300)
+  // Desenho 200×320 (cabeça maior para caber cérebro, olhos e dentes)
   const ZONAS = {
-    oftalmo:  { nome: "Olhos", ic: "👁️", x: 100, y: 36 },
-    odonto:   { nome: "Dentes", ic: "🦷", x: 100, y: 64 },
-    otorrino: { nome: "Ouvido, nariz e garganta", ic: "👂", x: 140, y: 50 },
-    cardio:   { nome: "Coração", ic: "❤️", x: 116, y: 122 },
-    gineco:   { nome: "Saúde da mulher", ic: "🌸", x: 100, y: 196 },
-    dermato:  { nome: "Pele", ic: "✋", x: 34, y: 196 },
+    neuro:    { nome: "Cérebro e nervos", ic: "🧠", x: 100, y: 30 },
+    oftalmo:  { nome: "Olhos", ic: "👁️", x: 100, y: 55 },
+    odonto:   { nome: "Dentes", ic: "🦷", x: 100, y: 80 },
+    otorrino: { nome: "Ouvido, nariz e garganta", ic: "👂", x: 148, y: 56 },
+    pneumo:   { nome: "Pulmões", ic: "🌬️", x: 80, y: 138 },
+    cardio:   { nome: "Coração", ic: "❤️", x: 118, y: 142 },
+    nefro:    { nome: "Rins e vias urinárias", ic: "💧", x: 100, y: 182 },
+    gineco:   { nome: "Saúde da mulher", ic: "🌸", x: 100, y: 214 },
+    dermato:  { nome: "Pele", ic: "✋", x: 30, y: 216 },
+    orto:     { nome: "Ossos e articulações", ic: "🦴", x: 80, y: 266 },
   };
-  function rodadaCorpo(perfil, rnd) {
+  // Nível 1: 4 exames com os ícones nas zonas; 2: 5 sem ícone; 3: 6 sem ícone
+  const CORPO_NIVEL = [{ n: 4, icones: true }, { n: 5, icones: false }, { n: 6, icones: false }];
+  function rodadaCorpo(perfil, rnd, n) {
     const areas = J.areasDoPerfil(perfil);
     const ordem = J.embaralhar(Object.keys(ZONAS), rnd).sort((a, b) => (areas.has(b) ? 1 : 0) - (areas.has(a) ? 1 : 0));
     const out = [];
     for (const a of ordem) {
       const p = J.embaralhar(C.PROCEDIMENTOS.filter((x) => x.area === a), rnd)[0];
       if (p) out.push({ area: a, exame: p.nome, oque: p.oque });
-      if (out.length === 4) break;
+      if (out.length === (n || 4)) break;
     }
     return J.embaralhar(out, rnd);
   }
@@ -116,6 +149,35 @@
     "#......#......#",
     "###############",
   ];
+  // 2º mapa (fases pares)
+  const MAPA2 = [
+    "###############",
+    "#o...#...#...o#",
+    "#.#.#.#.#.#.#.#",
+    "#.............#",
+    "#.###.#.#.###.#",
+    "#.....#G#.....#",
+    "###.#.....#.###",
+    "#...#.G#G.#...#",
+    "#.#...#.#...#.#",
+    "#.#.###.###.#.#",
+    "#.............#",
+    "#.##.#.P.#.##.#",
+    "#o...#...#...o#",
+    "#...#.....#...#",
+    "###############",
+  ];
+  const mapaDaFase = (fase) => (fase % 2 === 0 ? MAPA2 : MAPA);
+  // Dificuldade (controle de velocidade): ms por passo dos germes e da
+  // gotinha, quantos germes, quanto dura a maçã, o acaso e o peso dos pontos
+  const DIFICULDADES = {
+    facil:   { nome: "Fácil", germes: 2, passoG: 330, passoEu: 190, forca: 9, acaso: 0.45, peso: 0.6 },
+    normal:  { nome: "Normal", germes: 3, passoG: 260, passoEu: 170, forca: 7, acaso: 0.2, peso: 1 },
+    dificil: { nome: "Difícil", germes: 4, passoG: 205, passoEu: 150, forca: 5, acaso: 0.08, peso: 1.5 },
+  };
+  // Germes de jeitos diferentes: o caçador vai atrás; o andarilho passeia;
+  // o esperto mira 4 casas à frente da gotinha (corta o caminho)
+  const JEITOS_GERME = ["cacador", "andarilho", "esperto", "cacador"];
   const DIRS = { cima: [0, -1], baixo: [0, 1], esq: [-1, 0], dir: [1, 0] };
   const OPOSTA = { cima: "baixo", baixo: "cima", esq: "dir", dir: "esq" };
   function lerMapa(linhas) {
@@ -159,6 +221,19 @@
     const val = (k) => dist[(g.y + DIRS[k][1]) * m.w + g.x + DIRS[k][0]];
     return ops.reduce((a, b) => ((fugindo ? val(b) > val(a) : val(b) < val(a)) ? b : a));
   }
+  // Onde o germe mira: o caçador e o andarilho, a gotinha; o esperto, até 4
+  // casas à frente dela (a última casa livre no caminho)
+  function alvoDoGerme(m, jeito, eu) {
+    if (jeito !== "esperto" || !DIRS[eu.dir]) return { x: eu.x, y: eu.y };
+    let a = { x: eu.x, y: eu.y };
+    for (let k = 0; k < 4; k++) {
+      const p = andar(m, a, eu.dir);
+      if (p === a) break;
+      a = p;
+    }
+    return a;
+  }
+  const acasoDoGerme = (jeito, base) => (jeito === "andarilho" ? Math.max(0.6, base) : base);
   const estrelasLabirinto = (p) => (p >= 3000 ? 5 : p >= 2000 ? 4 : p >= 1200 ? 3 : p >= 500 ? 2 : 1);
 
   const MEDALHAS_NOVAS = {
@@ -171,14 +246,27 @@
   Object.assign(J.MEDALHAS, MEDALHAS_NOVAS);
 
   window.JogosArcade = { ANIMAIS, JEITOS, FEMININOS, apelido, apelidoValido, multiplicador, poolRelampago,
-    estrelasRelampago, SAUDAVEIS, EVITAR, velocidadeQueda, intervaloNovo, estrelasSaudavel, ZONAS, rodadaCorpo,
-    MAPA, DIRS, lerMapa, livre, andar, distancias, passoGerme, estrelasLabirinto, MEDALHAS_NOVAS };
+    MINIMO_RELAMPAGO, estrelasRelampago, SAUDAVEIS, EVITAR, ESPECIAIS, velocidadeQueda, intervaloNovo,
+    estrelasSaudavel, ZONAS, CORPO_NIVEL, rodadaCorpo, MAPA, MAPA2, mapaDaFase, DIFICULDADES, JEITOS_GERME,
+    DIRS, lerMapa, livre, andar, distancias, passoGerme, alvoDoGerme, acasoDoGerme, estrelasLabirinto,
+    MEDALHAS_NOVAS };
 
   // ── Daqui para baixo: a tela (só no navegador) ────────────────────────
   if (typeof document === "undefined" || !window.Jogos || !window.Jogos.kit) return;
   const K = window.Jogos.kit, palco = K.palco, esc = K.esc;
   const vibrar = (ms) => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} };
   const largura = () => Math.min(palco.clientWidth - 32 || 320, 560);
+  const fora = () => document.hidden;          // app em segundo plano: o relógio para
+  // "+20" subindo de um ponto da tela
+  function subir(texto, el, cor) {
+    if (!el) return;
+    const r = el.getBoundingClientRect(), f = document.createElement("div");
+    f.className = "jg-sobe"; f.textContent = texto; f.style.color = cor || "#16a34a";
+    f.style.left = (r.left + r.width / 2) + "px"; f.style.top = (r.top + r.height / 2) + "px";
+    document.body.appendChild(f);
+    setTimeout(() => f.remove(), 800);
+  }
+  const recTxt = (k, un) => (K.recordeDe(k) != null ? `Recorde: ${K.recordeDe(k)}${un || ""}` : "");
 
   // ── 🏆 Placar da sala de espera ────────────────────────────────────────
   const CHAVE_APELIDO = "jogos-apelido";
@@ -234,9 +322,11 @@
     const erros = [], DURA = 60;
     let resta = DURA, fimJogo = false;
     palco.innerHTML = `<div class="jg-rl-topo"><div class="jg-barra jg-rl-tempo"><i id="jg-rl-t" style="width:100%"></i></div>
-      <div class="jg-rl-num"><span id="jg-rl-s">60 s</span><b id="jg-rl-p">0 pts</b><span id="jg-rl-c"></span></div></div>
+      <div class="jg-rl-num"><span id="jg-rl-s">60 s</span><b id="jg-rl-p">0 pts</b><span id="jg-rl-c"></span></div>
+      ${K.recordeDe("relampago") != null ? `<div class="jg-passo">${recTxt("relampago", " pts")}</div>` : ""}</div>
       <div id="jg-rl-q"></div>`;
     const relogio = setInterval(() => {
+      if (fora()) return;                       // pausa com o app em segundo plano
       resta -= 0.1;
       const t = K.q("jg-rl-t");
       if (t) { t.style.width = Math.max(0, 100 * resta / DURA) + "%"; K.q("jg-rl-s").textContent = Math.ceil(Math.max(0, resta)) + " s"; }
@@ -255,8 +345,12 @@
       if (travado || fimJogo) return;
       travado = true;
       const p = fila[i], certo = k === p.certa;
-      if (certo) { acertos++; combo++; pontos += 10 * multiplicador(combo); }
-      else { combo = 0; erros.push(p); vibrar(80); }
+      if (certo) {
+        acertos++; combo++;
+        const ganho = 10 * multiplicador(combo);
+        pontos += ganho;
+        subir("+" + ganho, palco.querySelector(`[data-rl="${k}"]`));
+      } else { combo = 0; erros.push(p); vibrar(80); }
       palco.querySelectorAll("[data-rl]").forEach((b, n) => {
         if (n === p.certa) b.classList.add("certa"); else if (n === k) b.classList.add("errada");
       });
@@ -272,7 +366,8 @@
       const est = estrelasRelampago(acertos);
       K.ganharEstrelas(est); K.marcar("relampago"); K.contar("relampago", est);
       const nova = acertos >= 10 && K.ganharMedalha("relampago");
-      K.resultado(`${acertos} certas · ${pontos} pontos`, est, nova ? "relampago" : "", "relampago");
+      const bateu = K.recorde("relampago", pontos);
+      K.resultado(`${acertos} certas · ${pontos} pontos${bateu ? " · novo recorde! 🏆" : ""}`, est, nova ? "relampago" : "", "relampago", pontos);
       placar("relampago", pontos);   // o placar antes da revisão: fica à vista
       const fimEl = palco.querySelector(".jg-fim");
       if (erros.length && fimEl) {
@@ -287,37 +382,56 @@
   function saudavel() {
     const W = largura(), H = Math.round(Math.min(window.innerHeight * 0.58, 520));
     palco.innerHTML = `<div class="jg-rl-num"><span id="jg-sd-v">❤️❤️❤️</span><b id="jg-sd-p">0 pts</b><span id="jg-sd-s">60 s</span></div>
-      <div class="jg-passo">Toque nos alimentos saudáveis. Cuidado com o que faz mal!</div>
+      <div class="jg-passo">Toque nos alimentos saudáveis. Cuidado com o que faz mal! 💖 dá vida, 🌟 dobra os pontos.${
+        K.recordeDe("saudavel") != null ? " " + recTxt("saudavel", " pts") + "." : ""}</div>
       <canvas id="jg-sd" class="jg-canvas" width="${W * 2}" height="${H * 2}" style="width:${W}px;height:${H}px"></canvas>`;
     const cv = K.q("jg-sd"), g = cv.getContext("2d");
     g.scale(2, 2);
     const itens = [], efeitos = [], ruins = {};
-    let vidas = 3, pontos = 0, combo = 0, t0 = performance.now(), ult = t0, prox = 0, acabou = false, raf = 0, pisca = 0;
+    // tj: o tempo de JOGO (soma dos quadros, com teto) — em segundo plano o
+    // navegador para os quadros e o relógio não anda (antes contava o real)
+    let vidas = 3, pontos = 0, combo = 0, tj = -ESPERA_INICIO, ult = 0, prox = 0, acabou = false, raf = 0, pisca = 0, dobro = 0;
     const DURA = 60;
     function novo(seg) {
-      const ruim = Math.random() < 0.35;
-      const x = 26 + Math.random() * (W - 52);
-      itens.push(ruim ? { x, y: -24, ruim: EVITAR[Math.floor(Math.random() * EVITAR.length)] }
-                      : { x, y: -24, e: SAUDAVEIS[Math.floor(Math.random() * SAUDAVEIS.length)] });
+      const x = 26 + Math.random() * (W - 52), sorte = Math.random();
+      if (sorte < CHANCE_ESPECIAL) itens.push({ x, y: -24, esp: ESPECIAIS[Math.floor(Math.random() * ESPECIAIS.length)] });
+      else if (sorte < 0.35) itens.push({ x, y: -24, ruim: EVITAR[Math.floor(Math.random() * EVITAR.length)] });
+      else itens.push({ x, y: -24, e: SAUDAVEIS[Math.floor(Math.random() * SAUDAVEIS.length)] });
       prox = intervaloNovo(seg);
     }
+    const emoji = (px) => `${px}px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif`;
     function quadro(agora) {
       if (acabou) return;
-      const dt = Math.min(0.05, (agora - ult) / 1000), seg = (agora - t0) / 1000;
+      const dt = Math.min(0.05, (agora - ult) / 1000);
       ult = agora;
+      tj += dt;
+      g.clearRect(0, 0, W, H);
+      g.textAlign = "center"; g.textBaseline = "middle";
+      if (tj < 0) {                                   // 3, 2, 1…
+        g.fillStyle = "#0f766e"; g.font = "bold 64px system-ui, sans-serif";
+        g.fillText(String(Math.ceil(-tj)), W / 2, H / 2 - 20);
+        g.font = "17px system-ui, sans-serif";
+        g.fillText("Toque só no que é saudável!", W / 2, H / 2 + 34);
+        raf = requestAnimationFrame(quadro);
+        return;
+      }
+      const seg = tj;
+      dobro = Math.max(0, dobro - dt);
       prox -= dt * 1000;
       if (prox <= 0) novo(seg);
       const v = velocidadeQueda(seg);
       for (const it of itens) it.y += v * dt;
       for (let k = itens.length - 1; k >= 0; k--) if (itens[k].y > H + 30) {
-        if (!itens[k].ruim) combo = 0;   // saudável que passou: perde o combo
+        if (itens[k].e) combo = 0;       // saudável que passou: perde o combo
         itens.splice(k, 1);
       }
-      g.clearRect(0, 0, W, H);
       if (pisca > 0) { g.fillStyle = `rgba(220,38,38,${pisca})`; g.fillRect(0, 0, W, H); pisca = Math.max(0, pisca - dt * 2); }
-      g.font = "40px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
-      g.textAlign = "center"; g.textBaseline = "middle";
-      for (const it of itens) g.fillText(it.ruim ? it.ruim.e : it.e, it.x, it.y);
+      if (dobro > 0) { g.fillStyle = "rgba(250,204,21,.16)"; g.fillRect(0, 0, W, H); }
+      g.font = emoji(40);
+      for (const it of itens) {
+        if (it.esp) { g.fillStyle = "rgba(250,204,21,.35)"; g.beginPath(); g.arc(it.x, it.y, 26, 0, 7); g.fill(); }
+        g.fillText(it.esp ? it.esp.e : it.ruim ? it.ruim.e : it.e, it.x, it.y);
+      }
       g.font = "bold 18px system-ui, sans-serif";
       for (let k = efeitos.length - 1; k >= 0; k--) {
         const f = efeitos[k];
@@ -325,13 +439,15 @@
         if (f.vida <= 0) { efeitos.splice(k, 1); continue; }
         g.globalAlpha = Math.min(1, f.vida * 2); g.fillStyle = f.cor; g.fillText(f.t, f.x, f.y - (0.8 - f.vida) * 40); g.globalAlpha = 1;
       }
+      if (dobro > 0) { g.fillStyle = "#a16207"; g.fillText(`🌟 pontos em dobro: ${Math.ceil(dobro)} s`, W / 2, 18); }
       const resta = Math.max(0, Math.ceil(DURA - seg));
       K.q("jg-sd-s").textContent = resta + " s";
       if (resta <= 0) return fim();
       raf = requestAnimationFrame(quadro);
     }
+    const pintarVidas = () => { K.q("jg-sd-v").textContent = "❤️".repeat(vidas) + "🤍".repeat(Math.max(0, 3 - vidas)); };
     cv.addEventListener("pointerdown", (ev) => {
-      if (acabou) return;
+      if (acabou || tj < 0) return;
       const r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
       let melhor = -1, dm = 38;
       itens.forEach((it, k) => { const d = Math.hypot(it.x - x, it.y - y); if (d < dm) { dm = d; melhor = k; } });
@@ -341,11 +457,16 @@
         vidas--; combo = 0; pisca = 0.35; vibrar(120);
         ruins[it.ruim.e] = (ruins[it.ruim.e] || 0) + 1;
         efeitos.push({ x: it.x, y: it.y, t: "✗ " + it.ruim.nome, cor: "#dc2626", vida: 0.8 });
-        K.q("jg-sd-v").textContent = "❤️".repeat(vidas) + "🤍".repeat(3 - vidas);
+        pintarVidas();
         if (vidas <= 0) return fim();
+      } else if (it.esp) {
+        vibrar(30);
+        if (it.esp.esp === "vida" && vidas < 3) { vidas++; pintarVidas(); efeitos.push({ x: it.x, y: it.y, t: "+1 vida", cor: "#db2777", vida: 0.8 }); }
+        else if (it.esp.esp === "vida") { pontos += 30; efeitos.push({ x: it.x, y: it.y, t: "+30", cor: "#db2777", vida: 0.8 }); }
+        else { dobro = 5; efeitos.push({ x: it.x, y: it.y, t: "x2!", cor: "#a16207", vida: 0.8 }); }
       } else {
         combo++;
-        const ganho = 10 * multiplicador(combo);
+        const ganho = 10 * multiplicador(combo) * (dobro > 0 ? 2 : 1);
         pontos += ganho;
         efeitos.push({ x: it.x, y: it.y, t: "+" + ganho, cor: "#16a34a", vida: 0.8 });
       }
@@ -357,36 +478,38 @@
       const est = estrelasSaudavel(pontos);
       K.ganharEstrelas(est); K.marcar("saudavel"); K.contar("saudavel", est);
       const nova = pontos >= 300 && K.ganharMedalha("saudavel");
-      K.resultado(`${pontos} pontos`, est, nova ? "saudavel" : "", "saudavel");
+      const bateu = K.recorde("saudavel", pontos);
+      K.resultado(`${pontos} pontos${bateu ? " · novo recorde! 🏆" : ""}`, est, nova ? "saudavel" : "", "saudavel", pontos);
+      placar("saudavel", pontos);
       const pior = Object.entries(ruins).sort((a, b) => b[1] - a[1])[0];
       const d = pior ? EVITAR.find((x) => x.e === pior[0]) : EVITAR[Math.floor(Math.random() * EVITAR.length)];
       palco.querySelector(".jg-fim").insertAdjacentHTML("beforeend",
         `<div class="jg-expl"><b>${d.e} ${esc(d.nome)}:</b> ${esc(d.dica)}<small>Fonte: ${esc(d.fonte)}</small></div>`);
-      placar("saudavel", pontos);
     }
     K.aoParar(() => { acabou = true; cancelAnimationFrame(raf); });
-    raf = requestAnimationFrame((t) => { t0 = ult = t; quadro(t); });
+    raf = requestAnimationFrame((t) => { ult = t; quadro(t); });
   }
 
   // ── 🧍 Monte o corpo ────────────────────────────────────────────────────
   function corpo() {
-    const rodada = rodadaCorpo(K.perfil(), Math.random);
+    const nivel = Math.min(3, Math.max(1, K.ler().corpoNivel || 1)), cfg = CORPO_NIVEL[nivel - 1];
+    const rodada = rodadaCorpo(K.perfil(), Math.random, cfg.n);
     let escolhido = null, colocados = 0, erros = 0;
     const zonasUsadas = Object.entries(ZONAS);
-    palco.innerHTML = `<div class="jg-passo">Arraste cada exame até a parte do corpo que ele avalia (ou toque no exame e depois no lugar).</div>
+    palco.innerHTML = `<div class="jg-passo"><b>Nível ${nivel}</b>${cfg.icones ? "" : " (sem as figuras)"} · arraste cada exame até a parte do corpo que ele avalia (ou toque no exame e depois no lugar).</div>
       <div class="jg-corpo">
-        <svg viewBox="0 0 200 300" class="jg-silhueta" aria-hidden="true">
+        <svg viewBox="0 0 200 320" class="jg-silhueta" aria-hidden="true">
           <g fill="#dbeafe" stroke="#93c5fd" stroke-width="2">
-            <circle cx="100" cy="48" r="30"/>
-            <rect x="88" y="76" width="24" height="16" rx="6"/>
-            <rect x="58" y="90" width="84" height="120" rx="26"/>
-            <rect x="28" y="96" width="24" height="96" rx="12" transform="rotate(8 40 96)"/>
-            <rect x="148" y="96" width="24" height="96" rx="12" transform="rotate(-8 160 96)"/>
-            <rect x="66" y="200" width="28" height="92" rx="13"/>
-            <rect x="106" y="200" width="28" height="92" rx="13"/>
+            <circle cx="100" cy="56" r="40"/>
+            <rect x="88" y="94" width="24" height="16" rx="6"/>
+            <rect x="58" y="106" width="84" height="122" rx="26"/>
+            <rect x="28" y="112" width="24" height="98" rx="12" transform="rotate(8 40 112)"/>
+            <rect x="148" y="112" width="24" height="98" rx="12" transform="rotate(-8 160 112)"/>
+            <rect x="66" y="218" width="28" height="94" rx="13"/>
+            <rect x="106" y="218" width="28" height="94" rx="13"/>
           </g>
-          ${zonasUsadas.map(([k, z]) => `<g class="jg-zona" data-zona="${k}"><circle cx="${z.x}" cy="${z.y}" r="15"/>
-            <text x="${z.x}" y="${z.y + 1}" text-anchor="middle" dominant-baseline="middle">${z.ic}</text></g>`).join("")}
+          ${zonasUsadas.map(([k, z]) => `<g class="jg-zona" data-zona="${k}"><circle cx="${z.x}" cy="${z.y}" r="12"/>
+            <text x="${z.x}" y="${z.y + 1}" text-anchor="middle" dominant-baseline="middle">${cfg.icones ? z.ic : ""}</text></g>`).join("")}
         </svg>
       </div>
       <div class="jg-fichas">${rodada.map((r, k) => `<button type="button" class="jg-ficha" data-f="${k}">${esc(r.exame)}</button>`).join("")}</div>
@@ -405,12 +528,13 @@
       if (certo) {
         b.remove(); colocados++; marcar(null);
         el.classList.add("certa");
-        resp.innerHTML = `<div class="jg-expl ok"><b>${z.ic} ${esc(r.exame)}:</b> ${esc(r.oque)}</div>`;
+        el.querySelector("text").textContent = z.ic;          // a figura aparece ao acertar
+        resp.innerHTML = `<div class="jg-expl ok"><b>${z.ic} ${esc(r.exame)} (${esc(z.nome.toLowerCase())}):</b> ${esc(r.oque)}</div>`;
         if (colocados === rodada.length) setTimeout(fim, 1100);
       } else {
         erros++; vibrar(80);
         el.classList.add("errada"); setTimeout(() => el.classList.remove("errada"), 600);
-        resp.innerHTML = `<div class="jg-expl">Não é ${esc(z.nome.toLowerCase())}. Tente outro lugar! 😉</div>`;
+        resp.innerHTML = `<div class="jg-expl">Aí não: ${esc(z.nome.toLowerCase())}. Tente outro lugar! 😉</div>`;
       }
     }
     // Arrastar (pointer) ou tocar e tocar
@@ -446,29 +570,54 @@
       K.aoParar(null);
       const est = Math.max(2, 5 - erros);
       K.ganharEstrelas(est); K.marcar("corpo"); K.contar("corpo", est);
+      const sobe = erros <= 1 && nivel < 3;
+      if (sobe) { const d = K.ler(); d.corpoNivel = nivel + 1; K.gravar(d); }
+      K.recorde("corpo", nivel);
       const nova = K.ganharMedalha("corpo");
-      K.resultado(erros ? `Corpo montado com ${erros} ${erros === 1 ? "erro" : "erros"}` : "Corpo montado sem errar!", est, nova ? "corpo" : "", "corpo");
+      K.resultado((erros ? `Nível ${nivel}: corpo montado com ${erros} ${erros === 1 ? "erro" : "erros"}` : `Nível ${nivel}: corpo montado sem errar!`)
+        + (sobe ? ` · próximo: nível ${nivel + 1}` : ""), est, nova ? "corpo" : "", "corpo", 1);
     }
   }
 
   // ── 💧 Labirinto ────────────────────────────────────────────────────────
+  // Antes de jogar, a dificuldade (o controle de velocidade); fica guardada.
   function labirinto() {
+    const atual = K.ler().labDif || "normal";
+    palco.innerHTML = `<div class="jg-perg">💧 Labirinto</div>
+      <div class="jg-passo">Coma as vitaminas e fuja dos germes 🦠. A maçã 🍎 deixa os germes fracos — aí é você quem pega!</div>
+      <div class="jg-t">Escolha a velocidade</div>
+      <div class="jg-ops">${Object.entries(DIFICULDADES).map(([k, d]) =>
+        `<button type="button" data-dif="${k}" class="${k === atual ? "sel" : ""}"><b>${{ facil: "🐢", normal: "🚶", dificil: "🚀" }[k]} ${d.nome}</b>
+          <small>${d.germes} germes${k === "facil" ? ", mais devagar" : k === "dificil" ? ", bem rápidos (pontos x1,5)" : ""}${
+            K.recordeDe("labirinto_" + k) != null ? " · recorde " + K.recordeDe("labirinto_" + k) : ""}</small></button>`).join("")}</div>`;
+    for (const b of palco.querySelectorAll("[data-dif]")) b.onclick = () => {
+      const d = K.ler(); d.labDif = b.dataset.dif; K.gravar(d);
+      jogarLabirinto(b.dataset.dif);
+    };
+  }
+
+  function jogarLabirinto(difId) {
+    const DIF = DIFICULDADES[difId] || DIFICULDADES.normal;
     const L = largura(), CEL = Math.floor(Math.min(L, 420) / 15), W = CEL * 15, H = CEL * 15;
-    palco.innerHTML = `<div class="jg-rl-num"><span id="jg-lb-v">💧💧💧</span><b id="jg-lb-p">0 pts</b><span id="jg-lb-f">Fase 1</span></div>
+    palco.innerHTML = `<div class="jg-rl-num"><span id="jg-lb-v">💧💧💧</span><b id="jg-lb-p">0 pts</b><span id="jg-lb-f">${DIF.nome} · Fase 1</span></div>
       <canvas id="jg-lb" class="jg-canvas jg-lb" width="${W * 2}" height="${H * 2}" style="width:${W}px;height:${H}px"></canvas>
       <div class="jg-pad">${["cima", "esq", "dir", "baixo"].map((d) =>
         `<button type="button" data-d="${d}" aria-label="${d}">${{ cima: "▲", esq: "◀", dir: "▶", baixo: "▼" }[d]}</button>`).join("")}</div>
+      <div class="jg-fim-bts"><button type="button" id="jg-lb-pausa" class="jg-menu jg-pausa">⏸ Pausar</button></div>
       <div class="jg-passo" id="jg-lb-msg">Coma as vitaminas e fuja dos germes 🦠. A maçã 🍎 deixa os germes fracos!</div>`;
     const cv = K.q("jg-lb"), g = cv.getContext("2d");
     g.scale(2, 2);
     let m, eu, germes, fase = 1, vidas = 3, pontos = 0, querer = "esq", forca = 0, pausa = 1.2, acabou = false, raf = 0, ult = 0;
-    let accEu = 0, accG = 0;
-    const passoEu = () => Math.max(120, 170 - 8 * (fase - 1));
-    const passoG = () => Math.max(150, 260 - 25 * (fase - 1));
+    let accEu = 0, accG = 0, pausado = false, medalhaNova = false;
+    const ganhar = (n) => { pontos += Math.round(n * DIF.peso); };
+    const passoEu = () => Math.max(110, DIF.passoEu - 8 * (fase - 1));
+    const passoG = () => Math.max(140, DIF.passoG - 25 * (fase - 1));
     function montar(novoMapa) {
-      if (novoMapa) m = lerMapa(MAPA);
+      if (novoMapa) m = lerMapa(mapaDaFase(fase));
       eu = { ...m.inicio, ax: m.inicio.x, ay: m.inicio.y, dir: "esq" };
-      germes = m.germes.map((p, k) => ({ ...p, ax: p.x, ay: p.y, dir: "cima", casa: { ...p }, preso: 1 + k * 1.5 }));
+      const casas = [...m.germes, { x: 7, y: 3 }].slice(0, DIF.germes);
+      germes = casas.map((p, k) => ({ ...p, ax: p.x, ay: p.y, dir: "cima", casa: { ...p }, preso: 1 + k * 1.5,
+                                      jeito: JEITOS_GERME[k % JEITOS_GERME.length] }));
       accEu = accG = 0; forca = 0; pausa = 1.2;
     }
     montar(true);
@@ -479,12 +628,12 @@
           || (gm.ax === eu.x && gm.ay === eu.y && gm.x === eu.ax && gm.y === eu.ay);
         if (gm.preso > 0 || !junto) continue;
         if (forca > 0) {
-          pontos += 200; vibrar(40);
+          ganhar(200); vibrar(40);
           Object.assign(gm, { x: gm.casa.x, y: gm.casa.y, ax: gm.casa.x, ay: gm.casa.y, preso: 3 });
         } else {
           vidas--; vibrar(200);
           K.q("jg-lb-v").textContent = "💧".repeat(Math.max(0, vidas)) + "🤍".repeat(3 - Math.max(0, vidas));
-          if (vidas <= 0) return fim(false);
+          if (vidas <= 0) return fim();
           K.q("jg-lb-msg").textContent = "Ops! Um germe te pegou. Cuidado! 🦠";
           montar(false);
           return;
@@ -495,21 +644,21 @@
       const k = eu.y * m.w + eu.x, c = m.comida.get(k);
       if (!c) return;
       m.comida.delete(k);
-      if (c === "v") pontos += 10;
-      else { pontos += 50; forca = Math.max(3, 7 - fase); K.q("jg-lb-msg").textContent = "🍎 Germes fracos! Pegue eles!"; }
+      if (c === "v") ganhar(10);
+      else { ganhar(50); forca = Math.max(3, DIF.forca - (fase - 1)); K.q("jg-lb-msg").textContent = "🍎 Germes fracos! Pegue eles!"; }
       if (!m.comida.size) {
         if (fase === 1 && K.ganharMedalha("labirinto")) medalhaNova = true;
-        fase++; pontos += 500;
-        K.q("jg-lb-f").textContent = "Fase " + fase;
-        K.q("jg-lb-msg").textContent = `Fase ${fase}! Os germes ficaram mais rápidos. 💪`;
+        fase++; ganhar(500);
+        K.q("jg-lb-f").textContent = `${DIF.nome} · Fase ${fase}`;
+        K.q("jg-lb-msg").textContent = `Fase ${fase}! Labirinto novo e germes mais rápidos. 💪`;
         montar(true);
       }
     }
-    let medalhaNova = false;
     function quadro(agora) {
       if (acabou) return;
       const dt = Math.min(0.05, (agora - ult) / 1000 || 0);
       ult = agora;
+      if (pausado || fora()) { desenhar(1, 1); raf = requestAnimationFrame(quadro); return; }
       if (pausa > 0) pausa -= dt;
       else {
         forca = Math.max(0, forca - dt);
@@ -525,11 +674,11 @@
         const pg = forca > 0 ? passoG() * 1.6 : passoG();
         if (accG >= pg && !acabou) {
           accG = 0;
-          const dist = distancias(m, eu);
           for (const gm of germes) {
             gm.ax = gm.x; gm.ay = gm.y;
             if (gm.preso > 0) continue;
-            gm.dir = passoGerme(m, gm, dist, forca > 0, 0.2, Math.random);
+            const dist = distancias(m, alvoDoGerme(m, gm.jeito, eu));
+            gm.dir = passoGerme(m, gm, dist, forca > 0, acasoDoGerme(gm.jeito, DIF.acaso), Math.random);
             Object.assign(gm, andar(m, gm, gm.dir));
           }
           colisao();
@@ -541,6 +690,7 @@
       K.q("jg-lb-p").textContent = pontos + " pts";
       raf = requestAnimationFrame(quadro);
     }
+    const ANEL = { cacador: "#f87171", andarilho: "#facc15", esperto: "#c084fc" };
     function desenhar(fe, fg) {
       g.fillStyle = "#0b2530"; g.fillRect(0, 0, W, H);
       for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
@@ -563,6 +713,9 @@
         if (forca > 0 && gm.preso <= 0) {
           g.fillStyle = forca < 1.5 && Math.floor(forca * 6) % 2 ? "#ffffff" : "#60a5fa";
           g.beginPath(); g.arc(x, y, CEL * 0.48, 0, 7); g.fill();
+        } else {
+          g.strokeStyle = ANEL[gm.jeito] || "#f87171"; g.lineWidth = 2;
+          g.beginPath(); g.arc(x, y, CEL * 0.46, 0, 7); g.stroke();
         }
         g.fillText("🦠", x, y + 1);
         g.globalAlpha = 1;
@@ -577,18 +730,27 @@
       g.fill();
       g.fillStyle = "#fff";
       const olho = { dir: [1, 0], esq: [-1, 0], cima: [0, -1], baixo: [0, 1] }[eu.dir] || [0, 0];
-      for (const s of [-1, 1]) {
-        g.beginPath(); g.arc(x + s * r * 0.38, y + r * 0.05, r * 0.24, 0, 7); g.fill();
-      }
+      for (const s of [-1, 1]) { g.beginPath(); g.arc(x + s * r * 0.38, y + r * 0.05, r * 0.24, 0, 7); g.fill(); }
       g.fillStyle = "#0b2530";
       for (const s of [-1, 1]) {
         g.beginPath(); g.arc(x + s * r * 0.38 + olho[0] * r * 0.1, y + r * 0.05 + olho[1] * r * 0.1, r * 0.12, 0, 7); g.fill();
       }
+      if (pausado || fora()) {
+        g.fillStyle = "rgba(11,37,48,.7)"; g.fillRect(0, 0, W, H);
+        g.fillStyle = "#fff"; g.font = "bold 26px system-ui, sans-serif"; g.fillText("Pausado", W / 2, H / 2);
+        g.font = "15px system-ui, sans-serif"; g.fillText("Toque no labirinto para continuar", W / 2, H / 2 + 30);
+      }
     }
     // Controles: botões, deslizar no labirinto e as setas do teclado
     for (const b of palco.querySelectorAll("[data-d]")) b.addEventListener("pointerdown", (e) => { e.preventDefault(); querer = b.dataset.d; });
+    const bPausa = K.q("jg-lb-pausa");
+    const alternar = () => { pausado = !pausado; bPausa.textContent = pausado ? "▶ Continuar" : "⏸ Pausar"; };
+    bPausa.onclick = alternar;
+    // ao voltar do segundo plano, fica pausado até a pessoa tocar
+    const aoVoltar = () => { if (document.hidden && !pausado) alternar(); };
+    document.addEventListener("visibilitychange", aoVoltar);
     let ini = null;
-    cv.addEventListener("pointerdown", (e) => { ini = { x: e.clientX, y: e.clientY }; });
+    cv.addEventListener("pointerdown", (e) => { if (pausado) { alternar(); return; } ini = { x: e.clientX, y: e.clientY }; });
     cv.addEventListener("pointermove", (e) => {
       if (!ini) return;
       const dx = e.clientX - ini.x, dy = e.clientY - ini.y;
@@ -600,50 +762,60 @@
     const tecla = (e) => {
       const d = { ArrowUp: "cima", ArrowDown: "baixo", ArrowLeft: "esq", ArrowRight: "dir" }[e.key];
       if (d) { querer = d; e.preventDefault(); }
+      if (e.key === " " || e.key === "p") { alternar(); e.preventDefault(); }
     };
     document.addEventListener("keydown", tecla);
+    const soltar = () => { document.removeEventListener("keydown", tecla); document.removeEventListener("visibilitychange", aoVoltar); };
     function fim() {
       if (acabou) return;
-      acabou = true; cancelAnimationFrame(raf); document.removeEventListener("keydown", tecla); K.aoParar(null);
+      acabou = true; cancelAnimationFrame(raf); soltar(); K.aoParar(null);
       const est = estrelasLabirinto(pontos);
       K.ganharEstrelas(est); K.marcar("labirinto"); K.contar("labirinto", est);
-      K.resultado(`${pontos} pontos · fase ${fase}`, est, medalhaNova ? "labirinto" : "", "labirinto");
+      const bateu = K.recorde("labirinto_" + difId, pontos);
+      K.recorde("labirinto", pontos);
+      K.resultado(`${pontos} pontos · ${DIF.nome} · fase ${fase}${bateu ? " · novo recorde! 🏆" : ""}`, est, medalhaNova ? "labirinto" : "", "labirinto", pontos);
+      placar("labirinto", pontos);
       palco.querySelector(".jg-fim").insertAdjacentHTML("beforeend", `<div class="jg-expl"><b>🧼 Contra os germes de verdade:</b>
         lavar bem as mãos com água e sabão (palmas, dorso, entre os dedos e as unhas) é uma das formas mais simples de evitar infecções.
         <small>Fonte: Ministério da Saúde</small></div>`);
-      placar("labirinto", pontos);
     }
-    K.aoParar(() => { acabou = true; cancelAnimationFrame(raf); document.removeEventListener("keydown", tecla); });
+    K.aoParar(() => { acabou = true; cancelAnimationFrame(raf); soltar(); });
     raf = requestAnimationFrame((t) => { ult = t; quadro(t); });
   }
 
   // ── 🌬️ Respire comigo ──────────────────────────────────────────────────
+  // Respiração quadrada (4 s cada fase). 1 minuto = 4 ciclos; 3 minutos = 11.
+  // Vibra de leve a cada troca, para quem prefere de olhos fechados.
   function respire() {
     const FASES = [["Inspire pelo nariz", 1.0], ["Segure", 1.0], ["Solte devagar", 0.55], ["Descanse", 0.55]];
-    const CICLOS = 4, SEG = 4;
+    const SEG = 4;
     palco.innerHTML = `<div class="jg-resp-caixa">
-        <div class="jg-resp-bola" id="jg-rb"><span id="jg-rn">4</span></div>
-        <div class="jg-resp-txt" id="jg-rt">Um minuto para respirar com calma. Sente-se confortável.</div>
-        <div class="jg-passo" id="jg-rc"></div>
-        <button type="button" class="jg-seguir" id="jg-r-ir">Começar</button>
+        <div class="jg-resp-bola" id="jg-rb"><span id="jg-rn">🌿</span></div>
+        <div class="jg-resp-txt" id="jg-rt">Um tempo para respirar com calma. Sente-se confortável.</div>
+        <div class="jg-passo" id="jg-rc">O celular vibra de leve a cada troca — dá para fazer de olhos fechados.</div>
+        <div class="jg-fim-bts" id="jg-r-bts"><button type="button" class="jg-seguir" data-min="1">1 minuto</button>
+          <button type="button" class="jg-menu" data-min="3">3 minutos</button></div>
       </div>`;
     let timer = 0;
     K.aoParar(() => clearTimeout(timer));
-    K.q("jg-r-ir").onclick = () => {
-      K.q("jg-r-ir").remove();
+    for (const b of palco.querySelectorAll("[data-min]")) b.onclick = () => comecar(b.dataset.min === "3" ? 11 : 4);
+    function comecar(ciclos) {
+      K.q("jg-r-bts").remove();
       let passo = 0;
-      const total = CICLOS * FASES.length;
+      const total = ciclos * FASES.length;
       const rodar = () => {
-        if (passo >= total) return fim();
+        if (passo >= total) return fim(ciclos);
         const [txt, escala] = FASES[passo % FASES.length];
         K.q("jg-rt").textContent = txt;
-        K.q("jg-rc").textContent = `Respiração ${Math.floor(passo / FASES.length) + 1} de ${CICLOS}`;
+        K.q("jg-rc").textContent = `Respiração ${Math.floor(passo / FASES.length) + 1} de ${ciclos}`;
+        vibrar(passo % FASES.length === 0 ? [60, 80, 60] : 40);
         const bola = K.q("jg-rb");
         bola.style.transition = `transform ${SEG}s ease-in-out`;
         bola.style.transform = `scale(${escala})`;
         let n = SEG;
         K.q("jg-rn").textContent = n;
         const conta = () => {
+          if (fora()) { timer = setTimeout(conta, 500); return; }   // pausa em segundo plano
           n--;
           if (n <= 0) { passo++; rodar(); return; }
           K.q("jg-rn").textContent = n;
@@ -652,19 +824,22 @@
         timer = setTimeout(conta, 1000);
       };
       rodar();
-    };
-    function fim() {
+    }
+    function fim(ciclos) {
       K.aoParar(null);
-      K.ganharEstrelas(3); K.marcar("respira"); K.contar("respira", 3);
+      const est = ciclos > 4 ? 5 : 3;
+      K.ganharEstrelas(est); K.marcar("respira"); K.contar("respira", est);
       const nova = K.ganharMedalha("calma");
-      K.resultado("Muito bem! Você respirou com calma por um minuto. 🌿", 3, nova ? "calma" : "", "respire");
+      K.resultado(`Muito bem! Você respirou com calma por ${ciclos > 4 ? "3 minutos" : "um minuto"}. 🌿`, est, nova ? "calma" : "", "respire");
     }
   }
 
   const R = window.Jogos.registrar;
-  R("relampago", { icone: "⚡", nome: "Relâmpago", sub: "60 segundos, acerte o máximo!", abrir: relampago });
-  R("saudavel", { icone: "🍎", nome: "Pegue o saudável", sub: "Toque nos alimentos bons", abrir: saudavel });
-  R("labirinto", { icone: "💧", nome: "Labirinto", sub: "Coma vitaminas, fuja dos germes", abrir: labirinto });
-  R("corpo", { icone: "🧍", nome: "Monte o corpo", sub: "Cada exame no seu lugar", abrir: corpo });
-  R("respire", { icone: "🌬️", nome: "Respire comigo", sub: "1 minuto de calma", abrir: respire });
+  const sub = (padrao, k, un) => () => (K.recordeDe(k) != null ? `${padrao} · recorde ${K.recordeDe(k)}${un}` : padrao);
+  R("relampago", { icone: "⚡", nome: "Relâmpago", sub: sub("60 s, acerte o máximo!", "relampago", " pts"), abrir: relampago });
+  R("saudavel", { icone: "🍎", nome: "Pegue o saudável", sub: sub("Toque nos alimentos bons", "saudavel", " pts"), abrir: saudavel });
+  R("labirinto", { icone: "💧", nome: "Labirinto", sub: sub("Fuja dos germes · 3 velocidades", "labirinto", " pts"), abrir: labirinto });
+  R("corpo", { icone: "🧍", nome: "Monte o corpo",
+               sub: () => `Nível ${Math.min(3, Math.max(1, K.ler().corpoNivel || 1))} · cada exame no seu lugar`, abrir: corpo });
+  R("respire", { icone: "🌬️", nome: "Respire comigo", sub: "1 ou 3 minutos de calma", abrir: respire });
 })();

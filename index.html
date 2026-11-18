@@ -1314,6 +1314,38 @@
   .jg-fim{text-align:center;padding-top:30px}.jg-est{font-size:38px;margin-bottom:10px}.jg-fim b{font-size:19px}
   .jg-nova{margin:16px auto 0;background:#fff8e1;border-radius:16px;padding:12px;font-size:16px;max-width:360px}
   .jg-fim-bts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  /* 2ª leva (17/11/2026): desafio, letra grande, compartilhar, carta, níveis */
+  .jg-topo-menu{display:flex;justify-content:flex-end;margin:-4px 0 8px}
+  .jg-grande-bt{border:1px solid #d5e3e6;background:#fff;border-radius:14px;padding:6px 12px;font:inherit;font-size:14px;color:var(--marca-escura)}
+  .jg-grande-bt.ligado{background:var(--marca-clara);border-color:transparent;font-weight:700}
+  .jg-desafio{background:linear-gradient(135deg,#fff7ed,#fef3c7);border-radius:18px;padding:12px 14px;margin-bottom:14px;font-size:15.5px;line-height:1.4}
+  .jg-desafio small{display:block;color:#92400e;font-size:13px;margin-top:2px}.jg-desafio.feito{background:#ecfdf3}.jg-desafio.feito small{color:#166534}
+  .jg-zap{display:inline-flex;align-items:center;text-decoration:none;background:#dcfce7;color:#166534}
+  .jg-sobe{position:fixed;z-index:9999;pointer-events:none;font-weight:800;font-size:22px;transform:translate(-50%,-50%);animation:jgSobe .8s ease-out forwards}
+  @keyframes jgSobe{to{transform:translate(-50%,-160%);opacity:0}}
+  .jg-carta{position:relative;background:#fff;border-radius:20px;box-shadow:var(--sombra-cartao);padding:26px 18px 18px;margin-bottom:14px;
+    touch-action:pan-y;user-select:none;-webkit-user-select:none;transition:transform .35s ease,opacity .35s ease;cursor:grab}
+  .jg-carta .jg-perg{margin:0}
+  .jg-carta-sel{position:absolute;top:8px;font-size:12px;font-weight:800;letter-spacing:.06em;opacity:0;transition:opacity .15s}
+  .jg-carta-sel.v{right:14px;color:#16a34a}.jg-carta-sel.m{left:14px;color:#dc2626}
+  .jg-carta.quase-v .jg-carta-sel.v,.jg-carta.quase-m .jg-carta-sel.m{opacity:1}
+  .jg-carta.quase-v{box-shadow:0 0 0 3px #86efac}.jg-carta.quase-m{box-shadow:0 0 0 3px #fca5a5}
+  .jg-carta.foi-v{transform:translateX(30%) rotate(6deg);opacity:.85}.jg-carta.foi-m{transform:translateX(-30%) rotate(-6deg);opacity:.85}
+  .jg-mem.n6{grid-template-columns:repeat(3,minmax(0,1fr))}.jg-mem.n8{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .jg-mem button span{overflow-wrap:anywhere;hyphens:auto}
+  .jg-mem.n6 button,.jg-mem.n8 button{min-height:72px;font-size:12.5px;padding:6px}
+  .jg-mem button.aberta{animation:jgVira .28s ease}
+  @keyframes jgVira{0%{transform:scaleX(.05)}100%{transform:scaleX(1)}}
+  .jg-ops button.sel{border-color:var(--marca)}.jg-ops button small{display:block;color:var(--cinza-txt);font-size:13px;font-weight:400;margin-top:2px}
+  .jg-pausa{margin-top:2px}
+  /* Letra grande: os textos dos jogos maiores (os jogos de canvas ficam iguais) */
+  .jg-grande .jg-ola{font-size:20px}.jg-grande .jg-perg{font-size:23px}
+  .jg-grande .jg-ops button,.jg-grande .jg-vm button{font-size:19px}
+  .jg-grande .jg-expl{font-size:18px}.jg-grande .jg-passo{font-size:16px}
+  .jg-grande .jg-grade b{font-size:18.5px}.jg-grande .jg-grade small{font-size:15px}
+  .jg-grande .jg-missao b{font-size:18px}.jg-grande .jg-ficha{font-size:17px}
+  .jg-grande .jg-mem button{font-size:17px}.jg-grande .jg-mem.n6 button,.jg-grande .jg-mem.n8 button{font-size:14.5px}
+  .jg-grande .jg-desafio{font-size:18px}.jg-grande .jg-fim b{font-size:22px}
   /* ⚡ Mais agitados (jogos_arcade.js, 17/11/2026) */
   .jg-rl-num{display:flex;justify-content:space-between;align-items:center;font-size:15px;margin:2px 0 10px}
   .jg-rl-num b{font-size:18px;color:var(--marca-escura)}
@@ -1326,9 +1358,9 @@
   .jg-pad [data-d=cima]{grid-column:2;grid-row:1}.jg-pad [data-d=esq]{grid-column:1;grid-row:2}
   .jg-pad [data-d=baixo]{grid-column:2;grid-row:2}.jg-pad [data-d=dir]{grid-column:3;grid-row:2}
   .jg-pad button:active{background:var(--marca-clara)}
-  .jg-corpo{display:flex;justify-content:center}.jg-silhueta{width:100%;max-width:250px;height:auto}
+  .jg-corpo{display:flex;justify-content:center}.jg-silhueta{width:100%;max-width:280px;height:auto}
   .jg-zona circle{fill:#fff;stroke:#0e7490;stroke-width:2;stroke-dasharray:4 3}
-  .jg-zona text{font-size:15px}
+  .jg-zona text{font-size:13px}
   .jg-corpo.alvo .jg-zona circle{stroke:#f59e0b;stroke-width:3;animation:jgPulsa 1s infinite}
   .jg-zona.certa circle{fill:#dcfce7;stroke:#16a34a;stroke-dasharray:none}
   .jg-zona.errada circle{fill:#fee2e2;stroke:#dc2626}
