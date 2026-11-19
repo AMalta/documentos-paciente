@@ -10,7 +10,7 @@
 // perceber. Aparece no rodapé da tela de conta.
 // Quebra de linha sem escape (ver comentario em apagarDocumentoAberto).
 const LINHA = String.fromCharCode(10);
-const VERSAO_APP = "2026-11-18.6";
+const VERSAO_APP = "2026-11-18.7";
 
 const { createClient } = supabase;
 const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -1676,6 +1676,11 @@ async function perguntarAutorizacoes() {
         // Logo depois do "sim": é o momento em que a caixa do celular faz sentido.
         await ativarAvisos();
       }
+    }
+    // ✉️ Convite da clínica pelo link (convite_clinica.js, sql/036)
+    if (window.ConviteClinica) {
+      await window.ConviteClinica.perguntar({ sb, pessoas, pessoaAtiva, nomeDaPessoa, confirmarModal,
+                                              aviso, ativarAvisos, LINHA });
     }
   } finally {
     perguntandoAutorizacao = false;
